@@ -50,7 +50,7 @@ dispatcher setup [--dir <path>]
 **Behavior:**
 1. Create a directory for external team state (default: `~/.dispatcher/team/`)
 2. Run `npx github:bradygaster/squad` inside that directory to generate the full `.squad/` tree, `.squad-templates/`, and `.github/agents/squad.agent.md`
-3. Store the setup path in `~/.dispatcher/config.json`
+3. Store the setup path in `~/.dispatcher/config.yaml`
 
 **Options:**
 | Flag | Default | Description |
@@ -62,7 +62,7 @@ dispatcher setup [--dir <path>]
 $ dispatcher setup
 ✓ Created team directory at ~/.dispatcher/team/
 ✓ Initialized Squad in ~/.dispatcher/team/
-✓ Saved config to ~/.dispatcher/config.json
+✓ Saved config to ~/.dispatcher/config.yaml
 ```
 
 **Output on re-run (idempotent):**
@@ -73,12 +73,10 @@ $ dispatcher setup
 ✓ Config verified
 ```
 
-**Config file (`~/.dispatcher/config.json`):**
-```json
-{
-  "teamDir": "/home/user/.dispatcher/team",
-  "version": "0.1.0"
-}
+**Config file (`~/.dispatcher/config.yaml`):**
+```yaml
+teamDir: /home/user/.dispatcher/team
+version: 0.1.0
 ```
 
 **Error cases:**
@@ -99,7 +97,7 @@ dispatcher onboard [--repo <path>]
 ```
 
 **Behavior:**
-1. Read `~/.dispatcher/config.json` to find team directory
+1. Read `~/.dispatcher/config.yaml` to find team directory
 2. In the target repo (default: cwd), create symlinks:
    - `.squad/` → `<teamDir>/.squad/`
    - `.squad-templates/` → `<teamDir>/.squad-templates/`
@@ -113,7 +111,7 @@ dispatcher onboard [--repo <path>]
    .squad-templates/
    .github/agents/squad.agent.md
    ```
-4. Register the repo in `~/.dispatcher/projects.json`
+4. Register the repo in `~/.dispatcher/projects.yaml`
 
 **Why `.git/info/exclude`?**
 From Tamir Dresher's technique: `.git/info/exclude` works identically to `.gitignore` but is local-only. It's never committed, so the repo stays clean. On Windows, both the symlink name and the directory form need separate entries (e.g., `.squad` and `.squad/`).
@@ -141,17 +139,12 @@ $ dispatcher onboard
 - Setup not run → `✗ No team directory found. Run: dispatcher setup`
 - Symlink target doesn't exist → `✗ Team directory missing: <path>. Run: dispatcher setup`
 
-**Projects registry (`~/.dispatcher/projects.json`):**
-```json
-{
-  "projects": [
-    {
-      "name": "my-app",
-      "path": "/home/user/projects/my-app",
-      "onboarded": "2026-02-21T10:00:00Z"
-    }
-  ]
-}
+**Projects registry (`~/.dispatcher/projects.yaml`):**
+```yaml
+projects:
+  - name: my-app
+    path: /home/user/projects/my-app
+    onboarded: "2026-02-21T10:00:00Z"
 ```
 
 ---
@@ -174,7 +167,7 @@ dispatcher dispatch <issue-number> [--repo <path>]
 4. Symlink Squad files into the worktree (leverages `.git/info/exclude` entries from `onboard` — they apply to all worktrees automatically)
 5. Write issue context to `.squad/dispatch-context.md` in the worktree
 6. Invoke Squad to plan: `npx github:bradygaster/squad` with issue context
-7. Log the dispatch to `~/.dispatcher/active.json`
+7. Log the dispatch to `~/.dispatcher/active.yaml`
 
 **The worktree + exclude trick:**
 Git exclude entries in the main `.git/info/exclude` apply to ALL worktrees. This is why `onboard` is a separate step — it sets up excludes once, and every worktree benefits.
@@ -200,21 +193,16 @@ $ dispatcher dispatch 42
   To work with Squad: cd .worktrees/dispatcher-42/
 ```
 
-**Active dispatch registry (`~/.dispatcher/active.json`):**
-```json
-{
-  "dispatches": [
-    {
-      "id": "my-app-42",
-      "repo": "/home/user/projects/my-app",
-      "issue": 42,
-      "branch": "dispatcher/42-add-user-authentication",
-      "worktree": "/home/user/projects/my-app/.worktrees/dispatcher-42",
-      "status": "planning",
-      "created": "2026-02-21T10:30:00Z"
-    }
-  ]
-}
+**Active dispatch registry (`~/.dispatcher/active.yaml`):**
+```yaml
+dispatches:
+  - id: my-app-42
+    repo: /home/user/projects/my-app
+    issue: 42
+    branch: dispatcher/42-add-user-authentication
+    worktree: /home/user/projects/my-app/.worktrees/dispatcher-42
+    status: planning
+    created: "2026-02-21T10:30:00Z"
 ```
 
 **Statuses:** `planning` → `implementing` → `reviewing` → `done` → `cleaned`
@@ -243,7 +231,7 @@ dispatcher dispatch --pr <pr-number> [--repo <path>]
 3. Symlink Squad into the worktree
 4. Write PR context (diff summary, changed files, PR description) to `.squad/dispatch-context.md`
 5. Invoke Squad with a review-focused prompt
-6. Log to `~/.dispatcher/active.json` with status `reviewing`
+6. Log to `~/.dispatcher/active.yaml` with status `reviewing`
 
 **Example:**
 ```bash
@@ -274,7 +262,7 @@ dispatcher dashboard
 ```
 
 **Behavior:**
-1. Read `~/.dispatcher/active.json`
+1. Read `~/.dispatcher/active.yaml`
 2. For each active dispatch, check worktree health (does it still exist?)
 3. Display a table of active work
 
@@ -315,9 +303,9 @@ dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
 
 ```
 ~/.dispatcher/
-├── config.json          # Global config (team directory path)
-├── projects.json        # Registry of onboarded projects
-├── active.json          # Active dispatches across all projects
+├── config.yaml          # Global config (team directory path)
+├── projects.yaml        # Registry of onboarded projects
+├── active.yaml          # Active dispatches across all projects
 └── team/                # External Squad team state
     ├── .squad/
     ├── .squad-templates/
@@ -344,25 +332,25 @@ dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
 ```
 dispatcher setup
   └─→ Creates ~/.dispatcher/team/ with Squad files
-  └─→ Writes ~/.dispatcher/config.json
+  └─→ Writes ~/.dispatcher/config.yaml
 
 dispatcher onboard
-  └─→ Reads config.json
+  └─→ Reads config.yaml
   └─→ Creates symlinks in repo
   └─→ Updates .git/info/exclude
-  └─→ Writes to projects.json
+  └─→ Writes to projects.yaml
 
 dispatcher dispatch <issue>
-  └─→ Reads config.json, projects.json
+  └─→ Reads config.yaml, projects.yaml
   └─→ Calls gh CLI for issue data
   └─→ Creates branch + worktree
   └─→ Symlinks Squad into worktree
   └─→ Writes dispatch-context.md
   └─→ Invokes Squad
-  └─→ Updates active.json
+  └─→ Updates active.yaml
 
 dispatcher dashboard
-  └─→ Reads active.json
+  └─→ Reads active.yaml
   └─→ Validates worktree health
   └─→ Renders table
 ```
@@ -378,7 +366,7 @@ dispatcher/
 │   ├── onboard.js           # onboard command
 │   ├── dispatch.js          # dispatch command (issue + PR modes)
 │   ├── dashboard.js         # dashboard command
-│   ├── config.js            # Config read/write (~/.dispatcher/*.json)
+│   ├── config.js            # Config read/write (~/.dispatcher/*.yaml) — hand-rolled YAML parser/serializer
 │   ├── symlink.js           # Symlink creation + validation
 │   ├── exclude.js           # .git/info/exclude management
 │   ├── worktree.js          # Git worktree create/remove

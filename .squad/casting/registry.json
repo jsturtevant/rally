@@ -1,0 +1,36 @@
+{
+  "agents": {
+    "mal": {
+      "persistent_name": "Mal",
+      "universe": "Firefly",
+      "role": "Lead",
+      "created_at": "2026-02-21T22:23:14Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "wash": {
+      "persistent_name": "Wash",
+      "universe": "Firefly",
+      "role": "Integration Dev",
+      "created_at": "2026-02-21T22:23:14Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "kaylee": {
+      "persistent_name": "Kaylee",
+      "universe": "Firefly",
+      "role": "Core Dev",
+      "created_at": "2026-02-21T22:23:14Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "jayne": {
+      "persistent_name": "Jayne",
+      "universe": "Firefly",
+      "role": "Tester",
+      "created_at": "2026-02-21T22:23:14Z",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}

@@ -49,8 +49,9 @@ dispatcher setup [--dir <path>]
 
 **Behavior:**
 1. Create a directory for external team state (default: `~/.dispatcher/team/`)
-2. Run `npx github:bradygaster/squad` inside that directory to generate the full `.squad/` tree, `.squad-templates/`, and `.github/agents/squad.agent.md`
-3. Store the setup path in `~/.dispatcher/config.yaml`
+2. Create a directory for cloned projects (default: `~/.dispatcher/projects/`)
+3. Run `npx github:bradygaster/squad` inside that directory to generate the full `.squad/` tree, `.squad-templates/`, and `.github/agents/squad.agent.md`
+4. Store the setup paths in `~/.dispatcher/config.yaml`
 
 **Options:**
 | Flag | Default | Description |
@@ -76,6 +77,7 @@ $ dispatcher setup
 **Config file (`~/.dispatcher/config.yaml`):**
 ```yaml
 teamDir: /home/user/.dispatcher/team
+projectsDir: /home/user/.dispatcher/projects
 version: 0.1.0
 ```
 
@@ -87,22 +89,38 @@ version: 0.1.0
 
 ### 3.2 `dispatcher onboard`
 
-**Purpose:** Connect a repo to your external Squad team without committing anything. Uses symlinks + `.git/info/exclude`.
+**Purpose:** Connect a repo to your external Squad team without committing anything. Uses symlinks + `.git/info/exclude`. Accepts a local path or a GitHub URL — when given a URL, clones the repo first.
 
 **Precondition:** `dispatcher setup` has been run.
 
 **Usage:**
 ```bash
-dispatcher onboard [--repo <path>]
+dispatcher onboard [<repo-url-or-path>]
 ```
 
+The argument can be:
+- **Nothing** — onboards the current working directory (existing behavior)
+- **A local path** — onboards the repo at that path (e.g., `dispatcher onboard ~/projects/my-app`)
+- **A GitHub URL** — `https://github.com/owner/repo` or the shorthand `owner/repo`. Clones the repo into the configured projects directory first, then onboards it.
+
 **Behavior:**
-1. Read `~/.dispatcher/config.yaml` to find team directory
-2. In the target repo (default: cwd), create symlinks:
-   - `.squad/` → `<teamDir>/.squad/`
-   - `.squad-templates/` → `<teamDir>/.squad-templates/`
-   - `.github/agents/squad.agent.md` → `<teamDir>/.github/agents/squad.agent.md`
-3. Add entries to `.git/info/exclude` (NOT `.gitignore` — local only, never committed):
+1. Read `~/.dispatcher/config.yaml` to find team directory and projects directory
+2. **If the argument is a GitHub URL or `owner/repo` shorthand:**
+   - Clone the repo into `<projectsDir>/<repo-name>/` (default: `~/.dispatcher/projects/<repo-name>/`)
+   - If the directory already exists, skip the clone and use the existing checkout
+3. **Team selection prompt:** Ask the user which team configuration to use:
+   ```
+   ? Use your existing team or create a new one for this project?
+     ❯ Existing team — use shared team from ~/.dispatcher/team/
+       New team — create a project-specific team for <project-name>
+   ```
+   - **Existing team:** Symlinks point to the shared `<teamDir>/` (default behavior, same as before)
+   - **New team:** Creates a project-specific team directory at `~/.dispatcher/teams/<project-name>/`, runs `npx github:bradygaster/squad` inside it, and symlinks point there instead
+4. In the target repo, create symlinks (pointing to whichever team directory was selected):
+   - `.squad/` → `<selectedTeamDir>/.squad/`
+   - `.squad-templates/` → `<selectedTeamDir>/.squad-templates/`
+   - `.github/agents/squad.agent.md` → `<selectedTeamDir>/.github/agents/squad.agent.md`
+5. Add entries to `.git/info/exclude` (NOT `.gitignore` — local only, never committed):
    ```
    # Dispatcher — Squad symlinks
    .squad
@@ -111,7 +129,7 @@ dispatcher onboard [--repo <path>]
    .squad-templates/
    .github/agents/squad.agent.md
    ```
-4. Register the repo in `~/.dispatcher/projects.yaml`
+6. Register the repo in `~/.dispatcher/projects.yaml` (including which team type was selected)
 
 **Why `.git/info/exclude`?**
 From Tamir Dresher's technique: `.git/info/exclude` works identically to `.gitignore` but is local-only. It's never committed, so the repo stays clean. On Windows, both the symlink name and the directory form need separate entries (e.g., `.squad` and `.squad/`).
@@ -119,37 +137,63 @@ From Tamir Dresher's technique: `.git/info/exclude` works identically to `.gitig
 **Options:**
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--repo <path>` | `.` (cwd) | Path to the repo to onboard |
+| `--team <shared\|new>` | _(prompt)_ | Skip the team selection prompt. `shared` uses the existing team; `new` creates a project-specific team. |
 
-**Example:**
+**Example (local repo, shared team):**
 ```bash
 $ cd ~/projects/my-app
 $ dispatcher onboard
+? Use your existing team or create a new one for this project?
+  ❯ Existing team
 ✓ Symlinked .squad/ → ~/.dispatcher/team/.squad/
 ✓ Symlinked .squad-templates/ → ~/.dispatcher/team/.squad-templates/
 ✓ Symlinked .github/agents/squad.agent.md → ~/.dispatcher/team/.github/agents/squad.agent.md
 ✓ Updated .git/info/exclude
-✓ Registered project: my-app
+✓ Registered project: my-app (shared team)
 ```
 
-**Idempotent:** If symlinks already exist and point to the right place, skip and report.
+**Example (GitHub URL, new project-specific team):**
+```bash
+$ dispatcher onboard owner/cool-project
+✓ Cloned owner/cool-project → ~/.dispatcher/projects/cool-project/
+? Use your existing team or create a new one for this project?
+  ❯ New team
+✓ Created team directory at ~/.dispatcher/teams/cool-project/
+✓ Initialized Squad in ~/.dispatcher/teams/cool-project/
+✓ Symlinked .squad/ → ~/.dispatcher/teams/cool-project/.squad/
+✓ Symlinked .squad-templates/ → ~/.dispatcher/teams/cool-project/.squad-templates/
+✓ Symlinked .github/agents/squad.agent.md → ~/.dispatcher/teams/cool-project/.github/agents/squad.agent.md
+✓ Updated .git/info/exclude
+✓ Registered project: cool-project (project-specific team)
+```
+
+**Idempotent:** If symlinks already exist and point to the right place, skip and report. If a clone target already exists, use the existing checkout.
 
 **Error cases:**
-- Not inside a git repo → `✗ Not a git repository. Run from inside a repo.`
+- Not inside a git repo (when no argument given) → `✗ Not a git repository. Run from inside a repo or provide a GitHub URL.`
 - Setup not run → `✗ No team directory found. Run: dispatcher setup`
 - Symlink target doesn't exist → `✗ Team directory missing: <path>. Run: dispatcher setup`
+- Clone fails → `✗ Failed to clone <url>: <git error>`
+- Invalid URL/shorthand → `✗ Not a valid GitHub URL or owner/repo shorthand: <input>`
 
 **Projects registry (`~/.dispatcher/projects.yaml`):**
 ```yaml
 projects:
   - name: my-app
     path: /home/user/projects/my-app
+    team: shared
+    teamDir: /home/user/.dispatcher/team
     onboarded: "2026-02-21T10:00:00Z"
+  - name: cool-project
+    path: /home/user/.dispatcher/projects/cool-project
+    team: project
+    teamDir: /home/user/.dispatcher/teams/cool-project
+    onboarded: "2026-02-21T11:00:00Z"
 ```
 
 ---
 
-### 3.3 `dispatcher dispatch` (Issue Mode)
+### 3.3 `dispatcher dispatch issue` (Issue Mode)
 
 **Purpose:** Take a GitHub issue and run the full Squad lifecycle: branch → worktree → plan → implement → test → review → PR.
 
@@ -157,17 +201,24 @@ projects:
 
 **Usage:**
 ```bash
-dispatcher dispatch <issue-number> [--repo <path>]
+dispatcher dispatch issue <issue-number> [--repo <owner/repo>]
 ```
 
 **Behavior:**
-1. Fetch issue metadata from GitHub (`gh issue view <number> --json title,body,labels`)
-2. Create a branch named `dispatcher/<issue-number>-<slug>` from the default branch
-3. Create a git worktree at `<repo>/.worktrees/dispatcher-<issue-number>/`
-4. Symlink Squad files into the worktree (leverages `.git/info/exclude` entries from `onboard` — they apply to all worktrees automatically)
-5. Write issue context to `.squad/dispatch-context.md` in the worktree
-6. Invoke Squad to plan: `npx github:bradygaster/squad` with issue context
-7. Log the dispatch to `~/.dispatcher/active.yaml`
+1. Resolve the target repo (see **Repo resolution** below)
+2. Fetch issue metadata from GitHub (`gh issue view <number> --json title,body,labels`)
+3. Create a branch named `dispatcher/<issue-number>-<slug>` from the default branch
+4. Create a git worktree at `<repo>/.worktrees/dispatcher-<issue-number>/`
+5. Symlink Squad files into the worktree (leverages `.git/info/exclude` entries from `onboard` — they apply to all worktrees automatically)
+6. Write issue context to `.squad/dispatch-context.md` in the worktree
+7. Invoke Squad to plan: `npx github:bradygaster/squad` with issue context
+8. Log the dispatch to `~/.dispatcher/active.yaml`
+
+**Repo resolution (applies to both `issue` and `pr` subcommands):**
+The `--repo <owner/repo>` flag explicitly specifies the GitHub repo to target. If omitted, Dispatcher infers the repo:
+1. **Current directory** — if the cwd is inside an onboarded project, use that project's repo
+2. **Single project** — if `projects.yaml` contains exactly one onboarded project, use it
+3. **Ambiguous** — if multiple projects are onboarded and cwd doesn't match any, error: `✗ Multiple projects onboarded. Specify with --repo owner/repo`
 
 **The worktree + exclude trick:**
 Git exclude entries in the main `.git/info/exclude` apply to ALL worktrees. This is why `onboard` is a separate step — it sets up excludes once, and every worktree benefits.
@@ -175,13 +226,13 @@ Git exclude entries in the main `.git/info/exclude` apply to ALL worktrees. This
 **Options:**
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--repo <path>` | `.` (cwd) | Path to the repo |
+| `--repo <owner/repo>` | _(inferred)_ | GitHub repo to target (e.g., `owner/repo`) |
 | `--base <branch>` | default branch | Branch to create worktree from |
 | `--no-plan` | `false` | Skip automatic planning step |
 
 **Example:**
 ```bash
-$ dispatcher dispatch 42
+$ dispatcher dispatch issue 42
 ✓ Fetched issue #42: "Add user authentication"
 ✓ Created branch: dispatcher/42-add-user-authentication
 ✓ Created worktree: .worktrees/dispatcher-42/
@@ -191,6 +242,11 @@ $ dispatcher dispatch 42
 
   Worktree ready at: .worktrees/dispatcher-42/
   To work with Squad: cd .worktrees/dispatcher-42/
+```
+
+**Example (explicit repo):**
+```bash
+$ dispatcher dispatch issue 42 --repo owner/my-app
 ```
 
 **Active dispatch registry (`~/.dispatcher/active.yaml`):**
@@ -216,26 +272,32 @@ dispatches:
 
 ---
 
-### 3.4 `dispatcher dispatch --pr` (PR Review Mode)
+### 3.4 `dispatcher dispatch pr` (PR Review Mode)
 
 **Purpose:** Dispatch Squad to review an existing pull request.
 
 **Usage:**
 ```bash
-dispatcher dispatch --pr <pr-number> [--repo <path>]
+dispatcher dispatch pr <pr-number> [--repo <owner/repo>]
 ```
 
 **Behavior:**
-1. Fetch PR metadata from GitHub (`gh pr view <number> --json title,body,headRefName,baseRefName,files`)
-2. Create a worktree from the PR's head branch at `.worktrees/dispatcher-pr-<number>/`
-3. Symlink Squad into the worktree
-4. Write PR context (diff summary, changed files, PR description) to `.squad/dispatch-context.md`
-5. Invoke Squad with a review-focused prompt
-6. Log to `~/.dispatcher/active.yaml` with status `reviewing`
+1. Resolve the target repo (see **Repo resolution** in §3.3)
+2. Fetch PR metadata from GitHub (`gh pr view <number> --json title,body,headRefName,baseRefName,files`)
+3. Create a worktree from the PR's head branch at `.worktrees/dispatcher-pr-<number>/`
+4. Symlink Squad into the worktree
+5. Write PR context (diff summary, changed files, PR description) to `.squad/dispatch-context.md`
+6. Invoke Squad with a review-focused prompt
+7. Log to `~/.dispatcher/active.yaml` with status `reviewing`
+
+**Options:**
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--repo <owner/repo>` | _(inferred)_ | GitHub repo to target (e.g., `owner/repo`) |
 
 **Example:**
 ```bash
-$ dispatcher dispatch --pr 87
+$ dispatcher dispatch pr 87
 ✓ Fetched PR #87: "Refactor auth middleware"
 ✓ Created worktree from branch: feature/refactor-auth
 ✓ Symlinked Squad into worktree
@@ -243,6 +305,11 @@ $ dispatcher dispatch --pr 87
 ✓ Squad is reviewing…
 
   Worktree ready at: .worktrees/dispatcher-pr-87/
+```
+
+**Example (explicit repo):**
+```bash
+$ dispatcher dispatch pr 87 --repo owner/api-srv
 ```
 
 **Error cases:**
@@ -303,17 +370,26 @@ dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
 
 ```
 ~/.dispatcher/
-├── config.yaml          # Global config (team directory path)
+├── config.yaml          # Global config (team directory, projects directory)
 ├── projects.yaml        # Registry of onboarded projects
 ├── active.yaml          # Active dispatches across all projects
-└── team/                # External Squad team state
-    ├── .squad/
-    ├── .squad-templates/
-    └── .github/
-        └── agents/
-            └── squad.agent.md
+├── team/                # Shared Squad team state (default)
+│   ├── .squad/
+│   ├── .squad-templates/
+│   └── .github/
+│       └── agents/
+│           └── squad.agent.md
+├── teams/               # Project-specific team directories
+│   └── cool-project/    # Team state for a specific project
+│       ├── .squad/
+│       ├── .squad-templates/
+│       └── .github/
+│           └── agents/
+│               └── squad.agent.md
+└── projects/            # Cloned repos (from GitHub URLs)
+    └── cool-project/    # A repo cloned via `dispatcher onboard owner/cool-project`
 
-~/projects/my-app/                   # An onboarded project
+~/projects/my-app/                   # An onboarded project (shared team)
 ├── .squad/ → ~/.dispatcher/team/.squad/           (symlink)
 ├── .squad-templates/ → ~/.dispatcher/team/...     (symlink)
 ├── .github/agents/squad.agent.md → ...            (symlink)
@@ -325,6 +401,15 @@ dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
     │   ├── .squad/ → ...            (symlink)
     │   └── (project files)
     └── dispatcher-pr-87/            # Worktree for PR review
+
+~/.dispatcher/projects/cool-project/ # An onboarded project (project-specific team)
+├── .squad/ → ~/.dispatcher/teams/cool-project/.squad/    (symlink)
+├── .squad-templates/ → ~/.dispatcher/teams/cool-project/...  (symlink)
+├── .github/agents/squad.agent.md → ...                   (symlink)
+├── .git/
+│   └── info/
+│       └── exclude
+└── .worktrees/
 ```
 
 ### 4.2 Data Flow
@@ -336,11 +421,15 @@ dispatcher setup
 
 dispatcher onboard
   └─→ Reads config.yaml
-  └─→ Creates symlinks in repo
+  └─→ If GitHub URL: clones repo into projectsDir
+  └─→ Prompts for team selection (shared or project-specific)
+  └─→ If new team: creates ~/.dispatcher/teams/<project>/ and runs Squad init
+  └─→ Creates symlinks in repo (pointing to selected team dir)
   └─→ Updates .git/info/exclude
-  └─→ Writes to projects.yaml
+  └─→ Writes to projects.yaml (with team type)
 
-dispatcher dispatch <issue>
+dispatcher dispatch issue <issue>
+  └─→ Resolves target repo (--repo flag, cwd, or projects.yaml)
   └─→ Reads config.yaml, projects.yaml
   └─→ Calls gh CLI for issue data
   └─→ Creates branch + worktree
@@ -417,7 +506,7 @@ dispatcher/
 2. **Dispatcher does not manage git branching strategy.** It creates branches with a `dispatcher/` prefix, but it doesn't enforce merge strategies or branch protection.
 3. **Dispatcher does not implement AI agents.** It sets up the environment and invokes Squad. The actual AI work (planning, coding, reviewing) is Squad's responsibility.
 4. **Dispatcher does not commit Squad files.** The entire point is keeping the repo clean. If you want committed Squad state, use vanilla Squad.
-5. **Dispatcher does not manage multiple team configurations.** v1 has one team directory. Multi-team support (different teams for different repos) is a future consideration.
+5. **Dispatcher does not manage advanced team configurations.** v1 supports choosing between a shared team and a project-specific team at onboard time. More advanced setups (team overlays, partial sharing, team migration between projects) are future considerations.
 6. **Dispatcher does not provide a GUI or web dashboard.** Terminal-only for v1.
 
 ---
@@ -445,11 +534,19 @@ Squad is normally invoked via Copilot agent mode in the IDE. When Dispatcher cre
 - **Option B:** Dispatcher invokes a Squad CLI command directly
 - **Option C:** Dispatcher opens the worktree in VS Code with Copilot agent mode activated
 
-### 8.2 Per-project vs. shared team state?
-Current design: one team directory shared across all projects. But different projects might want different team skills, decisions, or agent histories.
-- **Option A:** Single shared team (v1, simple)
-- **Option B:** Per-project team directories under `~/.dispatcher/teams/<project>/`
-- **Option C:** Base team + per-project overlays
+### 8.2 Per-project vs. shared team state? *(Partially resolved)*
+The `onboard` command now prompts users to choose between a shared team and a project-specific team. This resolves the basic question of "should we support both?" — yes, via a prompt at onboard time.
+
+**What's been decided:**
+- Users choose at onboard time: shared team (`~/.dispatcher/team/`) or project-specific team (`~/.dispatcher/teams/<project>/`)
+- Project-specific teams get a fresh Squad init — independent `.squad/` state, decisions, history
+- The `--team <shared|new>` flag allows scripting without the prompt
+- `projects.yaml` tracks which team type each project uses
+
+**What remains open:**
+- **Migration:** Can a project switch from shared to project-specific (or vice versa) after onboarding? What happens to accumulated history/decisions?
+- **Team templates:** Should `dispatcher onboard --team new` support `--from <export.json>` to bootstrap a project-specific team from a Squad export?
+- **Base team + overlays (Option C from original question):** The current design is all-or-nothing. A layered approach (shared base + project-specific overrides) might be valuable but adds complexity. Defer to v2.
 
 ### 8.3 Worktree location
 - **Option A:** Inside the repo at `.worktrees/` (current design — easy to find, but adds a directory to the repo root)
@@ -488,8 +585,8 @@ dispatcher setup --from teammate-export.json
 |---------|-------------|
 | `dispatcher setup` | Initialize external Squad team state |
 | `dispatcher onboard` | Connect a repo to your team via symlinks |
-| `dispatcher dispatch <issue>` | Dispatch Squad to a GitHub issue |
-| `dispatcher dispatch --pr <pr>` | Dispatch Squad to review a PR |
+| `dispatcher dispatch issue <issue>` | Dispatch Squad to a GitHub issue |
+| `dispatcher dispatch pr <pr>` | Dispatch Squad to review a PR |
 | `dispatcher dashboard` | View all active dispatches |
 | `dispatcher dashboard clean` | Clean up completed dispatches |
 

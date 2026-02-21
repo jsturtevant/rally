@@ -37,3 +37,28 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - Updated `docs/PRD.md` to use YAML for all config files
 - Filed decision on hand-rolled YAML parser requirement
 - All agents notified via history propagation
+
+### 2026-02-22 — Onboard Command Expansion (§3.2)
+
+- **GitHub URL support:** `dispatcher onboard` now accepts `https://github.com/owner/repo` or `owner/repo` shorthand. Clones into configurable `projectsDir` (default: `~/.dispatcher/projects/`).
+- **Configurable projects directory:** New `projectsDir` key in `config.yaml`. Set during `dispatcher setup`.
+- **Team selection prompt:** At onboard time, user chooses shared team (`~/.dispatcher/team/`) or project-specific team (`~/.dispatcher/teams/<project>/`). Scriptable with `--team <shared|new>`.
+- **projects.yaml expanded:** Each project entry now includes `team` (shared/project) and `teamDir` (absolute path to the team directory used).
+- **State layout expanded:** `~/.dispatcher/` now includes `teams/` (project-specific team dirs) and `projects/` (cloned repos).
+- **§8.2 partially resolved:** Shared vs. per-project team is now a user choice at onboard time. Migration between team types and overlay approach remain open.
+- **§6 Non-Goals #5 updated:** Reflects that basic multi-team support (shared vs project-specific) now exists; advanced configurations remain out of scope.
+
+### 2026-02-22 — Dispatch Subcommand Restructure
+
+- **Subcommands replace flags:** `dispatcher dispatch issue <number>` and `dispatcher dispatch pr <number>` replace `dispatcher dispatch <number>` and `dispatcher dispatch --pr <number>`. Explicit subcommands make the CLI self-documenting and avoid ambiguity.
+- **`--repo <owner/repo>` flag:** Both subcommands accept an optional `--repo <owner/repo>` flag. If omitted, the repo is inferred from cwd (if inside an onboarded project), from `projects.yaml` (if only one project), or errors with a helpful message if ambiguous.
+- **Sections updated:** §3.3, §3.4, §4.2 Data Flow, Appendix A Command Summary — all now reflect the new syntax.
+
+---
+
+## Orchestration Notes (2026-02-21T22:51)
+
+- Scribe merged both Mal decisions into `.squad/decisions.md`
+- Created orchestration log and session log
+- Updated implementation agents (Kaylee, Wash, Jayne) with cross-agent context
+- All squad/ changes committed

@@ -34,3 +34,16 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - User directive: all Dispatcher config files use YAML, not JSON
 - This affects `config.js` module: will need hand-rolled YAML parser (zero-dependency)
 - See `.squad/decisions.md` → "Decision: Config file format changed from JSON to YAML"
+
+### 2026-02-22 — Onboard Expansion (§3.2) & Dispatch Subcommands (§3.3–3.4)
+
+**From Mal (Lead):**
+- **Onboard expansion:** Now accepts GitHub URLs (`https://github.com/owner/repo` or `owner/repo`), clones into configurable `projectsDir` (default: `~/.dispatcher/projects/`). User selects team type at onboard: shared (`~/.dispatcher/team/`) or project-specific (`~/.dispatcher/teams/<project>/`). Flag: `--team <shared|new>`. `projects.yaml` schema expanded to track `team` and `teamDir`.
+- **Dispatch subcommands:** Explicit subcommands `dispatcher dispatch issue <number>` and `dispatcher dispatch pr <number>` (was implicit + `--pr` flag). Both accept `--repo <owner/repo>` with fallback inference logic. Sections §3.3, §3.4, §4.2 updated in PRD.
+- **State layout:** `~/.dispatcher/` gains `teams/` (project-specific) and `projects/` (cloned repos).
+- **See:** `.squad/decisions.md` → "Onboard Command Expansion" and "Dispatch uses explicit subcommands"
+
+**What this means for you:**
+- Review `docs/PRD.md` §3.2, §3.3, §3.4, §4.1, §4.2 before implementing
+- `lib/onboard.js` must handle GitHub URL parsing, git clone, team selection prompt
+- `lib/dispatch.js` must route explicit subcommands and infer repo from context

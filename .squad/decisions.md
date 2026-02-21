@@ -89,3 +89,76 @@ If config complexity grows in future, revisit this decision.
 
 - `docs/PRD.md` only — all config references and code examples updated to YAML syntax
 - `package.json` and Squad export files (`.json`) remain unchanged per deliberate choice
+
+---
+
+## Decision: Onboard Command Expansion — GitHub URLs, Projects Dir, Team Selection
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Proposed
+
+### Context
+
+User requested expanding `dispatcher onboard` (§3.2) to support GitHub URLs, configurable clone targets, and a shared-vs-project-specific team prompt.
+
+### Decisions
+
+1. **`dispatcher onboard` accepts GitHub URLs.** Full URLs (`https://github.com/owner/repo`) and shorthands (`owner/repo`) are supported. The repo is cloned into `projectsDir` before onboarding.
+
+2. **Configurable projects directory.** New `projectsDir` key in `config.yaml` (default: `~/.dispatcher/projects/`). Created during `dispatcher setup`.
+
+3. **Team selection prompt at onboard time.** User picks "Existing team" (shared, `~/.dispatcher/team/`) or "New team" (project-specific, `~/.dispatcher/teams/<project>/`). Scriptable via `--team <shared|new>` flag.
+
+4. **projects.yaml tracks team type.** Each entry now has `team` (shared/project) and `teamDir` fields so downstream commands (`dispatch`, `dashboard`) know where to find the team.
+
+5. **State layout expanded.** `~/.dispatcher/` gains `teams/` (project-specific team directories) and `projects/` (cloned repos).
+
+6. **§8.2 partially resolved.** The "per-project vs shared team" open question is now answered for v1: users choose at onboard time. Remaining open: migration between team types, team overlays/layering.
+
+### Impact
+
+- `lib/onboard.js` needs URL detection, `git clone` integration, interactive prompt, and project-specific team init logic.
+- `lib/config.js` parser must handle the new `projectsDir` key.
+- `lib/setup.js` should create the `projects/` directory.
+- All agents should re-read `docs/PRD.md` §3.2, §4.1, and §8.2 before implementing.
+
+---
+
+## Decision: Dispatch uses explicit subcommands (`issue`, `pr`) instead of flags
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Accepted  
+**Requested by:** James Sturtevant
+
+### Context
+
+The original dispatch syntax used positional args and flags to distinguish modes:
+- `dispatcher dispatch <issue-number>` — issue mode (implicit)
+- `dispatcher dispatch --pr <pr-number>` — PR review mode (flag-based)
+
+This was asymmetric and made the CLI harder to parse at a glance.
+
+### Decision
+
+Use explicit subcommands:
+- `dispatcher dispatch issue <issue-number> [--repo <owner/repo>]`
+- `dispatcher dispatch pr <pr-number> [--repo <owner/repo>]`
+
+Both subcommands accept `--repo <owner/repo>` to specify the target repo. If omitted, Dispatcher infers:
+1. From the current directory (if inside an onboarded project)
+2. From `projects.yaml` (if exactly one project is onboarded)
+3. Error with: `✗ Multiple projects onboarded. Specify with --repo owner/repo`
+
+### Rationale
+
+- Subcommands are self-documenting — `dispatcher dispatch issue 42` reads as a sentence
+- Symmetric structure for both modes
+- `--repo` uses `owner/repo` format (matching GitHub conventions) instead of a local path
+
+### Impact
+
+- `docs/PRD.md` §3.3, §3.4, §4.2, Appendix A updated
+- `lib/dispatch.js` will need subcommand routing in `bin/dispatcher.js`
+- All agents should use the new syntax in examples and implementations

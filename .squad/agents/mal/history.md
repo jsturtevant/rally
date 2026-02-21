@@ -27,3 +27,8 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - **Worktree convention:** `.worktrees/dispatcher-<issue>/` inside the repo. Branch naming: `dispatcher/<issue>-<slug>`.
 - **Open questions logged in PRD §8:** Squad invocation method, per-project vs shared team, worktree location, Windows symlink fallback, Squad export/import integration.
 - **User preference:** James wants zero dependencies, `node:test`, Windows/macOS/Linux support — same constraints as Squad itself.
+
+### 2026-02-21 — PRD Target User & CI/CD Corrections
+
+- **Target users (from James):** Individual developers using Squad on projects where the rest of the team doesn't use Squad. Examples: open source projects, large shared repos where committing `.squad/` isn't appropriate. This is NOT for teams adopting Squad together — it's for one person using Squad on a shared repo.
+- **No CI/CD (from James):** There will be no CI/CD integration for Dispatcher. No GitHub Actions triggers, no pipeline integration. Removed from PRD §2 and §6.

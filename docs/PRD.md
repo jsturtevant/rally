@@ -24,14 +24,11 @@ Dispatcher solves all four. One CLI, five commands.
 
 ## 2. Target Users
 
-### Primary: Solo developers and small teams using Squad
-- Already have Squad installed or want to start using it
-- Work on repos where committing `.squad/` is undesirable (open source, shared repos, corporate repos)
+### Primary: Individual developers using Squad on shared repos
+- Solo developers working on projects where the rest of the team doesn't use Squad
+- Open source maintainers, contributors to large repos, or anyone on a shared codebase where committing `.squad/` files isn't appropriate
+- One person who wants Squad's power without affecting their teammates or the repo
 - Want to parallelize work across multiple issues using worktrees
-
-### Secondary: CI/CD pipelines
-- `dispatch` can be triggered from GitHub Actions on issue assignment
-- `dashboard` output can feed monitoring
 
 ### Non-users
 - People who don't use Squad (Dispatcher is tightly coupled to Squad)
@@ -429,7 +426,7 @@ dispatcher/
 ## 6. Non-Goals
 
 1. **Dispatcher does not replace Squad.** It orchestrates Squad — it doesn't duplicate any Squad functionality (no team management, no agent definitions, no skills).
-2. **Dispatcher does not manage git branching strategy.** It creates branches with a `dispatcher/` prefix, but it doesn't enforce merge strategies, branch protection, or CI gates.
+2. **Dispatcher does not manage git branching strategy.** It creates branches with a `dispatcher/` prefix, but it doesn't enforce merge strategies or branch protection.
 3. **Dispatcher does not implement AI agents.** It sets up the environment and invokes Squad. The actual AI work (planning, coding, reviewing) is Squad's responsibility.
 4. **Dispatcher does not commit Squad files.** The entire point is keeping the repo clean. If you want committed Squad state, use vanilla Squad.
 5. **Dispatcher does not manage multiple team configurations.** v1 has one team directory. Multi-team support (different teams for different repos) is a future consideration.

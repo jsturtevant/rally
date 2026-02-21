@@ -29,3 +29,7 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - **Target user clarification (2026-02-21):** Solo developers on shared/OSS repos, NOT teams adopting Squad together. Individual using Squad where rest of team doesn't — e.g., open source projects or large shared repos where committing `.squad/` is inappropriate.
 - **No CI/CD for Dispatcher (2026-02-21):** Zero CI/CD integration. No GitHub Actions, no pipeline triggers, no automated invocation. This is a manual CLI tool.
 
+
+### 2026-02-21 22:47 — Config format: YAML not JSON
+- User directive: all Dispatcher config files use YAML, not JSON
+- See `.squad/decisions.md` → "Decision: Config file format changed from JSON to YAML"

@@ -32,3 +32,8 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 
 - **Target users (from James):** Individual developers using Squad on projects where the rest of the team doesn't use Squad. Examples: open source projects, large shared repos where committing `.squad/` isn't appropriate. This is NOT for teams adopting Squad together — it's for one person using Squad on a shared repo.
 - **No CI/CD (from James):** There will be no CI/CD integration for Dispatcher. No GitHub Actions triggers, no pipeline integration. Removed from PRD §2 and §6.
+
+### 2026-02-21 22:47 — Config format: YAML not JSON (completed)
+- Updated `docs/PRD.md` to use YAML for all config files
+- Filed decision on hand-rolled YAML parser requirement
+- All agents notified via history propagation

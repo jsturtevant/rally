@@ -12,16 +12,16 @@ const SAMPLE_DISPATCHES = [
     branch: 'rally/42-fix-bug',
     status: 'planning',
     session_id: 'abc123',
-    created_at: new Date(Date.now() - 3600000).toISOString(), // 1h ago
+    created: new Date(Date.now() - 3600000).toISOString(), // 1h ago
   },
   {
     repo: 'owner/repo-b',
     type: 'pr',
     number: 7,
     branch: 'rally/7-review',
-    status: 'active',
+    status: 'implementing',
     session_id: 'def456',
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(), // 2d ago
+    created: new Date(Date.now() - 86400000 * 2).toISOString(), // 2d ago
   },
 ];
 
@@ -51,7 +51,7 @@ describe('DispatchTable', () => {
   });
 
   it('renders status icons for each status', () => {
-    const statuses = ['planning', 'reviewing', 'active', 'done', 'blocked', 'error'];
+    const statuses = ['planning', 'implementing', 'reviewing', 'done', 'cleaned'];
     const dispatches = statuses.map((status, i) => ({
       repo: 'o/r',
       type: 'issue',
@@ -59,7 +59,7 @@ describe('DispatchTable', () => {
       branch: `rally/${i + 1}-test`,
       status,
       session_id: `s${i}`,
-      created_at: new Date().toISOString(),
+      created: new Date().toISOString(),
     }));
     const { lastFrame } = render(
       React.createElement(DispatchTable, { dispatches })

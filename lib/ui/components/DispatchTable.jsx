@@ -3,11 +3,10 @@ import { Box, Text } from 'ink';
 
 const STATUS_ICONS = {
   planning: '🔵',
+  implementing: '🟢',
   reviewing: '🟡',
-  active: '🟢',
   done: '✅',
-  blocked: '🔴',
-  error: '❌',
+  cleaned: '⚪',
 };
 
 /**
@@ -15,7 +14,9 @@ const STATUS_ICONS = {
  */
 export function formatAge(createdAt) {
   if (!createdAt) return '—';
-  const ms = Date.now() - new Date(createdAt).getTime();
+  const ts = new Date(createdAt).getTime();
+  if (Number.isNaN(ts)) return '—';
+  const ms = Date.now() - ts;
   if (ms < 0) return '0m';
   const minutes = Math.floor(ms / 60000);
   if (minutes < 60) return `${minutes}m`;
@@ -46,7 +47,7 @@ const COLUMNS = [
 function TableRow({ cells, selected }) {
   return (
     <Box>
-      {COLUMNS.map((col, i) => (
+      {COLUMNS.map((col) => (
         <Box key={col.key} width={col.width} paddingRight={1}>
           <Text bold={selected} inverse={selected}>
             {cells[col.key] ?? ''}
@@ -63,7 +64,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
     issueRef: formatIssueRef(d),
     branch: d.branch ?? '',
     status: formatStatus(d.status),
-    age: formatAge(d.created_at),
+    age: formatAge(d.created ?? d.created_at),
   }));
 
   return (
@@ -84,7 +85,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
         </Box>
       ) : (
         rows.map((row, i) => (
-          <TableRow key={i} cells={row} selected={i === selectedIndex} />
+          <TableRow key={dispatches[i].session_id ?? i} cells={row} selected={i === selectedIndex} />
         ))
       )}
     </Box>

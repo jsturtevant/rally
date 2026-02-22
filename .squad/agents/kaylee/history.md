@@ -170,3 +170,91 @@ All decisions documented and merged. You (Kaylee) are unblocked to begin Phase 1
 - config.js, symlink.js, exclude.js, worktree.js, github.js, CLI entry (bin/rally.js with Commander)
 
 See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—ready to implement.
+
+### 2026-02-22 — Setup Command Implemented (Issue #9, PR #31)
+
+**Status:** `lib/setup.js` implemented with 11 tests, all 58 tests passing (47 existing + 11 new).
+
+**What was built:**
+- `lib/setup.js` — Creates `~/.rally/team/` and `~/.rally/projects/`, runs `npx github:bradygaster/squad` in team dir, writes `config.yaml`
+- `bin/rally.js` — Wired `rally setup` as a Commander subcommand with `--dir` option
+- `test/setup.test.js` — 11 tests covering all 4 acceptance criteria + 3 error cases
+
+**Key design decisions:**
+- Used dependency injection (`_exec` option) for `execFileSync` to make Squad init testable without actually running npx
+- Idempotency: checks `existsSync()` for team dir, projects dir, and `.squad/` before creating/running
+- Ora spinner for Squad init, Chalk green checkmarks for success, plain text for skip messages
+- Error cases: ENOENT for missing npx, generic message for Squad init failures, fs errors propagate naturally
+- `execFileSync('npx', ...)` directly instead of `findNpx()` + path resolution — simpler and `execFileSync` resolves via PATH natively
+
+**Branch:** `rally/9-setup` → PR #31 on jsturtevant/rally
+
+### 2026-02-22 — Status Command Implemented (Issue #13, PR #30)
+
+- **lib/status.js** — `getStatus()` gathers config paths (with existence checks), teamDir, projectsDir, onboarded projects, and active dispatches into a structured object. `formatStatus()` renders human-readable output with ✓/✗ markers.
+- **bin/rally.js** — Wired `status` as Commander subcommand with `--json` flag. JSON output uses `JSON.stringify(status, null, 2)`.
+- **test/status.test.js** — 12 tests: config paths shown + existence detection, directories from config, empty/populated projects, empty/populated dispatches, CLI `--json` parsing, CLI text section headers, formatStatus edge cases.
+- **Pattern:** `withTempHome()` helper wraps `RALLY_HOME` env var and temp dir lifecycle for clean test isolation — reusable in future test files.
+- **All 59 tests pass** (47 existing + 12 new).
+
+### 2026-02-22 — Phase 2 Retrospective & Action Items for Phase 3
+
+**From Mal (Lead):**
+
+**Phase 2 was a success.** All 5 issues (#9–#13) closed, all 5 PRs (#30–#34) merged. Code quality improved, 52 test cases, zero post-merge bugs.
+
+**What went well:**
+- ✓ Feature branches used throughout (5 agents, 5 worktrees, zero direct commits to main)
+- ✓ Code review effective (8 review cycles, all comments addressed before merge)
+- ✓ Acceptance criteria became binding in review process (real bugs caught: Node 18 compat, path traversal, partial state)
+- ✓ Dependency injection patterns kept code testable (`_exec`, `_select`, `_input` hooks)
+- ✓ Idempotency maintained across all commands
+
+**Process gaps for Phase 3 (your work — dispatch):**
+
+1. **Copilot review must be mandatory**
+   - Phase 2 had Copilot on some PRs but not all (#30, #31 missing @copilot)
+   - Action: Add `@copilot` reviewer to ALL Phase 3 PRs from day 1
+   - If Copilot generates comments, address them like human review
+
+2. **Interactive behavior needs end-to-end testing**
+   - PR #34 bug (team selection unreachable) caught in code review, not before
+   - Dispatch is heavily interactive (Ink UI, prompts, state transitions)
+   - Action: Test your dispatch command end-to-end with a real TTY before review, not just unit tests
+   - Mal will create `.squad/skills/interactive-testing/SKILL.md` documenting this
+
+3. **Edge case review must be systematic**
+   - Phase 2 found path traversal + partial state bugs via luck (lucky reviews), not by design
+   - For dispatch, common edge cases: aborted invocation, network errors (git clone fails, gh API fails, Copilot timeout), worktree conflicts, Squad state corruption, partial merge
+   - Action: Review checklist in merge PRs will include edge cases — prepare for this
+
+4. **Dispatch context format spec before you start**
+   - Blocker resolutions specify: "simple markdown template. Include issue/PR number, title, labels, creation date, description, files changed, instructions"
+   - Action: Wait for Mal to write `.squad/decisions/inbox/phase3-dispatch-context-spec.md`, get James sign-off before you code dispatch invocation
+   - This prevents rework
+
+5. **Squad invocation safety**
+   - PRD §9.1 resolved: "Automated CLI invocation. Rally launches Copilot CLI automatically with appropriate prompt"
+   - Action: Before implementing dispatch invocation, test with Wash: does `npx @github-copilot/cli chat < dispatch-context.md` work? What error cases exist?
+   - Avoid discovering this mid-implementation
+
+6. **Preserve Phase 2 code patterns**
+   - Keep dependency injection (`_exec`, `_select`, `_input` parameters) for testability
+   - Keep idempotency (re-run dispatch = no change)
+   - Keep Node 18+ compatibility (no `import.meta.dirname`)
+   - Keep `execFileSync` with array args (safety against injection)
+
+**Next step for you:** Review Phase 2 retro in `.squad/decisions.md` → "Retrospective: Phase 2 Implementation" section. Understand what went well and where the gaps are. You're building dispatch — it will be scrutinized for these same patterns and process gates.
+
+### 2026-02-22T171200Z: PR Review Skill Finalized
+
+**Directive:** A new PR review skill exists at `.squad/skills/pr-review-process/SKILL.md`. You must read this before opening any PR in Phase 3.
+
+**Key changes from Phase 2:**
+- Mal (Lead) now conducts mandatory review in addition to Copilot's automated review
+- All comments from both reviewers must be addressed (no exceptions — hard policy)
+- If feedback is out-of-scope, Mal opens a GitHub issue and optionally assigns @copilot
+- Merge gate is three-fold: CI green + Copilot approved + Mal approved + all comments addressed
+- Your revision workflow: if Mal requests changes, don't self-revise — a different agent will pick it up
+
+**Action:** Read `.squad/skills/pr-review-process/SKILL.md` before Phase 3 PRs.

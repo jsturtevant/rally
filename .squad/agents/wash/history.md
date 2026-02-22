@@ -199,3 +199,61 @@ See GitHub issues for full specs. Blockers resolved—proceed with implementatio
 - GitHub issue/PR fetching ready for dispatch context template (#16)
 - CI validates all PRs automatically (user directive: "CI runs on every PR")
 - Safe, cross-platform git and gh CLI invocation patterns established
+
+### 2026-02-22 — Phase 2 Retrospective & Action Items for Phase 3
+
+**From Mal (Lead):**
+
+**Phase 2 was a success.** All 5 issues (#9–#13) closed, all 5 PRs (#30–#34) merged. Code quality improved, 52 test cases, zero post-merge bugs.
+
+**What went well:**
+- ✓ Feature branches used throughout (5 agents, 5 worktrees, zero direct commits to main)
+- ✓ Code review effective (8 review cycles, all comments addressed before merge)
+- ✓ Acceptance criteria became binding in review process (real bugs caught: Node 18 compat, path traversal, partial state)
+- ✓ CI pipeline validation on every PR
+- ✓ Idempotency maintained
+
+**Process gaps for Phase 3 (your work — PR integration + dashboard):**
+
+1. **Copilot review must be mandatory**
+   - Phase 2 had Copilot on some PRs but not all (#30, #31 missing @copilot)
+   - Action: Add `@copilot` reviewer to ALL Phase 3 PRs from day 1
+   - If Copilot generates comments, address them like human review
+
+2. **Interactive behavior needs end-to-end testing**
+   - PR #34 bug (team selection unreachable) caught in code review, not before
+   - Your dashboard command will be heavily interactive (Ink UI, keyboard nav, state machine)
+   - Action: Test your dashboard command end-to-end with real keyboard input before review
+   - Unit tests aren't sufficient for interactive behavior
+
+3. **Edge case review must be systematic**
+   - Phase 2 found path traversal + partial state bugs via luck (lucky reviews), not by design
+   - For dashboard, common edge cases: terminal resize mid-render, rapid quit presses, piped output (should fallback to plain table, not alternate buffer), worktree state inconsistency, Squad dir missing
+   - Action: Review checklist in merge PRs will include edge cases — prepare for this
+
+4. **Dashboard alternate buffer edge cases**
+   - PRD §5 specifies `\x1b[?1049h/l` for alternate screen buffer
+   - Test cases: terminal resize while dashboard running, rapid `q` quit presses, output piped (should not use buffer)
+   - Mal will create edge case checklist for Phase 4 planning, but start thinking about this now
+
+5. **Preserve Phase 2 code patterns**
+   - Keep dependency injection (`_exec`, `_select`, `_input` parameters) for testability
+   - Keep idempotency (re-run commands = same result)
+   - Keep Node 18+ compatibility (no `import.meta.dirname`)
+   - Keep `execFileSync` with array args (safety)
+   - Keep defensive parsing (try/catch, existence checks, defaults)
+
+**Next step for you:** Review Phase 2 retro in `.squad/decisions.md` → "Retrospective: Phase 2 Implementation" section. Understand what went well and where the gaps are. You're implementing dispatch integration and dashboard — they will face the same process gates and quality standards.
+
+### 2026-02-22T171200Z: PR Review Skill Finalized
+
+**Directive:** A new PR review skill exists at `.squad/skills/pr-review-process/SKILL.md`. You must read this before opening any PR in Phase 3.
+
+**Key changes from Phase 2:**
+- Mal (Lead) now conducts mandatory review in addition to Copilot's automated review
+- All comments from both reviewers must be addressed (no exceptions — hard policy)
+- If feedback is out-of-scope, Mal opens a GitHub issue and optionally assigns @copilot
+- Merge gate is three-fold: CI green + Copilot approved + Mal approved + all comments addressed
+- Your revision workflow: if Mal requests changes, don't self-revise — a different agent will pick it up
+
+**Action:** Read `.squad/skills/pr-review-process/SKILL.md` before Phase 3 PRs.

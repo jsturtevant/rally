@@ -257,3 +257,27 @@ See GitHub issues for full specs. Blockers resolved—proceed with implementatio
 - Your revision workflow: if Mal requests changes, don't self-revise — a different agent will pick it up
 
 **Action:** Read `.squad/skills/pr-review-process/SKILL.md` before Phase 3 PRs.
+
+### 2026-02-22 — Issue #19: active.yaml Dispatch Tracking (Phase 3)
+
+**Task:** Implement CRUD operations for dispatch records in active.yaml.
+
+**What Was Built:**
+
+1. **lib/active.js** — Dispatch record management:
+   - `addDispatch(record)` — adds with full validation (required fields, type enum, status enum, duplicate id check)
+   - `updateDispatchStatus(id, status)` — updates status with validation
+   - `removeDispatch(id)` — removes by id
+   - `getActiveDispatches()` — returns all dispatches
+   - `VALID_STATUSES` — exported enum: planning, implementing, reviewing, done, cleaned
+   - Atomic writes: `writeFileSync` to `.active.yaml.tmp`, then `renameSync` to `active.yaml`
+
+2. **test/active.test.js** — 19 tests covering all acceptance criteria
+
+**Key Decisions:**
+- Reuses `readActive()` and `getConfigDir()` from `lib/config.js` for consistency
+- Atomic writes use temp file + rename (POSIX atomic on same filesystem)
+- Dispatch record fields: id, repo, number, type, branch, worktreePath, status, created, session_id
+- Validation throws descriptive errors for invalid input
+
+**PR:** #36 on branch `rally/19-active-tracking`

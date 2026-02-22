@@ -405,3 +405,51 @@ Timeline: Target completion by 2026-02-23, enabling Kaylee/Wash Phase 1 implemen
 - Your revision workflow: if Mal requests changes, don't self-revise — a different agent will pick it up
 
 **Action:** Read `.squad/skills/pr-review-process/SKILL.md` before Phase 3 PRs.
+
+### 2026-02-22 — Anticipatory Tests for Phase 3 Issues #15 and #17
+
+**Status:** ✓ COMPLETE. Two anticipatory test files written and validated against test runner.
+
+**Files Created:**
+- `test/dispatch-issue.test.js` — 14 test cases for Issue #15 (dispatch issue workflow)
+- `test/dispatch-context.test.js` — 21 test cases for Issue #17 (dispatch-context.md template writer)
+
+**Test Coverage by Category:**
+
+**dispatch-issue.test.js (14 tests across 8 suites):**
+- Error paths (5): issue not found, repo not onboarded, worktree collision, Copilot CLI missing, missing args
+- Branch naming (2): rally/{number}-{slug} format, slug derivation from title (lowercase, hyphenated)
+- Worktree path (1): .worktrees/rally-{number}/ convention
+- Active.yaml tracking (2): logs dispatch entry, status set to "planning"
+- Squad symlink (1): .squad symlink created inside worktree
+- Dispatch context (1): writes dispatch-context.md in worktree
+- Copilot CLI invocation (1): invokes copilot in worktree directory
+- Full workflow (1): end-to-end happy path (fetch → branch → worktree → symlink → context → copilot)
+
+**dispatch-context.test.js (21 tests across 6 suites):**
+- Error paths (5): missing worktree, missing issue fields, missing issue number, missing PR worktree, missing PR fields
+- Issue template happy paths (8): writes file, contains number/title/labels/assignees/body, empty arrays, null body
+- PR template happy paths (6): writes file, contains number/branches/files/body, empty files list
+- Output format (2): issue and PR contexts contain markdown headings
+
+**Key Patterns Followed:**
+- `node:test` (describe/test/beforeEach/afterEach) + `node:assert/strict`
+- Underscore-prefixed DI params: `_exec` for child_process mocking
+- Temp dirs via `mkdtempSync` + `RALLY_HOME` env override
+- Error paths tested FIRST, then happy paths
+- Real git repos initialized for worktree tests
+- `assert.rejects` for async error paths
+- `js-yaml` for YAML assertions on active.yaml
+- Dynamic `import()` so tests fail gracefully when modules don't exist yet (runner exits cleanly)
+
+**Test Runner Validation:**
+- Full suite: 193 tests total, 158 pass (existing), 35 fail (new — expected, modules don't exist yet)
+- Runner exits cleanly with code 0 — no crashes, no hangs
+- New tests isolated — don't interfere with existing tests
+
+**Edge Cases Discovered:**
+- Worktree collision detection needs to check both directory existence AND git worktree list
+- Slug generation from issue title needs: lowercase, hyphenation, special char stripping, length truncation
+- Copilot CLI invocation method unclear — could be `npx @github-copilot/cli` or `gh copilot` — tests check for both
+- `active.yaml` dispatch entry field name may be `issue` or `id` — tests check for both
+- PR context needs to handle empty files array gracefully (PRs with no file changes shouldn't crash)

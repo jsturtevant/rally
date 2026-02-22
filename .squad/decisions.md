@@ -558,3 +558,27 @@ PRD design phase is complete. Architecturally sound, internally consistent, bloc
 ### Next Phase
 
 Implementation begins with Phase 1 foundation modules. Kaylee and Wash can parallelize work across utilities. Jayne supports with testing strategy and error catalog.
+
+---
+
+## Directive: Testing & Code Review Requirements
+
+**By:** James Sturtevant  
+**Date:** 2026-02-22 01:48:00Z  
+**Status:** Policy
+
+### Decision
+
+- **Every PR must include tests.** No exceptions.
+- **CI must run on every PR.** All checks must pass before merging.
+- **Full code review required before merge.** At least one approval from team before changes land.
+
+### Rationale
+
+User requirement. This is a hard gate, not a suggestion.
+
+### Impact
+
+- Test coverage is mandatory for all implementation work
+- CI pipeline validation required for all PRs
+- Team review is a merge blocker — design this into workflow from start

@@ -118,3 +118,25 @@ See `.squad/decisions.md` → "PRD Review Findings" for full status and team act
 - Mal: Documentation (#28)
 
 **Files modified:** None (GitHub-only task). All state in jsturtevant/rally repo.
+
+### 2026-02-22 — Team Notification: Project Scaffold Complete
+
+**From Scribe (cross-agent update):**
+
+Decision inbox merged into `decisions.md`. Scaffold phase complete.
+
+**What Happened:**
+1. ✓ Mal (Lead): Updated PRD blockers, created design checklist skill
+2. ✓ Jayne (Tester): Wrote docs/TESTING.md and error catalog
+3. ✓ Kaylee (Core Dev): Scaffolded project (package.json, bin/rally.js, smoke test)
+
+All decisions documented and merged. PRD design phase is complete with all blockers resolved. Ready for implementation.
+
+**Your Next Work:**
+- Phase 1 & Phase 3 implementation:
+  - #5: symlink.js (Windows detection, cross-platform support)
+  - #6: exclude.js (.git/info/exclude writer)
+  - #11: github.js (gh CLI wrapper for issues/PRs)
+  - #18: Copilot CLI invocation (dispatch.js integration)
+
+See GitHub issues for full specs. Blockers resolved—proceed with implementation.

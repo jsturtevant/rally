@@ -212,3 +212,34 @@ Rally is a command line tool that works with Squad. Key commands:
 - After you deliver testing docs, Kaylee/Wash can begin Phase 1 implementation with confidence
 
 **See:** `.squad/decisions.md` → "Decision: PRD Decomposition into 29 Work Items" and "Decision: Critical PRD Blockers — Resolved"
+
+### 2026-02-22 — Team Notification: Project Scaffold Complete
+
+**From Scribe (cross-agent update):**
+
+Decision inbox merged into `decisions.md`. Scaffold phase complete.
+
+**What Happened:**
+1. ✓ Mal (Lead): Updated PRD blockers, created design checklist skill
+2. ✓ Jayne (Tester): Wrote docs/TESTING.md and error catalog
+3. ✓ Kaylee (Core Dev): Scaffolded project (package.json, bin/rally.js, smoke test)
+
+All decisions documented and merged into `decisions.md`. All 5 blockers resolved. You are unblocked to proceed with test suite + error catalog work.
+
+**Your Work (5 issues assigned):**
+- #8: Test infrastructure setup (Phase 1) — node:test + ink-testing-library setup
+- #18: Copilot CLI invocation testing (Phase 3)
+- #26: Comprehensive error handling (Phase 5)
+- #27: Edge cases & idempotency (Phase 5)
+- #29: End-to-end integration tests (Phase 5)
+
+**Immediate Next Steps:**
+1. Write `docs/TESTING.md` covering:
+   - Framework choice (node:test + ink-testing-library)
+   - Mocking strategy for git/gh/npx calls
+   - Fixture management (temp dirs, avoid ~/.rally/ pollution)
+   - Integration test patterns
+2. Create error catalog (setup/onboard/dispatch/dashboard/cleanup) with exit codes
+3. Design test fixtures for Phase 1 utility testing
+
+Timeline: Target completion by 2026-02-23, enabling Kaylee/Wash Phase 1 implementation.

@@ -115,3 +115,19 @@ Rally is a command line tool that works with Squad. Key commands:
 - See `.squad/decisions.md` → "Decision: PRD Decomposition into 29 Work Items" for full details
 
 **Next Action:** After blockers confirmed in PRD update, begin Phase 1 implementation (target: parallel development across utilities)
+
+### 2026-02-22 — Team Notification: Project Scaffold Complete
+
+**From Scribe (cross-agent update):**
+
+Decision inbox merged into `decisions.md`. Scaffold phase complete.
+
+**What Happened:**
+1. ✓ Mal (Lead): Updated PRD blockers, created design checklist skill
+2. ✓ Jayne (Tester): Wrote docs/TESTING.md and error catalog
+3. ✓ Kaylee (Core Dev): Scaffolded project (package.json, bin/rally.js, smoke test)
+
+All decisions documented and merged. You (Kaylee) are unblocked to begin Phase 1 foundation modules. All utilities can be developed in parallel:
+- config.js, symlink.js, exclude.js, worktree.js, github.js, CLI entry (bin/rally.js with Commander)
+
+See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—ready to implement.

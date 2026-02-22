@@ -219,3 +219,55 @@ Executed comprehensive project rename per James Sturtevant's directive.
 - All team docs and logs updated
 - Decisions.md preserved with historical context intact
 
+### 2026-02-22 — Retrospective: Planning & PRD Decomposition Phase Complete
+
+Facilitated full team retro on planning phase (PRD design through GitHub issue decomposition).
+
+**What Went Well:**
+- PRD is architecturally sound and internally consistent
+- Dependency pivot (Ink/Chalk/Ora/Commander) was decisive and cleared analysis paralysis
+- Full team review cycle found blockers early (better than code review)
+- Stale docs caught and fixed before implementation started
+- Decomposition into 29 GitHub issues is concrete and ready for sprint planning
+
+**What Didn't Go Well:**
+- 5 critical blockers sat in PRD §9 until day 2 (should have been pre-resolved)
+- Iterative design added churn (JSON→YAML, flags→subcommands, onboard scope expansion)
+- Test framework spec not written before implementation start (unblocks Jayne)
+- Onboard command grew scope mid-phase (GitHub URLs, projects dir, team selection)
+- gh CLI field inconsistency (§3.3 vs §6.3) slipped through validation
+
+**What Should We Change:**
+1. Pre-review blocker resolution checklist — resolve open questions with James upfront, don't wait for team review
+2. Earlier engagement with James on iterative decisions — 15-min design sync before locking PRD
+3. Test framework spec is prerequisite, not follow-up — Jayne needs `docs/TESTING.md` to unblock implementers
+4. Validate PRD against real gh CLI output before team review — prevent field name surprises
+5. Scope Phase 2 more carefully — Onboard grew significantly; be explicit about core vs nice-to-have
+
+**Action Items:**
+- Mal: Resolve open blockers #4–#5 by EOD 2026-02-22, update PRD §9, commit
+- Jayne: Write `docs/TESTING.md` + error catalog by 2026-02-23
+- Kaylee/Wash: Begin Phase 1 implementation once blockers resolved, parallelize utilities
+- Mal (future): Document "Design Phase Checklist" for team SOP
+
+**Retro artifact:** `.squad/decisions/inbox/mal-retro-planning-phase.md`
+
+**Key Learning:** Blockers should be resolved upfront with stakeholder sync, not discovered during team review. Earlier validation (gh CLI, feature scope) saves iteration cost. Test framework spec unblocks implementers earlier. Next phase will be smoother with these process adjustments.
+
+### 2026-02-22 — Team Notification: Project Scaffold Complete
+
+**From Scribe (cross-agent update):**
+
+Decision inbox merged into `decisions.md`. Key updates:
+- Retrospective on planning phase documented and merged
+- Testing & code review directive from user documented (mandatory PR tests, CI, code review before merge)
+- All 5 critical blockers resolved (by user directive 2026-02-22 01:13)
+
+**Team Status:**
+- ✓ Mal (Lead): Design phase complete, blockers resolved, retro documented
+- ✓ Wash (Integration Dev): PRD review findings merged, gh/git integration documented
+- ✓ Kaylee (Core Dev): PRD decomposition complete, 29 GitHub issues created, Phase 1 ready
+- ✓ Jayne (Tester): Blocker resolutions enable test suite + TESTING.md work
+
+**Ready for implementation phase.** Kaylee can begin Phase 1 foundation modules (parallel development across utilities). Jayne owns test infrastructure + error catalog (unblocked by blocker resolutions).
+

@@ -7,19 +7,20 @@
     "rally": "./bin/rally.js"
   },
   "scripts": {
-    "test": "node --test ./test/*.test.js"
+    "test": "node --test ./test/*.test.js && node --loader ./test/jsx-loader.mjs --test ./test/ui/*.test.js"
   },
   "dependencies": {
-    "ink": "^5.0.0",
-    "chalk": "^5.0.0",
-    "ora": "^8.0.0",
-    "commander": "^12.0.0",
-    "js-yaml": "^4.0.0",
     "@inquirer/prompts": "^7.0.0",
+    "chalk": "^5.0.0",
+    "commander": "^12.0.0",
+    "ink": "^5.0.0",
     "ink-table": "^3.1.0",
+    "js-yaml": "^4.0.0",
+    "ora": "^8.0.0",
     "react": "^18.0.0"
   },
   "devDependencies": {
+    "esbuild": "^0.27.3",
     "ink-testing-library": "^4.0.0"
   },
   "engines": {

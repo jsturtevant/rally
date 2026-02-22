@@ -905,7 +905,7 @@ api-srv    PR #87  feature/refactor-auth               reviewing     1d
 
 ### 6.3 GitHub CLI (`gh`)
 - **Issues:** `gh issue view <n> --json title,body,labels,assignees`
-- **PRs:** `gh pr view <n> --json title,body,headRefName,baseRefName,changedFiles`
+- **PRs:** `gh pr view <n> --json title,body,headRefName,baseRefName,files`
 - **PR creation:** Future — `gh pr create` after implementation is complete
 - **Auth check:** `gh auth status`
 
@@ -949,6 +949,8 @@ Squad is normally invoked via Copilot agent mode in the IDE. When Rally creates 
 - **Option B:** Rally invokes a Squad CLI command directly
 - **Option C:** Rally opens the worktree in VS Code with Copilot agent mode activated
 
+**Resolution:** Automated CLI invocation. Rally automatically launches Copilot CLI in the worktree with the appropriate prompt (review PR or plan/implement fix for issue). Rally captures the session ID for later resume if needed. This is Rally's core value proposition — full automation from issue to PR review.
+
 ### 9.2 Per-project vs. shared team state? *(Partially resolved)*
 The `onboard` command now prompts users to choose between a shared team and a project-specific team. This resolves the basic question of "should we support both?" — yes, via a prompt at onboard time.
 
@@ -968,14 +970,20 @@ The `onboard` command now prompts users to choose between a shared team and a pr
 - **Option B:** Outside the repo at `~/.rally/worktrees/<project>/` (clean repo, but harder to navigate)
 - **Option C:** Sibling to the repo at `../<repo>-worktrees/` (git's default suggestion)
 
+**Resolution:** Inside repo at `.worktrees/rally-<issue>/`. This is already the default design in the PRD and remains the best choice — worktrees stay with the repo, easy to navigate, and the directory is already excluded from git via `.git/info/exclude`.
+
 ### 9.4 Dispatch context format
 What goes in `.squad/dispatch-context.md`? How structured should it be?
 - Issue title, body, labels, comments?
 - For PRs: diff stats, file list, review comments?
 - Should it reference existing Squad skills or decisions?
 
+**Resolution:** Simple markdown template. Squad parses markdown natively. Include issue/PR number, title, labels, body, and for PRs, the changed files list. Include worktree path and branch name as instructions. Minimal, markdown-native, Squad-friendly format that gives agents context without over-complicating the schema.
+
 ### 9.5 Status tracking granularity
 Current design has 5 statuses (`planning` → `implementing` → `reviewing` → `done` → `cleaned`). Is this enough? Should status be inferred from git state (branch merged = done) or manually set?
+
+**Resolution:** Automatic transitions with explicit rules. Status changes automatically as Rally progresses: `dispatch` sets `planning`, Squad invocation moves to `implementing`, PR creation moves to `reviewing`, PR merge moves to `done`, `dashboard clean` moves to `cleaned`. No manual status commands needed — the tool orchestrates state transitions.
 
 ### 9.6 Dashboard clean behavior
 Should `dashboard clean` delete the branch too? Just the worktree? Should it require confirmation?
@@ -985,6 +993,8 @@ Windows requires Developer Mode or elevated privileges for symlinks. Should Rall
 - Detect and error clearly?
 - Fall back to directory junctions?
 - Fall back to copying instead of symlinking?
+
+**Resolution:** Hard error with clear message. When symlinks are unavailable on Windows, Rally exits with: `✗ Symlinks require Windows Developer Mode. Enable it in Windows Settings: Settings → Update & Security → For developers → Developer Mode`. No junctions or copy fallback in v1 — keep it simple.
 
 ### 9.8 Squad export/import integration
 Should `rally setup` accept a Squad export JSON to bootstrap from an existing team? This would enable team sharing without committing state:

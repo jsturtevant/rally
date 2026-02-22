@@ -116,6 +116,45 @@ Rally is a command line tool that works with Squad. Key commands:
 
 **Next Action:** After blockers confirmed in PRD update, begin Phase 1 implementation (target: parallel development across utilities)
 
+### 2026-02-22 — Phase 1 Foundation Modules Complete (Issues #2, #3, #4)
+
+**Status:** Three utility modules built with comprehensive tests. All tests passing (39/39).
+
+**Modules Implemented:**
+
+1. **lib/config.js** — Config read/write for `~/.rally/*.yaml` files using js-yaml
+   - `getConfigDir()` — returns `~/.rally/` (respects `RALLY_HOME` env var)
+   - `readConfig()`, `writeConfig()` — config.yaml operations
+   - `readProjects()`, `writeProjects()` — projects.yaml operations
+   - `readActive()`, `writeActive()` — active.yaml operations
+   - All functions create directories if missing, return defaults for missing files
+
+2. **lib/symlink.js** — Cross-platform symlink creation and validation
+   - `createSymlink(target, linkPath)` — creates symlink with Windows junction support
+   - `validateSymlink(linkPath)` — checks if symlink exists and points to valid target
+   - `removeSymlink(linkPath)` — removes symlink if exists
+   - `checkSymlinkSupport()` — tests OS symlink support (throws on Windows without Developer Mode)
+   - Idempotent operations — skip if symlink already correct
+
+3. **lib/exclude.js** — `.git/info/exclude` management
+   - `addExcludes(gitDir, entries)` — adds entries with "# Rally — Squad symlinks" header
+   - `removeExcludes(gitDir, entries)` — removes Rally entries and header
+   - `hasExcludes(gitDir, entries)` — checks if all entries present
+   - `getExcludeEntries()` — returns standard Rally exclude list
+   - Idempotent operations — skip duplicate entries
+
+**Test Coverage:**
+- test/config.test.js — 10 tests (env vars, roundtrips, defaults, invalid YAML)
+- test/symlink.test.js — 9 tests (create, validate, remove, broken links, idempotency)
+- test/exclude.test.js — 10 tests (add, remove, check, missing dirs, partial entries)
+
+**Key Learnings:**
+- js-yaml handles all YAML parsing/serialization — zero issues with config roundtrips
+- Windows symlink handling via 'junction' type works smoothly in cross-platform code
+- path.join() everywhere for Windows compatibility (as per charter)
+- Temp directories (fs.mkdtempSync) in tests ensure isolation — clean up with rmSync
+- Idempotent operations are critical — all utilities skip no-op calls gracefully
+
 ### 2026-02-22 — Team Notification: Project Scaffold Complete
 
 **From Scribe (cross-agent update):**

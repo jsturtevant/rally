@@ -271,3 +271,28 @@ Decision inbox merged into `decisions.md`. Key updates:
 
 **Ready for implementation phase.** Kaylee can begin Phase 1 foundation modules (parallel development across utilities). Jayne owns test infrastructure + error catalog (unblocked by blocker resolutions).
 
+
+### 2026-02-22 — PRD §9 Resolution Documentation & Design Checklist Skill
+
+Completed two deliverables from the planning phase retro:
+
+**1. Updated `docs/PRD.md` §9 with all 5 blocker resolutions:**
+- §9.1 (Squad invocation): Automated CLI invocation. Rally launches Copilot CLI automatically with appropriate prompt, captures session ID.
+- §9.3 (Worktree location): Inside repo at `.worktrees/rally-<issue>/` (confirmed as default, no change needed).
+9.4 (dispatch-context.md format): Simple markdown template with issue/PR metadata and instructions. Squad parses markdown natively.- 
+- §9.5 (Status tracking): Automatic transitions. `dispatch` → `planning`, invocation → `implementing`, PR creation → `reviewing`, merge → `done`, clean → `cleaned`.
+- §9.7 (Windows symlinks): Hard error with "Enable Windows Developer Mode" message. No junctions or fallback in v1.
+
+Also fixed §6.3: Changed `changedFiles` to `files` in gh PR view JSON field reference (standardized per actual gh CLI output).
+
+**2. Created `.squad/skills/rally-design-checklist/SKILL.md`:**
+Documented the five patterns from the retro:
+- Resolve blockers upfront with stakeholder before team review
+- Engage stakeholder early on iterative decisions (15-min sync before locking decisions)
+- Validate PRD assumptions against real CLI output (test gh fields, git commands early)
+- Write test framework spec during design, not after (unblocks implementers)
+- Scope features explicitly (core vs nice-to-have, prevent scope creep)
+
+Includes examples from Rally (what we did right, what we should have done) and anti-patterns.
+
+**Outcome:** PRD is now comprehensive and unambiguous. All blocker resolutions documented and committed. Design phase checklist is institutional knowledge for future projects.

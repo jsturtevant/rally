@@ -2,685 +2,379 @@ import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync, rmSync, existsSync, readFileSync,
-  mkdirSync, writeFileSync,
+  mkdirSync, writeFileSync, readdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
+import { dispatchIssue, slugify, writeDispatchContext } from '../lib/dispatch-issue.js';
 
-// Module under test — will exist when #15 lands
-// import { dispatchIssue } from '../lib/dispatch-issue.js';
+// =====================================================
+// Helpers
+// =====================================================
 
-describe('dispatch issue', { skip: 'awaiting #15 implementation' }, () => {
-  let tempDir;
-  let repoPath;
-  let originalEnv;
+let tempDir;
+let repoPath;
+let originalEnv;
 
-  beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'rally-dispatch-issue-test-'));
-    repoPath = join(tempDir, 'repo');
-    originalEnv = process.env.RALLY_HOME;
-    process.env.RALLY_HOME = join(tempDir, 'rally-home');
+beforeEach(() => {
+  tempDir = mkdtempSync(join(tmpdir(), 'rally-dispatch-issue-'));
+  repoPath = join(tempDir, 'repo');
+  originalEnv = process.env.RALLY_HOME;
+  process.env.RALLY_HOME = join(tempDir, 'rally-home');
 
-    // Initialize a real git repo for worktree operations
-    mkdirSync(repoPath, { recursive: true });
-    execFileSync('git', ['init'], { cwd: repoPath, stdio: 'ignore' });
-    execFileSync('git', ['config', 'user.email', 'test@test.com'], { cwd: repoPath, stdio: 'ignore' });
-    execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoPath, stdio: 'ignore' });
-    writeFileSync(join(repoPath, 'README.md'), '# Test');
-    execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'ignore' });
-    execFileSync('git', ['commit', '-m', 'Initial commit'], { cwd: repoPath, stdio: 'ignore' });
-  });
+  // Initialize a real git repo for worktree operations
+  mkdirSync(repoPath, { recursive: true });
+  execFileSync('git', ['init'], { cwd: repoPath, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.email', 'test@test.com'], { cwd: repoPath, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoPath, stdio: 'ignore' });
+  writeFileSync(join(repoPath, 'README.md'), '# Test');
+  execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'ignore' });
+  execFileSync('git', ['commit', '-m', 'Initial commit'], { cwd: repoPath, stdio: 'ignore' });
+});
 
-  afterEach(() => {
-    if (originalEnv) {
-      process.env.RALLY_HOME = originalEnv;
-    } else {
-      delete process.env.RALLY_HOME;
+afterEach(() => {
+  if (originalEnv !== undefined) {
+    process.env.RALLY_HOME = originalEnv;
+  } else {
+    delete process.env.RALLY_HOME;
+  }
+  rmSync(tempDir, { recursive: true, force: true });
+});
+
+function setupRallyHome() {
+  const rallyHome = process.env.RALLY_HOME;
+  mkdirSync(rallyHome, { recursive: true });
+  writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
+  return rallyHome;
+}
+
+function makeIssue(overrides = {}) {
+  return {
+    title: 'Add login form',
+    body: 'Implement a login form with email and password.',
+    labels: [{ name: 'enhancement' }],
+    assignees: [{ login: 'alice' }],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock _exec that returns issue data for `gh issue view`
+ * and delegates git commands to real execFileSync.
+ */
+function createExecWithIssue(issueData) {
+  return (cmd, args, opts) => {
+    if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+      if (!issueData) {
+        const err = new Error('Could not resolve to an Issue with the number of 999');
+        throw err;
+      }
+      return JSON.stringify(issueData);
     }
-    rmSync(tempDir, { recursive: true, force: true });
+    // Delegate git commands to real git
+    return execFileSync(cmd, args, opts);
+  };
+}
+
+/** No-op spawn that returns a mock child process */
+function noopSpawn() {
+  return {
+    pid: 12345,
+    unref() {},
+    on() {},
+  };
+}
+
+// =====================================================
+// slugify
+// =====================================================
+
+describe('slugify', () => {
+  test('converts title to lowercase hyphenated slug', () => {
+    assert.strictEqual(slugify('Add Login Form'), 'add-login-form');
   });
 
-  /**
-   * Helper: set up Rally config + projects with an onboarded repo
-   */
-  function setupOnboardedRepo(repoName = 'my-repo') {
-    const rallyHome = process.env.RALLY_HOME;
-    const teamDir = join(rallyHome, 'team');
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    const config = { teamDir, projectsDir: join(rallyHome, 'projects'), version: '0.1.0' };
-    writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump(config), 'utf8');
-
-    const projects = {
-      projects: [{
-        name: repoName,
-        path: repoPath,
-        team: 'shared',
-        teamDir,
-        onboarded: new Date().toISOString(),
-      }],
-    };
-    writeFileSync(join(rallyHome, 'projects.yaml'), yaml.dump(projects), 'utf8');
-
-    return { rallyHome, teamDir };
-  }
-
-  /**
-   * Helper: mock _exec that captures calls and simulates gh/git/copilot
-   */
-  function createMockExec(issueData = null) {
-    const calls = [];
-    const mockExec = (cmd, args, opts) => {
-      calls.push({ cmd, args, cwd: opts?.cwd });
-
-      // Simulate `gh issue view` returning JSON
-      if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
-        if (!issueData) {
-          const err = new Error('Could not resolve to an Issue with the number of 999');
-          err.stderr = 'Could not resolve to an Issue';
-          throw err;
-        }
-        return JSON.stringify(issueData);
-      }
-
-      // Simulate `gh repo view` for default branch
-      if (cmd === 'gh' && args[0] === 'repo' && args[1] === 'view') {
-        return 'main\n';
-      }
-
-      return '';
-    };
-    return { mockExec, calls };
-  }
-
-  // =====================================================
-  // ERROR PATHS — tested first per team convention
-  // =====================================================
-
-  describe('error paths', () => {
-    test('error: issue not found (gh returns error)', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const { mockExec } = createMockExec(null); // null = issue not found
-
-      await assert.rejects(
-        () => dispatchIssue({
-          issueNumber: 999,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: mockExec,
-        }),
-        (err) => {
-          assert.ok(
-            err.message.includes('not found') || err.message.includes('999'),
-            `Expected "not found" error, got: ${err.message}`
-          );
-          return true;
-        }
-      );
-    });
-
-    test('error: repo not onboarded', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      // Don't call setupOnboardedRepo — no projects.yaml
-      const rallyHome = process.env.RALLY_HOME;
-      mkdirSync(rallyHome, { recursive: true });
-      writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
-
-      const issue = { number: 42, title: 'Test', labels: [], assignees: [], body: '' };
-      const { mockExec } = createMockExec(issue);
-
-      await assert.rejects(
-        () => dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: mockExec,
-        }),
-        (err) => {
-          assert.ok(
-            err.message.includes('not onboarded') || err.message.includes('not found'),
-            `Expected "not onboarded" error, got: ${err.message}`
-          );
-          return true;
-        }
-      );
-    });
-
-    test('error: worktree already exists at target path', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const issue = { number: 42, title: 'Test issue', labels: [], assignees: [], body: '' };
-      const { mockExec } = createMockExec(issue);
-
-      // Pre-create the worktree directory to simulate collision
-      const worktreeDir = join(repoPath, '.worktrees', 'rally-42');
-      mkdirSync(worktreeDir, { recursive: true });
-
-      await assert.rejects(
-        () => dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: mockExec,
-        }),
-        (err) => {
-          assert.ok(
-            err.message.includes('already exists') || err.message.includes('worktree'),
-            `Expected "already exists" error, got: ${err.message}`
-          );
-          return true;
-        }
-      );
-    });
-
-    test('error: Copilot CLI not available', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const issue = { number: 50, title: 'Copilot missing', labels: [], assignees: [], body: '' };
-      const mockExec = (cmd, args, opts) => {
-        if (cmd === 'gh' && args[0] === 'issue') {
-          return JSON.stringify(issue);
-        }
-        if (cmd === 'gh' && args[0] === 'repo') {
-          return 'main\n';
-        }
-        // Simulate copilot CLI not found
-        if (cmd === 'npx' || (cmd === 'gh' && args.includes('copilot'))) {
-          const err = new Error('spawn npx ENOENT');
-          err.code = 'ENOENT';
-          throw err;
-        }
-        return '';
-      };
-
-      await assert.rejects(
-        () => dispatchIssue({
-          issueNumber: 50,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: mockExec,
-        }),
-        (err) => {
-          assert.ok(err.message.length > 0, 'should have an error message');
-          return true;
-        }
-      );
-    });
-
-    test('error: missing issue number argument', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      await assert.rejects(
-        () => dispatchIssue({
-          repo: 'owner/repo',
-          repoPath,
-        }),
-        (err) => {
-          assert.ok(err.message.length > 0, 'should have an error message');
-          return true;
-        }
-      );
-    });
+  test('strips special characters', () => {
+    assert.strictEqual(slugify('Fix: broken navbar [urgent]'), 'fix-broken-navbar-urgent');
   });
 
-  // =====================================================
-  // BRANCH NAMING — rally/{issue-number}-{slug}
-  // =====================================================
-
-  describe('branch naming', () => {
-    test('creates branch with rally/{number}-{slug} format', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const issue = { number: 42, title: 'Add login form', labels: [], assignees: [], body: '' };
-      const { mockExec, calls } = createMockExec(issue);
-
-      // We need a mock that also handles git worktree add
-      const flexExec = (cmd, args, opts) => {
-        if (cmd === 'git' && args[0] === 'worktree') {
-          calls.push({ cmd, args, cwd: opts?.cwd });
-          // Simulate worktree creation by creating the directory
-          if (args[1] === 'add') {
-            mkdirSync(args[2], { recursive: true });
-            mkdirSync(join(args[2], '.squad'), { recursive: true });
-          }
-          return '';
-        }
-        return mockExec(cmd, args, opts);
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // May fail on copilot invocation — that's OK for branch name check
-      }
-
-      const gitWorktreeCall = calls.find(
-        (c) => c.cmd === 'git' && c.args[0] === 'worktree' && c.args[1] === 'add'
-      );
-
-      if (gitWorktreeCall) {
-        const branchArg = gitWorktreeCall.args.find((a) => a.startsWith('rally/'));
-        assert.ok(branchArg, 'should create branch starting with rally/');
-        assert.ok(branchArg.includes('42'), 'branch should contain issue number');
-        assert.match(branchArg, /^rally\/42-/, 'branch should match rally/{number}-{slug} format');
-      }
-    });
-
-    test('slug is derived from issue title (lowercase, hyphenated)', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const issue = { number: 7, title: 'Fix Broken Navbar Component', labels: [], assignees: [], body: '' };
-      const { mockExec, calls } = createMockExec(issue);
-
-      const flexExec = (cmd, args, opts) => {
-        if (cmd === 'git' && args[0] === 'worktree') {
-          calls.push({ cmd, args, cwd: opts?.cwd });
-          if (args[1] === 'add') {
-            mkdirSync(args[2], { recursive: true });
-            mkdirSync(join(args[2], '.squad'), { recursive: true });
-          }
-          return '';
-        }
-        return mockExec(cmd, args, opts);
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 7,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // May fail after branch creation
-      }
-
-      const gitWorktreeCall = calls.find(
-        (c) => c.cmd === 'git' && c.args[0] === 'worktree' && c.args[1] === 'add'
-      );
-
-      if (gitWorktreeCall) {
-        const branchArg = gitWorktreeCall.args.find((a) => a.startsWith('rally/'));
-        assert.ok(branchArg, 'branch name should exist');
-        // Slug should be lowercase with hyphens
-        assert.ok(!branchArg.includes('Fix'), 'slug should be lowercase');
-        assert.ok(branchArg.includes('fix') || branchArg.includes('broken') || branchArg.includes('navbar'),
-          'slug should derive from title');
-      }
-    });
+  test('trims leading/trailing hyphens', () => {
+    assert.strictEqual(slugify('---hello---'), 'hello');
   });
 
-  // =====================================================
-  // WORKTREE PATH — .worktrees/rally-{issue-number}/
-  // =====================================================
+  test('caps at 50 characters', () => {
+    const long = 'a'.repeat(100);
+    assert.ok(slugify(long).length <= 50);
+  });
+});
 
-  describe('worktree path', () => {
-    test('worktree created at .worktrees/rally-{number}/', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
+// =====================================================
+// writeDispatchContext
+// =====================================================
 
-      const issue = { number: 42, title: 'Worktree path test', labels: [], assignees: [], body: '' };
-      const { mockExec, calls } = createMockExec(issue);
+describe('writeDispatchContext', () => {
+  test('writes context file with issue details', () => {
+    const dir = join(tempDir, 'squad-ctx');
+    mkdirSync(dir, { recursive: true });
+    const issue = makeIssue();
+    writeDispatchContext(dir, { repo: 'owner/repo', number: 42, issue });
 
-      const flexExec = (cmd, args, opts) => {
-        if (cmd === 'git' && args[0] === 'worktree') {
-          calls.push({ cmd, args, cwd: opts?.cwd });
-          if (args[1] === 'add') {
-            mkdirSync(args[2], { recursive: true });
-            mkdirSync(join(args[2], '.squad'), { recursive: true });
-          }
-          return '';
-        }
-        return mockExec(cmd, args, opts);
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // May fail on copilot step
-      }
-
-      const gitWorktreeCall = calls.find(
-        (c) => c.cmd === 'git' && c.args[0] === 'worktree' && c.args[1] === 'add'
-      );
-
-      if (gitWorktreeCall) {
-        const worktreePathArg = gitWorktreeCall.args[2];
-        assert.ok(
-          worktreePathArg.includes('.worktrees') && worktreePathArg.includes('rally-42'),
-          `worktree path should be .worktrees/rally-42/, got: ${worktreePathArg}`
-        );
-      }
-    });
+    const content = readFileSync(join(dir, 'dispatch-context.md'), 'utf8');
+    assert.ok(content.includes('#42'));
+    assert.ok(content.includes('Add login form'));
+    assert.ok(content.includes('owner/repo'));
+    assert.ok(content.includes('enhancement'));
+    assert.ok(content.includes('alice'));
+    assert.ok(content.includes('Implement a login form'));
   });
 
-  // =====================================================
-  // ACTIVE.YAML — logs dispatch with status "planning"
-  // =====================================================
-
-  describe('active.yaml tracking', () => {
-    test('logs dispatch entry to active.yaml', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      const { rallyHome } = setupOnboardedRepo();
-
-      const issue = { number: 42, title: 'Active tracking test', labels: [], assignees: [], body: '' };
-      const { mockExec } = createMockExec(issue);
-
-      const flexExec = (cmd, args, opts) => {
-        if (cmd === 'git' && args[0] === 'worktree') {
-          if (args[1] === 'add') {
-            mkdirSync(args[2], { recursive: true });
-            mkdirSync(join(args[2], '.squad'), { recursive: true });
-          }
-          return '';
-        }
-        return mockExec(cmd, args, opts);
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // May fail on copilot step
-      }
-
-      const activePath = join(rallyHome, 'active.yaml');
-      if (existsSync(activePath)) {
-        const active = yaml.load(readFileSync(activePath, 'utf8'));
-        assert.ok(active.dispatches, 'should have dispatches array');
-        const dispatch = active.dispatches.find((d) => d.issue === 42 || d.id === 42);
-        assert.ok(dispatch, 'should log dispatch entry for issue 42');
-      }
-    });
-
-    test('dispatch entry has status "planning"', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      const { rallyHome } = setupOnboardedRepo();
-
-      const issue = { number: 42, title: 'Status test', labels: [], assignees: [], body: '' };
-      const { mockExec } = createMockExec(issue);
-
-      const flexExec = (cmd, args, opts) => {
-        if (cmd === 'git' && args[0] === 'worktree') {
-          if (args[1] === 'add') {
-            mkdirSync(args[2], { recursive: true });
-            mkdirSync(join(args[2], '.squad'), { recursive: true });
-          }
-          return '';
-        }
-        return mockExec(cmd, args, opts);
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // May fail on copilot step
-      }
-
-      const activePath = join(rallyHome, 'active.yaml');
-      if (existsSync(activePath)) {
-        const active = yaml.load(readFileSync(activePath, 'utf8'));
-        const dispatch = active.dispatches.find((d) => d.issue === 42 || d.id === 42);
-        if (dispatch) {
-          assert.strictEqual(dispatch.status, 'planning', 'status should be "planning"');
-        }
-      }
-    });
+  test('creates squad directory if missing', () => {
+    const dir = join(tempDir, 'nonexistent-squad');
+    const issue = makeIssue();
+    writeDispatchContext(dir, { repo: 'o/r', number: 1, issue });
+    assert.ok(existsSync(join(dir, 'dispatch-context.md')));
   });
 
-  // =====================================================
-  // SQUAD SYMLINK — symlinks team into worktree
-  // =====================================================
+  test('handles issue with no labels or assignees', () => {
+    const dir = join(tempDir, 'squad-empty');
+    mkdirSync(dir, { recursive: true });
+    const issue = makeIssue({ labels: [], assignees: [], body: '' });
+    writeDispatchContext(dir, { repo: 'o/r', number: 5, issue });
 
-  describe('squad symlink in worktree', () => {
-    test('creates .squad symlink inside worktree', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
+    const content = readFileSync(join(dir, 'dispatch-context.md'), 'utf8');
+    assert.ok(content.includes('none'));
+  });
+});
 
-      const issue = { number: 42, title: 'Symlink test', labels: [], assignees: [], body: '' };
-      const { mockExec } = createMockExec(issue);
+// =====================================================
+// dispatchIssue — error paths
+// =====================================================
 
-      let worktreeDir = null;
-      const flexExec = (cmd, args, opts) => {
-        if (cmd === 'git' && args[0] === 'worktree' && args[1] === 'add') {
-          worktreeDir = args[2];
-          mkdirSync(worktreeDir, { recursive: true });
-          return '';
-        }
-        if (cmd === 'git' && args[0] === 'worktree') {
-          return '';
-        }
-        return mockExec(cmd, args, opts);
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // May fail on copilot step
+describe('dispatchIssue error paths', () => {
+  test('throws when issue number is missing', async () => {
+    setupRallyHome();
+    await assert.rejects(
+      () => dispatchIssue({ repo: 'owner/repo', repoPath }),
+      (err) => {
+        assert.ok(err.message.includes('Issue number is required'));
+        return true;
       }
-
-      // Verify symlink was attempted — check for .squad in worktree
-      if (worktreeDir && existsSync(worktreeDir)) {
-        const squadPath = join(worktreeDir, '.squad');
-        // The implementation should have created a symlink here
-        // (may not exist if exec mock stopped too early)
-        assert.ok(worktreeDir.includes('rally-42'), 'worktree should be for issue 42');
-      }
-    });
+    );
   });
 
-  // =====================================================
-  // DISPATCH CONTEXT — writes context.md in worktree
-  // =====================================================
-
-  describe('dispatch context creation', () => {
-    test('writes dispatch-context.md in worktree .squad/', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const issue = {
-        number: 42,
-        title: 'Context creation test',
-        labels: [{ name: 'bug' }],
-        assignees: [{ login: 'dev' }],
-        body: 'Fix the thing.',
-      };
-      const { mockExec } = createMockExec(issue);
-
-      let worktreeDir = null;
-      const flexExec = (cmd, args, opts) => {
-        if (cmd === 'git' && args[0] === 'worktree' && args[1] === 'add') {
-          worktreeDir = args[2];
-          mkdirSync(worktreeDir, { recursive: true });
-          mkdirSync(join(worktreeDir, '.squad'), { recursive: true });
-          return '';
-        }
-        if (cmd === 'git' && args[0] === 'worktree') {
-          return '';
-        }
-        return mockExec(cmd, args, opts);
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // May fail on copilot step
+  test('throws when repo is missing', async () => {
+    setupRallyHome();
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 1, repoPath }),
+      (err) => {
+        assert.ok(err.message.includes('Repository'));
+        return true;
       }
-
-      if (worktreeDir) {
-        const contextPath = join(worktreeDir, '.squad', 'dispatch-context.md');
-        if (existsSync(contextPath)) {
-          const content = readFileSync(contextPath, 'utf8');
-          assert.ok(content.includes('42'), 'context should contain issue number');
-          assert.ok(content.includes('Context creation test'), 'context should contain issue title');
-        }
-      }
-    });
+    );
   });
 
-  // =====================================================
-  // COPILOT CLI INVOCATION — launches copilot
-  // =====================================================
-
-  describe('copilot CLI invocation', () => {
-    test('invokes Copilot CLI in worktree directory', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const issue = { number: 42, title: 'Copilot test', labels: [], assignees: [], body: '' };
-      const calls = [];
-
-      const flexExec = (cmd, args, opts) => {
-        calls.push({ cmd, args, cwd: opts?.cwd });
-        if (cmd === 'gh' && args[0] === 'issue') {
-          return JSON.stringify(issue);
-        }
-        if (cmd === 'gh' && args[0] === 'repo') {
-          return 'main\n';
-        }
-        if (cmd === 'git' && args[0] === 'worktree' && args[1] === 'add') {
-          mkdirSync(args[2], { recursive: true });
-          mkdirSync(join(args[2], '.squad'), { recursive: true });
-          return '';
-        }
-        if (cmd === 'git' && args[0] === 'worktree') {
-          return '';
-        }
-        return '';
-      };
-
-      try {
-        await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-      } catch {
-        // Expected — mock doesn't fully simulate copilot
+  test('throws when repoPath is missing', async () => {
+    setupRallyHome();
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 1, repo: 'o/r' }),
+      (err) => {
+        assert.ok(err.message.includes('path'));
+        return true;
       }
-
-      // Check if any call looks like a copilot invocation
-      const copilotCall = calls.find(
-        (c) => (c.cmd === 'npx' && c.args.some((a) => a.includes('copilot')))
-            || (c.cmd === 'gh' && c.args.includes('copilot'))
-      );
-
-      // This is a soft check — the exact invocation may vary
-      if (copilotCall) {
-        assert.ok(copilotCall.cwd, 'copilot should be invoked with a cwd');
-      }
-    });
+    );
   });
 
-  // =====================================================
-  // FULL WORKFLOW — end-to-end happy path
-  // =====================================================
-
-  describe('full workflow (happy path)', () => {
-    test('complete dispatch: fetch → branch → worktree → symlink → context → copilot', async () => {
-      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      setupOnboardedRepo();
-
-      const issue = {
-        number: 42,
-        title: 'Full workflow test',
-        labels: [{ name: 'enhancement' }],
-        assignees: [{ login: 'alice' }],
-        body: 'Implement the full workflow.',
-      };
-      const calls = [];
-      let copilotSessionId = 'mock-session-123';
-
-      const flexExec = (cmd, args, opts) => {
-        calls.push({ cmd, args, cwd: opts?.cwd });
-
-        if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
-          return JSON.stringify(issue);
-        }
-        if (cmd === 'gh' && args[0] === 'repo' && args[1] === 'view') {
-          return 'main\n';
-        }
-        if (cmd === 'git' && args[0] === 'worktree' && args[1] === 'add') {
-          const wtPath = args[2];
-          mkdirSync(wtPath, { recursive: true });
-          mkdirSync(join(wtPath, '.squad'), { recursive: true });
-          return '';
-        }
-        if (cmd === 'git' && args[0] === 'worktree') {
-          return '';
-        }
-        // Return a session ID for copilot
-        if (cmd === 'npx' || (cmd === 'gh' && args.includes('copilot'))) {
-          return copilotSessionId;
-        }
-        return '';
-      };
-
-      try {
-        const result = await dispatchIssue({
-          issueNumber: 42,
-          repo: 'owner/repo',
-          repoPath,
-          _exec: flexExec,
-        });
-
-        // Verify the workflow executed the expected steps
-        const ghIssueCalled = calls.some(
-          (c) => c.cmd === 'gh' && c.args[0] === 'issue'
-        );
-        assert.ok(ghIssueCalled, 'should have called gh issue view');
-
-        const gitWorktreeCalled = calls.some(
-          (c) => c.cmd === 'git' && c.args[0] === 'worktree'
-        );
-        assert.ok(gitWorktreeCalled, 'should have called git worktree add');
-      } catch {
-        // If dispatch fails due to mock limitations, verify at least
-        // the early steps were attempted
-        const ghIssueCalled = calls.some(
-          (c) => c.cmd === 'gh' && c.args[0] === 'issue'
-        );
-        assert.ok(ghIssueCalled, 'should have at least called gh issue view');
+  test('throws when issue not found', async () => {
+    setupRallyHome();
+    const exec = createExecWithIssue(null);
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 999, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      (err) => {
+        assert.ok(err.message.includes('not found') || err.message.includes('999'));
+        return true;
       }
+    );
+  });
+
+  test('throws when worktree directory already exists', async () => {
+    setupRallyHome();
+    const issue = makeIssue();
+    const exec = createExecWithIssue(issue);
+
+    // Pre-create the worktree directory
+    mkdirSync(join(repoPath, '.worktrees', 'rally-42'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      (err) => {
+        assert.ok(err.message.includes('already exists'));
+        return true;
+      }
+    );
+  });
+});
+
+// =====================================================
+// dispatchIssue — happy path (real git worktrees)
+// =====================================================
+
+describe('dispatchIssue happy path', () => {
+  test('full workflow: fetch → branch → worktree → context → active.yaml', async () => {
+    const rallyHome = setupRallyHome();
+    const issue = makeIssue({ title: 'Add login form' });
+    const exec = createExecWithIssue(issue);
+
+    // Create .squad source for symlink
+    const squadSource = join(repoPath, '.squad');
+    mkdirSync(squadSource, { recursive: true });
+    writeFileSync(join(squadSource, 'test.txt'), 'squad content');
+
+    const result = await dispatchIssue({
+      issueNumber: 42,
+      repo: 'owner/repo',
+      repoPath,
+      _exec: exec,
+      _spawn: noopSpawn,
     });
+
+    // Verify return value
+    assert.strictEqual(result.branch, 'rally/42-add-login-form');
+    assert.ok(result.worktreePath.includes('rally-42'));
+    assert.strictEqual(result.dispatchId, 'repo-issue-42');
+    assert.strictEqual(result.issue.number, 42);
+    assert.strictEqual(result.issue.title, 'Add login form');
+
+    // Verify worktree was created
+    assert.ok(existsSync(result.worktreePath), 'worktree directory should exist');
+
+    // Verify dispatch-context.md was written
+    const contextPath = join(result.worktreePath, '.squad', 'dispatch-context.md');
+    assert.ok(existsSync(contextPath), 'dispatch-context.md should exist');
+    const contextContent = readFileSync(contextPath, 'utf8');
+    assert.ok(contextContent.includes('#42'));
+    assert.ok(contextContent.includes('Add login form'));
+
+    // Verify active.yaml was updated
+    const activePath = join(rallyHome, 'active.yaml');
+    assert.ok(existsSync(activePath), 'active.yaml should exist');
+    const active = yaml.load(readFileSync(activePath, 'utf8'));
+    assert.ok(active.dispatches.length === 1);
+    const dispatch = active.dispatches[0];
+    assert.strictEqual(dispatch.id, 'repo-issue-42');
+    assert.strictEqual(dispatch.repo, 'owner/repo');
+    assert.strictEqual(dispatch.number, 42);
+    assert.strictEqual(dispatch.type, 'issue');
+    assert.strictEqual(dispatch.branch, 'rally/42-add-login-form');
+    assert.strictEqual(dispatch.status, 'planning');
+  });
+
+  test('creates branch with correct naming pattern', async () => {
+    setupRallyHome();
+    const issue = makeIssue({ title: 'Fix Broken Navbar Component' });
+    const exec = createExecWithIssue(issue);
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    const result = await dispatchIssue({
+      issueNumber: 7,
+      repo: 'owner/repo',
+      repoPath,
+      _exec: exec,
+      _spawn: noopSpawn,
+    });
+
+    assert.strictEqual(result.branch, 'rally/7-fix-broken-navbar-component');
+
+    // Verify git branch actually exists
+    const branches = execFileSync('git', ['branch', '--list'], {
+      cwd: repoPath, encoding: 'utf8',
+    });
+    assert.ok(branches.includes('rally/7-fix-broken-navbar-component'));
+  });
+
+  test('worktree created at .worktrees/rally-{number}/', async () => {
+    setupRallyHome();
+    const issue = makeIssue();
+    const exec = createExecWithIssue(issue);
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    const result = await dispatchIssue({
+      issueNumber: 99,
+      repo: 'owner/repo',
+      repoPath,
+      _exec: exec,
+      _spawn: noopSpawn,
+    });
+
+    const expected = join(repoPath, '.worktrees', 'rally-99');
+    assert.strictEqual(result.worktreePath, expected);
+    assert.ok(existsSync(expected));
+  });
+
+  test('symlinks squad into worktree when teamDir provided', async () => {
+    const rallyHome = setupRallyHome();
+    const issue = makeIssue();
+    const exec = createExecWithIssue(issue);
+
+    // Create a separate team directory
+    const teamDir = join(tempDir, 'team-squad');
+    mkdirSync(teamDir, { recursive: true });
+    writeFileSync(join(teamDir, 'agents.yaml'), 'agents: []');
+
+    const result = await dispatchIssue({
+      issueNumber: 10,
+      repo: 'owner/repo',
+      repoPath,
+      teamDir,
+      _exec: exec,
+      _spawn: noopSpawn,
+    });
+
+    // Verify .squad exists in worktree (either as symlink or directory)
+    const squadInWorktree = join(result.worktreePath, '.squad');
+    assert.ok(existsSync(squadInWorktree), '.squad should exist in worktree');
+  });
+
+  test('sessionId is captured from spawn', async () => {
+    setupRallyHome();
+    const issue = makeIssue();
+    const exec = createExecWithIssue(issue);
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    const result = await dispatchIssue({
+      issueNumber: 55,
+      repo: 'owner/repo',
+      repoPath,
+      _exec: exec,
+      _spawn: () => ({ pid: 98765, unref() {} }),
+    });
+
+    assert.strictEqual(result.sessionId, '98765');
+  });
+
+  test('gracefully handles Copilot CLI not available', async () => {
+    setupRallyHome();
+    const issue = makeIssue();
+    const exec = createExecWithIssue(issue);
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    const result = await dispatchIssue({
+      issueNumber: 77,
+      repo: 'owner/repo',
+      repoPath,
+      _exec: exec,
+      _spawn: () => { throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }); },
+    });
+
+    // Should complete without throwing, sessionId null
+    assert.strictEqual(result.sessionId, null);
+    assert.strictEqual(result.branch, 'rally/77-add-login-form');
+    // Worktree and active.yaml should still be set up
+    assert.ok(existsSync(result.worktreePath));
   });
 });

@@ -17,7 +17,7 @@
 
 ## How I Work
 
-- Use `node:test` and `node:assert/strict` — no test frameworks
+- Use `node:test` and `node:assert/strict` for unit tests; `ink-testing-library` for UI component tests
 - Test error paths before happy paths
 - Every CLI command gets at least: valid input, invalid input, missing args, help flag
 - Verify exit codes and stderr output, not just stdout

@@ -1,13 +1,21 @@
 ---
 name: "squad-conventions"
-description: "Core conventions and patterns used in the Squad codebase"
+description: "DEPRECATED: These conventions apply to the Squad CLI tool (create-squad), which is a separate project. Dispatcher uses a different dependency stack."
 domain: "project-conventions"
-confidence: "high"
+confidence: "low"
 source: "manual"
 ---
 
-## Context
-These conventions apply to all work on the Squad CLI tool (`create-squad`). Squad is a zero-dependency Node.js package that adds AI agent teams to any project. Understanding these patterns is essential before modifying any Squad source code.
+## Status
+
+⚠️ **DEPRECATED:** This skill documents conventions from the Squad project (`create-squad`), which uses zero-dependency Node.js patterns. Dispatcher is a different project with its own conventions (see `.squad/agents/*/charter.md` for Dispatcher-specific guidance).
+
+For Dispatcher, refer to:
+- `.squad/decisions.md` → "Decision: Dependency Pivot" for the actual npm stack (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts)
+- `.squad/agents/kaylee/charter.md` for CLI development patterns
+- `.squad/agents/jayne/charter.md` for testing patterns
+
+This file should be replaced with Dispatcher-specific conventions. Keeping as historical reference only.
 
 ## Patterns
 

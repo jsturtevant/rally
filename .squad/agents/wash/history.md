@@ -2,7 +2,7 @@
 
 - **Owner:** James Sturtevant
 - **Project:** Dispatcher — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
-- **Stack:** Node.js (zero dependencies, node:test)
+- **Stack:** Node.js with curated npm packages (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts) + node:test for testing
 - **Created:** 2026-02-21
 
 ## Project Description
@@ -46,3 +46,38 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - Review `docs/PRD.md` §3.2, §3.3, §3.4, §4.1, §4.2 before implementing
 - `lib/setup.js` must create `projectsDir` (default: `~/.dispatcher/projects/`) and `teams/` directory
 - `lib/config.js` must handle new `projectsDir` key in YAML config
+
+### 2026-02-22 — PRD Git/GitHub Integration Review (Wash)
+
+**Reviewed:** docs/PRD.md for git/GitHub integration feasibility and correctness.
+
+**Findings summary:**
+- **1 Blocker:** `gh` CLI field names inconsistent between §3.3 and §6.3. Issues: §3.3 uses `labels` but §6.3 adds `assignees`. PRs: §3.3 uses `files` but §6.3 uses `changedFiles`. These are different objects—must decide which semantics are needed and align PRD.
+- **5 Concerns:** Windows exclude entries (file vs directory symlinks need different forms), worktree cleanup with uncommitted changes (error handling not specified), symlink redundancy (worktree inherits main repo excludes—confirm if we symlink twice), stale "zero-dependency" claims in history/decisions (PRD now uses js-yaml and multiple packages), PR state validation (behavior doesn't explicitly mention checking `state` field).
+- **1 Nice-to-have:** Repo inference edge case UX (inform user which repo was selected when multiple exist).
+
+**Key decision needed:** Resolve gh CLI field names before implementation. See `.squad/decisions.md` → "PRD Review Findings" for summary, and full details in prior inbox review.
+
+### 2026-02-22 — Dependency Pivot & PRD Review Cycle Complete
+
+**From Mal (Lead):**
+- **Major pivot:** User approved dependencies. Adopt Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts (same stack as GitHub Copilot CLI/Claude Code CLI). This eliminates hand-rolled UI modules and YAML parser. See `.squad/decisions.md` → "Decision: Dependency Pivot" for full rationale.
+- **Terminal UI reframed:** `lib/ui/` becomes directory of Ink component wrappers instead of raw ANSI codes. See `.squad/decisions.md` → "Decision: Terminal UI/UX — Ink/Chalk Component System".
+
+**PRD Review Summary (all 4 agents):**
+- ✓ PRD is architecturally sound and internally consistent
+- ✓ Integration feasible, CLI structure maps cleanly
+- 🔴 **5 critical blockers in PRD §9 (open questions) must be resolved before implementation:**
+  1. gh CLI field names (Wash concern → team blocker now)
+  2. Windows symlink fallback strategy (Jayne blocker)
+  3. Squad invocation mechanism (Jayne blocker)
+  4. Dispatch status lifecycle rules (Jayne blocker)
+  5. dispatch-context.md format specification (Jayne blocker)
+- 🟡 12+ error-handling gaps, 20+ edge cases, test framework not specified (Jayne findings)
+
+**Next steps:**
+- Mal: Schedule decision sync to resolve 5 blockers
+- Kaylee/Wash: Await blocker resolution before implementation
+- Jayne: Await blocker resolution, then write test suite and `docs/TESTING.md`
+
+See `.squad/decisions.md` → "PRD Review Findings" for full status and team action items.

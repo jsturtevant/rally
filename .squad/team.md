@@ -22,6 +22,6 @@
 ## Project Context
 
 - **Owner:** James Sturtevant
-- **Stack:** Node.js (zero dependencies, node:test)
+- **Stack:** Node.js with CLI production stack (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts; node:test for testing)
 - **Description:** CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
 - **Created:** 2026-02-21

@@ -2,7 +2,7 @@
 
 - **Owner:** James Sturtevant
 - **Project:** Dispatcher — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
-- **Stack:** Node.js (zero dependencies, node:test)
+- **Stack:** Node.js with curated npm packages (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts) + node:test for testing
 - **Created:** 2026-02-21
 
 ## Project Description
@@ -48,13 +48,59 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - **§8.2 partially resolved:** Shared vs. per-project team is now a user choice at onboard time. Migration between team types and overlay approach remain open.
 - **§6 Non-Goals #5 updated:** Reflects that basic multi-team support (shared vs project-specific) now exists; advanced configurations remain out of scope.
 
-### 2026-02-22 — Dispatch Subcommand Restructure
+### 2026-02-22 — Terminal UI/UX Specification (§5)
+
+- **Hand-rolled ANSI UI:** Added comprehensive §5 to PRD specifying a zero-dependency terminal UI system. All components live in `lib/ui/` (replacing the single `lib/ui.js`), each a standalone module.
+- **Brand palette:** Cyan primary, green success, red error, yellow warning, dim gray secondary. Status icons: ✓ ✗ ⚠ ● ◌ ◆. All via ANSI SGR codes.
+- **Eight UI components specified:** colors.js (foundation + TTY detection), box.js (Unicode box-drawing panels), table.js (auto-width columns), spinner.js (braille-dot animation), progress.js (block-character bars), prompt.js (arrow-key selector), status.js (in-place \r overwrite), dashboard.js (alternate screen buffer full-screen layout).
+- **Graceful degradation is mandatory:** Every component branches on `isTTY()`. Piped output gets plain text — no escape codes, no animation. Supports `NO_COLOR` and `FORCE_COLOR` env vars.
+- **Dashboard uses alternate screen buffer:** `\x1b[?1049h/l` for full-screen without polluting scroll history. Keyboard navigation (↑↓ select, q quit, r refresh, c clean). Auto-refresh every 5s. Resize-responsive.
+- **Module structure updated:** §4.3 now shows `lib/ui/` directory with all 9 component files instead of the single `ui.js`.
+- **Sections renumbered:** Old §5–§8 became §6–§9 to accommodate the new section.
 
 - **Subcommands replace flags:** `dispatcher dispatch issue <number>` and `dispatcher dispatch pr <number>` replace `dispatcher dispatch <number>` and `dispatcher dispatch --pr <number>`. Explicit subcommands make the CLI self-documenting and avoid ambiguity.
 - **`--repo <owner/repo>` flag:** Both subcommands accept an optional `--repo <owner/repo>` flag. If omitted, the repo is inferred from cwd (if inside an onboarded project), from `projects.yaml` (if only one project), or errors with a helpful message if ambiguous.
 - **Sections updated:** §3.3, §3.4, §4.2 Data Flow, Appendix A Command Summary — all now reflect the new syntax.
 
+### 2026-02-22 — Dependency Pivot: Dropped Zero-Dep Constraint
+
+- **Dependency pivot:** James directed us to use deps — specifically the same stack as Copilot/Claude CLIs. Adopted: Ink (v5+), Chalk (v5+), Ora, Commander, js-yaml, @inquirer/prompts, ink-table.
+- **PRD §5 rewritten:** Terminal UI/UX section now describes Ink-based React component architecture instead of hand-rolled ANSI modules. Eight standalone modules replaced with Ink components (StatusMessage, DispatchBox, DispatchTable, ProgressSteps), Ora spinners, and @inquirer/prompts.
+- **PRD §5.0 added:** New Dependencies section listing all npm packages with version constraints and rationale.
+- **Module structure simplified:** `lib/ui/` now contains `App.jsx`, `Dashboard.jsx`, and `components/` directory with Ink React components instead of 9 standalone raw-ANSI modules.
+- **Config parsing:** `config.js` now uses `js-yaml` instead of a custom YAML parser.
+- **CLI parsing:** `bin/dispatcher.js` now uses Commander instead of manual `process.argv` parsing.
+- **Technical constraints updated:** §8 Dependencies row updated from "zero runtime dependencies" to curated npm package list.
+- **All zero-dep references removed** from PRD. Historical decision records in `.squad/decisions.md` preserved as-is for the record.
+
 ---
+
+### 2026-02-22 — PRD Review Cycle Orchestration (All 4 Agents Complete)
+
+- **Mal:** Architectural review found PRD coherent. Identified 3 stale zero-dep references in team docs (now fixed by Scribe).
+- **Wash:** Git/GitHub integration feasibility review found 1 blocker (gh field names §3.3 vs §6.3) + 5 concerns + 2 nice-to-haves. Integration pattern is sound.
+- **Kaylee:** CLI structure & UI review found CLI maps cleanly to Commander/Ink. 1 blocker (deps contradiction, now resolved) + 7 concerns + 4 nice-to-haves.
+- **Jayne:** Testability & edge case review found 5 critical blockers in PRD §9 (open questions) + 12 error-handling gaps + 20+ edge cases. Test framework not specified.
+
+**Critical Blockers Requiring Team Decision (Mal to schedule sync):**
+1. **gh CLI field names** — §3.3 vs §6.3. For PRs, `files` vs `changedFiles` are semantically different. Must resolve before implementation.
+2. **Windows symlink fallback** — §9.7 open. No strategy defined (hard error? junctions? copy? flag?).
+3. **Squad invocation mechanism** — §9.1 open. Three options not decided (instructions vs CLI vs VS Code).
+4. **Dispatch status lifecycle** — §9.2 open. Rules for status transitions not defined (who updates? when?).
+5. **dispatch-context.md format** — §9.4 open. Format and schema undefined.
+
+**Team Outcomes:**
+- **Scribe:** Merged inbox decisions, updated stale team docs (stack refs), committed to `.squad/`
+- **Mal:** PRD validated, dependency pivot approved, found stale docs needing updates. Next: Schedule decision sync on 5 blockers.
+- **Kaylee/Wash:** Ready to implement once blockers resolved. Both awaiting decision sync.
+- **Jayne:** Testability findings complete. Blocked on blocker resolution before writing test suite and `docs/TESTING.md`.
+
+**Archive Progress:**
+- `.squad/orchestration-log/2026-02-22T001900Z-{mal,wash,kaylee,jayne}.md` — created
+- `.squad/log/2026-02-22T001900Z-prd-review.md` — session log created
+- `.squad/decisions.md` — merged 5 inbox files, added PRD Review Findings section, deduped
+- `.squad/decisions/inbox/` — all files deleted (merged)
+- Agent history files updated with cross-agent context (Mal, Wash, Kaylee, Jayne)
 
 ## Orchestration Notes (2026-02-21T22:51)
 

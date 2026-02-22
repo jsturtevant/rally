@@ -2,7 +2,7 @@
 
 - **Owner:** James Sturtevant
 - **Project:** Dispatcher — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
-- **Stack:** Node.js (zero dependencies, node:test)
+- **Stack:** Node.js with curated npm packages (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts) + node:test for testing
 - **Created:** 2026-02-21
 
 ## Project Description
@@ -32,7 +32,7 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 
 ### 2026-02-21 22:47 — Config format: YAML not JSON
 - User directive: all Dispatcher config files use YAML, not JSON
-- This affects `config.js` module: will need hand-rolled YAML parser (zero-dependency)
+- **UPDATE (2026-02-22):** `js-yaml` package now used (dependency pivot). No hand-rolled YAML parser needed.
 - See `.squad/decisions.md` → "Decision: Config file format changed from JSON to YAML"
 
 ### 2026-02-22 — Onboard Expansion (§3.2) & Dispatch Subcommands (§3.3–3.4)
@@ -47,3 +47,27 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - Review `docs/PRD.md` §3.2, §3.3, §3.4, §4.1, §4.2 before implementing
 - `lib/onboard.js` must handle GitHub URL parsing, git clone, team selection prompt
 - `lib/dispatch.js` must route explicit subcommands and infer repo from context
+
+### 2026-02-22 — Dependency Pivot & CLI Structure Review Complete
+
+**From Mal (Lead):**
+- **Major pivot:** User approved dependencies. Adopt Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts (same stack as GitHub Copilot CLI/Claude Code CLI). This eliminates hand-rolled UI modules. See `.squad/decisions.md` → "Decision: Dependency Pivot".
+- **Terminal UI reframed:** `lib/ui/` becomes directory of Ink component wrappers (colors, box, table, spinner, progress, prompt, status, dashboard) instead of raw ANSI codes. See `.squad/decisions.md` → "Decision: Terminal UI/UX — Ink/Chalk Component System".
+
+**CLI Structure Review (Kaylee):**
+- ✓ CLI structure maps cleanly to Commander/Ink
+- ✓ Dispatch subcommands route correctly
+- ✓ Module-per-command pattern holds
+- 🔴 **1 blocker:** Charter says "zero-dependency" but PRD now specifies Ink/Chalk/etc. **RESOLVED** by Dependency Pivot decision (above). Update charter.md.
+- 🟡 7 concerns: Subcommand routing, Ink lifecycle, dashboard state, terminal capability detection, progress animation, error consistency, input validation.
+- 🟢 4 nice-to-haves: Decorators, logging utility, hot-reload, composition helpers.
+
+**PRD Review (4-agent cycle):**
+- ✓ PRD architecturally sound
+- 🔴 **5 critical blockers in PRD §9 must resolve before implementation:** gh CLI fields, Windows symlinks, Squad invocation, status lifecycle, context.md format.
+- 🟡 12+ error-handling gaps, 20+ edge cases, test framework not specified (Jayne findings).
+
+**What this means for you:**
+- Use Ink for terminal rendering, Chalk for colors, Ora for spinners—no raw ANSI codes in app code
+- Review PRD §5 (Ink component architecture) and §4.3 (module structure) before implementing
+- Await blocker resolution before full implementation (target: after Mal decision sync)

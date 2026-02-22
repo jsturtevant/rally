@@ -162,3 +162,212 @@ Both subcommands accept `--repo <owner/repo>` to specify the target repo. If omi
 - `docs/PRD.md` §3.3, §3.4, §4.2, Appendix A updated
 - `lib/dispatch.js` will need subcommand routing in `bin/dispatcher.js`
 - All agents should use the new syntax in examples and implementations
+
+---
+
+## Decision: Dependency Pivot — Adopt Production CLI Stack
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Accepted  
+**Requested by:** James Sturtevant
+
+### Context
+
+James directed: "We can use deps. I'd prefer to use the same ones that Copilot/Claude use." This is a major pivot from the original zero-dependency constraint.
+
+Research confirmed the standard CLI stack used by GitHub Copilot CLI, Claude Code CLI, and similar polished Node.js CLIs.
+
+### Decision
+
+Drop the zero-dependency constraint. Adopt the following curated set of production-quality npm packages:
+
+#### UI/Terminal
+- **Ink** (`^5.0.0`) — React for interactive terminal UIs. Component-based rendering, layout, focus management.
+- **Chalk** (`^5.0.0`) — Terminal string styling (colors, bold, dim, underline). Replaces our ANSI escape code constants module.
+- **Ora** (`^8.0.0`) — Elegant terminal spinners. Replaces our hand-rolled braille-dot spinner.
+- **ink-table** (`^4.0.0`) — Table rendering within Ink. Replaces our hand-rolled table renderer.
+
+#### CLI Framework
+- **Commander** (`^12.0.0`) — CLI argument parsing, subcommands, help generation. Replaces manual `process.argv` parsing in `bin/dispatcher.js`.
+
+#### Config
+- **js-yaml** (`^4.0.0`) — YAML parsing/serialization. Replaces the hand-rolled YAML parser we were planning for `config.js`.
+
+#### Prompts
+- **@inquirer/prompts** (`^7.0.0`) — Interactive selection menus, confirmations. Replaces our hand-rolled raw-mode prompt.
+
+#### Dev Dependencies
+- **ink-testing-library** (`^4.0.0`) — Testing utilities for Ink components.
+
+### Rationale
+
+1. **User directive.** James explicitly authorized deps and requested the Copilot/Claude stack.
+2. **Massive complexity reduction.** The eight hand-rolled UI modules in `lib/ui/` (colors.js, box.js, table.js, spinner.js, progress.js, prompt.js, status.js, dashboard.js) are replaced by well-tested library components.
+3. **Better UX out of the box.** Ink, Chalk, and Ora handle TTY detection, `NO_COLOR`/`FORCE_COLOR`, Windows Terminal compatibility, and graceful degradation automatically.
+4. **Industry standard.** These exact packages power the most polished CLI tools in the Node.js ecosystem.
+5. **The hand-rolled YAML parser was a significant risk.** `js-yaml` eliminates that entirely.
+
+### What Changed
+
+- `docs/PRD.md` §5 rewritten for Ink component architecture
+- `docs/PRD.md` §5.0 (new) — Dependencies section with version constraints
+- `docs/PRD.md` §4.3 — Module structure updated (`lib/ui/` simplified to Ink components)
+- `docs/PRD.md` §8 — Technical constraints updated (deps row)
+- All "zero-dependency" references removed from PRD
+- `config.js` description updated to reference js-yaml
+- `bin/dispatcher.js` description updated to reference Commander
+
+### What Did NOT Change
+
+- Historical decision records in `.squad/decisions.md` preserved as-is
+- Design language (brand colors, icons, layout concepts) preserved — just reframed as Ink/Chalk
+- Test framework remains `node:test`
+- All commands, workflows, state layout unchanged
+
+### Supersedes
+
+- **Decision: Config file format — YAML** — the "Hand-rolled YAML Parser" key consideration is now moot; we use `js-yaml`.
+- The zero-dependency constraint from the original PRD Draft decision.
+
+### Impact
+
+- All agents must use Ink/Chalk/Ora/Commander/js-yaml/@inquirer/prompts — no raw ANSI escape codes in application code
+- `lib/ui/` module structure changes significantly — re-read PRD §4.3 and §5 before implementing
+- `package.json` will need all listed dependencies added
+- Test patterns may change (use ink-testing-library for UI component tests)
+- **Team docs need updating:** `.squad/agents/wash/history.md` and `.squad/decisions.md` still claim "zero-dependency" (stale references)
+
+---
+
+## Decision: Terminal UI/UX — Ink/Chalk Component System (replaces hand-rolled ANSI)
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Proposed
+
+### Context
+
+Following the dependency pivot decision, terminal UI/UX is now implemented via Ink (React for terminal) + Chalk (styling) instead of hand-rolled ANSI escape codes.
+
+### Decisions
+
+### 1. `lib/ui/` directory structure (Ink component wrappers)
+
+The single `ui.js` module is replaced by a directory of Ink wrapper components:
+- `colors.js` — Chalk color helpers and TTY detection
+- `box.js` — Ink-based unicode box-drawing panel component
+- `table.js` — ink-table wrapper with auto-width columns
+- `spinner.js` — Ora spinner wrapper
+- `progress.js` — Ink progress bar component
+- `prompt.js` — @inquirer/prompts wrappers
+- `status.js` — In-place overwrite status line component
+- `dashboard.js` — Full-screen Ink component with alternate buffer
+- `index.js` — Re-exports all components
+
+### 2. Brand palette and status icons are standardized
+
+| Role | Color | Icon |
+|------|-------|------|
+| Primary | Cyan | — |
+| Success | Green | ✓ |
+| Error | Red | ✗ |
+| Warning | Yellow | ⚠ |
+| Active | Cyan | ● |
+| Pending | Dim | ◌ |
+| In progress | Yellow | ◆ |
+
+### 3. Graceful degradation is mandatory — not optional
+
+Every UI component must check TTY and branch behavior:
+- Colors stripped when piped
+- Spinners become static text
+- Dashboard renders once as plain table and exits
+- Prompts use defaults or flags
+
+Supports `NO_COLOR` (disable on TTY) and `FORCE_COLOR` (enable on non-TTY) environment variables.
+
+### 4. Dashboard uses alternate screen buffer
+
+Full-screen dashboard enters alternate buffer, renders panels, handles keyboard input, and restores on exit. Must register cleanup handlers for `SIGINT`, `SIGTERM`, and `process.on('exit')`.
+
+### 5. All components accept `stream` parameter for testability
+
+No process-global state. Components default to `process.stdout` but accept an injectable stream so unit tests can capture and assert on output.
+
+### Impact
+
+- All agents: The `lib/ui/` module structure has changed (now a directory, not a file). Import paths and testing patterns change.
+- Kaylee/Wash (implementers): Implement from PRD §5, using Ink component APIs.
+- No breaking changes to CLI commands or workflows — just implementation details.
+
+---
+
+## PRD Review Findings — Blockers & Concerns
+
+**Date:** 2026-02-22  
+**Agents:** Mal (Lead), Wash (Integration Dev), Kaylee (Core Dev), Jayne (Tester)
+
+### Status
+
+PRD is architecturally sound and internally consistent. **Five critical blockers identified in PRD §9 (open questions) must be resolved before implementation proceeds.**
+
+### Critical Blockers
+
+1. **gh CLI field names inconsistency** (Wash) — §3.3 vs §6.3 specify different field sets. Must resolve before implementation. For PRs, `files` vs `changedFiles` are semantically different.
+
+2. **Zero-dependency contradiction** (Mal/Kaylee/Jayne) — PRD lists npm dependencies but older decisions claim "zero-dependency project" and "hand-rolled YAML parser." **RESOLVED by Dependency Pivot decision (above).** Team docs need updating.
+
+3. **Windows symlink fallback strategy** (Jayne) — §9.7 open. No decision on behavior without Developer Mode or admin privileges (hard error, junctions, copy, flag?).
+
+4. **Squad invocation mechanism** (Jayne) — §9.1 open. Three options not decided (A: instructions, B: CLI, C: VS Code).
+
+5. **Dispatch status lifecycle rules** (Jayne) — §9.2 open. When/who triggers status transitions (planning → implementing → reviewing → done → cleaned)?
+
+6. **dispatch-context.md format** (Jayne) — §9.4 open. Format and field schema undefined.
+
+### Key Concerns Requiring Attention
+
+- **Error handling:** PRD lacks comprehensive error catalog for each command (uncommitted changes, collisions, auth failures, exit codes).
+- **Edge cases:** Idempotency rules, dispatch collisions, multiple projects, config validation, concurrent access not fully specified.
+- **Test framework:** No `docs/TESTING.md`. Strategy for mocking git/gh/npx, fixture management unclear.
+
+### Team Action Required
+
+1. **Mal (Lead):** Schedule decision sync to resolve blockers #1, #3, #4, #5, #6.
+2. **Jayne (Tester):** Await blocker resolution, then write test suite and create `docs/TESTING.md`.
+3. **Kaylee/Wash:** Await blocker resolution, then proceed with implementation.
+
+**Full detailed reviews:**
+- Wash: `.squad/decisions/inbox/wash-prd-review.md`
+- Jayne: `.squad/decisions/inbox/jayne-prd-review.md`
+
+---
+
+## Directive: Docker Sandbox Support (Future Roadmap)
+
+**By:** James Sturtevant  
+**Date:** 2026-02-22  
+**Status:** Future Enhancement
+
+Integrate Docker sandbox support for Copilot coding agent. Not for current (v1) implementation. Captured for team memory and future roadmap.
+
+---
+
+## Follow-up: Hand-rolled YAML Parser Superseded by js-yaml
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Informational
+
+### Context
+
+Decision #3 (Config file format changed from JSON to YAML) noted: "Node.js has no built-in YAML parser... a minimal hand-rolled parser covering only what we use is practical and keeps us zero-dependency."
+
+This has been superseded by the Dependency Pivot decision (see above).
+
+### Update
+
+The dependency pivot adopted `js-yaml` (`^4.0.0`) for YAML parsing and serialization. This eliminates the risk and maintenance burden of a hand-rolled YAML parser. The `config.js` module now uses `js-yaml` instead of custom parsing logic.
+
+**Impact:** No changes to the three-file state model or YAML structure — only the implementation of the parser. Config files remain human-readable YAML.

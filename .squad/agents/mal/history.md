@@ -102,6 +102,25 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - `.squad/decisions/inbox/` — all files deleted (merged)
 - Agent history files updated with cross-agent context (Mal, Wash, Kaylee, Jayne)
 
+### 2026-02-22 — Zero-Dependency Reference Cleanup (Complete)
+
+Fixed all stale "zero-dependency" references across team documentation post-dependency pivot:
+
+**Files updated:**
+1. `.squad/team.md` — Stack now lists npm packages instead of "zero dependencies"
+2. `.squad/agents/kaylee/charter.md` — "How I Work" section updated to reference production CLI stack; Voice section updated
+3. `.squad/agents/jayne/charter.md` — Testing section updated to mention ink-testing-library alongside node:test
+4. `.squad/agents/scribe/history.md` — Stack context updated
+5. `.squad/skills/squad-conventions/SKILL.md` — Deprecated with note. This skill documents Squad (create-squad), not Dispatcher. Added redirect to Dispatcher-specific guidance.
+6. `.squad/decisions.md` — Appended follow-up entry (append-only) documenting js-yaml superseding hand-rolled YAML parser from Decision #3
+
+**Verification:**
+- Full search of `.squad/` and `docs/` for "zero-dep", "zero dep", "hand-roll", "hand roll", "no dependencies", "zero dependencies" — no remaining stale references in active docs
+- History files preserved as-is (historical records of the evolution)
+- PRD.md already clean
+
+**Record:** Created `.squad/decisions/inbox/mal-zero-dep-cleanup.md` with cleanup details.
+
 ## Orchestration Notes (2026-02-21T22:51)
 
 - Scribe merged both Mal decisions into `.squad/decisions.md`

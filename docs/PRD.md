@@ -449,18 +449,26 @@ dispatcher dashboard
 ```
 dispatcher/
 ├── bin/
-│   └── dispatcher.js        # Entry point, argument parsing
+│   └── dispatcher.js        # Entry point, CLI parsing via Commander
 ├── lib/
 │   ├── setup.js             # setup command
 │   ├── onboard.js           # onboard command
 │   ├── dispatch.js          # dispatch command (issue + PR modes)
 │   ├── dashboard.js         # dashboard command
-│   ├── config.js            # Config read/write (~/.dispatcher/*.yaml) — hand-rolled YAML parser/serializer
+│   ├── config.js            # Config read/write (~/.dispatcher/*.yaml) — uses js-yaml
 │   ├── symlink.js           # Symlink creation + validation
 │   ├── exclude.js           # .git/info/exclude management
 │   ├── worktree.js          # Git worktree create/remove
 │   ├── github.js            # GitHub CLI wrapper (issues, PRs)
-│   └── ui.js                # ANSI colors, table rendering, spinners
+│   └── ui/                  # Ink-based terminal UI components (see §5)
+│       ├── App.jsx          # Root Ink app — wraps all views
+│       ├── components/      # Reusable Ink React components
+│       │   ├── StatusMessage.jsx   # ✓/✗/⚠ status lines (uses Chalk)
+│       │   ├── DispatchBox.jsx     # Bordered info panel for dispatch details
+│       │   ├── DispatchTable.jsx   # Table of active dispatches (uses ink-table or custom)
+│       │   ├── TeamPrompt.jsx      # Team selection prompt (uses @inquirer/prompts)
+│       │   └── ProgressSteps.jsx   # Multi-step progress indicator
+│       └── Dashboard.jsx    # Full-screen dashboard Ink app with React state
 ├── test/
 │   ├── setup.test.js
 │   ├── onboard.test.js
@@ -475,32 +483,439 @@ dispatcher/
 
 ---
 
-## 5. Integration Points
+## 5. Terminal UI/UX
 
-### 5.1 Squad
+Dispatcher's terminal interface is built on **Ink** (React for the terminal), **Chalk** (styling), and **Ora** (spinners) — the same stack used by GitHub Copilot CLI, Claude Code CLI, and other polished Node.js CLIs. UI components are Ink React components in `lib/ui/`. Interactive prompts use **@inquirer/prompts**. The interface degrades gracefully when output is piped.
+
+### 5.0 Dependencies
+
+Dispatcher uses a curated set of production-quality npm packages — the same stack powering tools like GitHub Copilot CLI and Claude Code CLI.
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| **ink** | `^5.0.0` | React-based terminal UI framework. Component architecture, layout, focus management. |
+| **ink-table** | `^4.0.0` | Table rendering within Ink. Used for dashboard and dispatch listings. |
+| **chalk** | `^5.0.0` | Terminal string styling (colors, bold, dim, underline). Replaces raw ANSI escape code constants. |
+| **ora** | `^8.0.0` | Elegant terminal spinners for async operations. |
+| **commander** | `^12.0.0` | CLI argument parsing, subcommands, help generation. Industry standard. |
+| **js-yaml** | `^4.0.0` | YAML parsing and serialization for config files. |
+| **@inquirer/prompts** | `^7.0.0` | Interactive selection menus and confirmations (team selection, etc.). |
+
+**Dev dependencies:**
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| **ink-testing-library** | `^4.0.0` | Testing utilities for Ink components. |
+
+### 5.1 Design Language
+
+#### Brand Palette
+
+All colors are applied via **Chalk** helpers. No raw ANSI escape codes in application code.
+
+| Role | Chalk Call | Usage |
+|------|-----------|-------|
+| **Primary** | `chalk.cyan(…)` | Command names, headers, emphasis |
+| **Success** | `chalk.green(…)` | `✓` checkmarks, completed statuses |
+| **Error** | `chalk.red(…)` | `✗` failures, error messages |
+| **Warning** | `chalk.yellow(…)` | `⚠` warnings, caution states |
+| **Secondary** | `chalk.dim(…)` | Hints, timestamps, skipped operations, paths |
+| **Accent** | `chalk.bold(…)` | Section titles, project names, counts |
+| **Muted** | `chalk.dim.strikethrough(…)` | Cleaned/archived dispatches |
+
+Chalk automatically handles TTY detection, `NO_COLOR`, and `FORCE_COLOR` — no manual branching needed.
+
+#### Status Icons
+
+```
+✓  Success     (green)
+✗  Error       (red)
+⚠  Warning     (yellow)
+●  Active      (cyan, pulsing in dashboard)
+◌  Pending     (dim)
+◆  In progress (yellow)
+```
+
+#### Typography Rules
+
+| Element | Chalk Style | Example |
+|---------|-------------|---------|
+| Section headers | `chalk.bold.cyan(…)` | `Dispatcher Dashboard` |
+| Command names | `chalk.cyan(…)` | `dispatcher setup` |
+| File paths | `chalk.dim(…)` | `~/.dispatcher/config.yaml` |
+| User input / values | `chalk.bold(…)` | `my-app` |
+| Hints / help text | `chalk.dim(…)` | `Run: dispatcher setup` |
+| Error messages | `chalk.bold.red('✗') + msg` | `✗ Message here` |
+| Success messages | `chalk.green('✓') + msg` | `✓ Message here` |
+| Skipped operations | `chalk.dim(…)`, indented | `  Team directory already exists — skipping` |
+
+---
+
+### 5.2 UI Components (Ink Architecture)
+
+All components live in `lib/ui/` as Ink (React) components or thin wrappers around Chalk/Ora. Command modules import from `lib/ui/` — they never write raw ANSI codes directly.
+
+#### 5.2.1 StatusMessage Component (`lib/ui/components/StatusMessage.jsx`)
+
+Renders `✓`/`✗`/`⚠` status lines using Chalk. Replaces raw ANSI color constants.
+
+```jsx
+import { Text } from 'ink';
+import chalk from 'chalk';
+
+// <StatusMessage type="success">Saved config</StatusMessage>
+// <StatusMessage type="error">Not a git repository</StatusMessage>
+// <StatusMessage type="warning">Symlink already exists</StatusMessage>
+// <StatusMessage type="skip">Team directory already exists — skipping</StatusMessage>
+```
+
+#### 5.2.2 DispatchBox Component (`lib/ui/components/DispatchBox.jsx`)
+
+Renders bordered info panels using Ink's `<Box>` with `borderStyle="round"` or `borderStyle="single"`.
+
+```jsx
+import { Box, Text } from 'ink';
+
+// <DispatchBox title="Dispatch #42">
+//   <Text>Issue:    #42 Add user authentication</Text>
+//   <Text>Branch:   dispatcher/42-add-user-auth</Text>
+//   <Text>Worktree: .worktrees/dispatcher-42/</Text>
+// </DispatchBox>
+```
+
+**Example output:**
+
+```
+┌─────────────── Dispatch #42 ───────────────┐
+│                                            │
+│  Issue:   Add user authentication          │
+│  Branch:  dispatcher/42-add-user-auth      │
+│  Status:  ◆ implementing                   │
+│  Age:     2h 15m                           │
+│                                            │
+└────────────────────────────────────────────┘
+```
+
+Ink handles auto-sizing to terminal width and responds to resize events natively.
+
+#### 5.2.3 DispatchTable Component (`lib/ui/components/DispatchTable.jsx`)
+
+Renders the dispatch table using `ink-table` or a custom Ink `<Box>` layout with flexbox-style columns.
+
+```jsx
+import Table from 'ink-table';
+
+// <DispatchTable dispatches={dispatches} />
+// Columns: Project, Issue, Branch, Status, Age
+```
+
+Ink handles column width calculation and terminal-width truncation automatically.
+
+**Example output:**
+
+```
+ Project    Issue   Branch                              Status        Age
+ ───────    ─────   ──────                              ──────        ───
+ my-app     #42     dispatcher/42-add-user-auth         ◆ implementing 2h
+ my-app     #51     dispatcher/51-fix-login-bug         ● planning     30m
+ api-srv    PR #87  feature/refactor-auth               ● reviewing    1d
+```
+
+#### 5.2.4 Spinner (Ora)
+
+Async operation spinners use **Ora** directly — no custom spinner implementation needed.
+
+```js
+import ora from 'ora';
+
+const spinner = ora('Cloning owner/cool-project…').start();
+// ... async work ...
+spinner.succeed('Cloned owner/cool-project');
+// or: spinner.fail('Clone failed: <error>');
+```
+
+Ora handles TTY detection, frame animation, and non-TTY fallback automatically.
+
+**Example behavior:**
+
+```
+⠹ Cloning owner/cool-project…        ← animating
+✓ Cloned owner/cool-project           ← final (green ✓, line replaced)
+```
+
+#### 5.2.5 ProgressSteps Component (`lib/ui/components/ProgressSteps.jsx`)
+
+Multi-step progress indicator built as an Ink component with React state.
+
+```jsx
+import { Box, Text } from 'ink';
+import chalk from 'chalk';
+
+// <ProgressSteps steps={steps} current={currentStep} />
+// Each step shows ✓ (done), ◆ (current), or ◌ (pending)
+```
+
+Falls back to text-only output when not TTY: `Step 3/5: Setting up Squad…`.
+
+#### 5.2.6 Interactive Prompts (@inquirer/prompts)
+
+Interactive selection menus use **@inquirer/prompts** instead of a custom raw-mode implementation. This provides polished arrow-key navigation, search, and accessibility out of the box.
+
+```js
+import { select } from '@inquirer/prompts';
+
+const teamChoice = await select({
+  message: 'Use your existing team or create a new one for this project?',
+  choices: [
+    { name: 'Existing team — use shared team from ~/.dispatcher/team/', value: 'shared' },
+    { name: 'New team — create a project-specific team', value: 'new' },
+  ],
+});
+```
+
+**Example output:**
+
+```
+? Use your existing team or create a new one for this project?
+  ❯ Existing team — use shared team from ~/.dispatcher/team/
+    New team — create a project-specific team
+```
+
+Non-TTY fallback: uses the first choice as default (or accepts `--team` flag).
+
+---
+
+### 5.3 Dashboard Layout
+
+The dashboard is a full **Ink app** (`lib/ui/Dashboard.jsx`) that manages its own React state and renders to the alternate screen buffer.
+
+```jsx
+import { render, Box, Text, useInput, useApp } from 'ink';
+import { useState, useEffect } from 'react';
+
+// The Dashboard component manages:
+// - Active dispatches state (loaded from active.yaml)
+// - Selected row index
+// - Auto-refresh interval (every 5 seconds)
+// - Keyboard input handling (↑↓ select, q quit, r refresh, c clean)
+```
+
+**Alternate buffer control:** Ink's `render()` with `{ exitOnCtrlC: true }` handles screen buffer management. The dashboard uses Ink's `useApp()` hook for clean exit.
+
+#### Layout (responsive to terminal width/height)
+
+```
+┌────────────────────────────────── Dispatcher Dashboard ──────────────────────────────────┐
+│                                                                                          │
+│  ┌─ Active Dispatches ─────────────────────────────────────────────────────────────────┐  │
+│  │  Project    Issue   Branch                         Status          Age              │  │
+│  │  ───────    ─────   ──────                         ──────          ───              │  │
+│  │  my-app     #42     dispatcher/42-add-user-auth    ◆ implementing  2h              │  │
+│  │  my-app     #51     dispatcher/51-fix-login        ● planning      30m             │  │
+│  │  api-srv    PR #87  feature/refactor-auth          ● reviewing     1d              │  │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                          │
+│  ┌─ Projects ──────────────────────────┐  ┌─ Team ──────────────────────────────────┐   │
+│  │  my-app       3 dispatches (shared) │  │  Team dir:  ~/.dispatcher/team/         │   │
+│  │  api-srv      1 dispatch   (shared) │  │  Agents:    5                           │   │
+│  │  cool-proj    0 dispatches (own)    │  │  Type:      shared                      │   │
+│  └─────────────────────────────────────┘  └─────────────────────────────────────────┘   │
+│                                                                                          │
+│  ─────────────────────────────────────────────────────────────────────────────────────── │
+│  q quit · r refresh · c clean done · ↑↓ select · enter open worktree                    │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Panels** (all Ink `<Box>` components with border props):
+
+1. **Active Dispatches** — full-width `<DispatchTable>`. Sorted by status (active first, done last). Highlighted selection row via React state.
+2. **Projects** — left `<Box>`. Lists onboarded projects from `projects.yaml` with dispatch count and team type.
+3. **Team** — right `<Box>`. Shows current team directory, agent count, team type.
+4. **Status bar** — bottom `<Text>`. Keyboard shortcuts and summary stats.
+
+**Refresh behavior:**
+
+- Auto-refresh every 5 seconds via `useEffect` with `setInterval` (re-read `active.yaml`, recheck worktree health)
+- Manual refresh with `r` key via `useInput` hook
+- Ink handles terminal resize events automatically
+
+**Keyboard navigation (via `useInput` hook):**
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Move selection in dispatches table |
+| `Enter` | Print worktree path and exit (for `cd $(dispatcher dashboard --select)`) |
+| `r` | Refresh data |
+| `c` | Clean completed dispatches |
+| `q` / `Ctrl-C` | Exit dashboard (Ink unmounts, restores screen) |
+
+**Non-TTY mode:** When piped (e.g., `dispatcher dashboard | cat`), skip the Ink app entirely. Render the table once as plain text (same as §3.5 output) using Chalk (which auto-strips colors when piped), and exit.
+
+---
+
+### 5.4 Graceful Degradation
+
+All UI output must work in two modes. Chalk and Ink handle most of this automatically:
+
+| Feature | TTY (interactive terminal) | Non-TTY (piped / redirected) |
+|---------|---------------------------|------------------------------|
+| Colors | Full Chalk styling | Chalk auto-strips — plain text |
+| Spinner | Ora animated braille dots | Ora static message, result on completion |
+| Progress | Ink component, in-place | `Step 3/5: message` |
+| Prompt | @inquirer/prompts navigation | Use flag default or first choice |
+| Dashboard | Full Ink app with interactivity | Single render, plain table, exit |
+| Box/panel | Ink `<Box>` with borders | Indent with spaces, no border chars |
+
+**`NO_COLOR` support:** Chalk respects the `NO_COLOR` environment variable automatically (disables colors even on TTY). This follows the [no-color.org](https://no-color.org) convention.
+
+**`FORCE_COLOR` support:** Chalk respects `FORCE_COLOR` automatically (enables colors even when not TTY).
+
+---
+
+### 5.5 Example Output Mockups
+
+#### `dispatcher setup`
+
+```
+  ┌─ dispatcher setup ─────────────────────────────┐
+  │                                                 │
+  │  ✓ Created team directory at ~/.dispatcher/team/│
+  │  ⠹ Initializing Squad…                         │
+  │  ✓ Initialized Squad in ~/.dispatcher/team/     │
+  │  ✓ Created projects directory                   │
+  │  ✓ Saved config to ~/.dispatcher/config.yaml    │
+  │                                                 │
+  │  Ready! Next step:                              │
+  │    dispatcher onboard                           │
+  │                                                 │
+  └─────────────────────────────────────────────────┘
+```
+
+#### `dispatcher onboard` (with team prompt)
+
+```
+  ⠹ Cloning owner/cool-project…
+  ✓ Cloned owner/cool-project → ~/.dispatcher/projects/cool-project/
+
+  ? Use your existing team or create a new one for this project?
+    ❯ Existing team — use shared team from ~/.dispatcher/team/
+      New team — create a project-specific team
+
+  ✓ Symlinked .squad/
+  ✓ Symlinked .squad-templates/
+  ✓ Symlinked .github/agents/squad.agent.md
+  ✓ Updated .git/info/exclude
+  ✓ Registered project: cool-project (shared team)
+```
+
+#### `dispatcher dispatch issue 42`
+
+```
+  ⠹ Fetching issue #42…
+  ✓ Fetched issue #42: "Add user authentication"
+
+  ┌─ Dispatch ─────────────────────────────────────┐
+  │  Issue:    #42 Add user authentication         │
+  │  Branch:   dispatcher/42-add-user-auth         │
+  │  Worktree: .worktrees/dispatcher-42/           │
+  └────────────────────────────────────────────────┘
+
+  ✓ Created branch
+  ✓ Created worktree
+  ✓ Symlinked Squad into worktree
+  ✓ Wrote dispatch context
+
+  ⠹ Squad is planning…
+  ✓ Squad planning complete
+
+  Worktree ready at: .worktrees/dispatcher-42/
+  To work with Squad: cd .worktrees/dispatcher-42/
+```
+
+#### `dispatcher dashboard` (full-screen Ink app)
+
+```
+┌──────────────────────────── Dispatcher Dashboard ────────────────────────────┐
+│                                                                              │
+│  Active Dispatches                                                           │
+│  ─────────────────────────────────────────────────────────────────────────── │
+│  Project    Issue   Branch                         Status          Age       │
+│  ───────    ─────   ──────                         ──────          ───       │
+│▸ my-app     #42     dispatcher/42-add-user-auth    ◆ implementing  2h       │
+│  my-app     #51     dispatcher/51-fix-login        ● planning      30m      │
+│  api-srv    PR #87  feature/refactor-auth          ● reviewing     1d       │
+│  my-app     #38     dispatcher/38-update-deps      ✓ done          3d       │
+│                                                                              │
+│  3 active · 1 done · 0 blocked                                              │
+│                                                                              │
+│  ────────────────────────────────────────────────────────────────────────── │
+│  q quit · r refresh · c clean done · ↑↓ select · enter open                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Non-TTY (piped) output example
+
+```
+$ dispatcher dashboard | cat
+Dispatcher Dashboard
+
+Project    Issue   Branch                              Status        Age
+-------    -----   ------                              ------        ---
+my-app     #42     dispatcher/42-add-user-auth         implementing  2h
+my-app     #51     dispatcher/51-fix-login-bug         planning      30m
+api-srv    PR #87  feature/refactor-auth               reviewing     1d
+
+3 active · 0 done · 0 blocked
+```
+
+---
+
+### 5.6 Implementation Notes
+
+1. **All UI code lives in `lib/ui/`.** Components are Ink (React) components in `lib/ui/components/`. The dashboard is `lib/ui/Dashboard.jsx`. Command modules import from `lib/ui/` — they never write raw ANSI codes directly.
+
+2. **Chalk is the styling foundation.** Every component uses Chalk for colors. Chalk handles TTY detection, `NO_COLOR`, and `FORCE_COLOR` automatically — no manual branching needed.
+
+3. **Ora handles all spinners.** No custom spinner implementation. Ora provides braille-dot animation, TTY detection, and graceful fallback out of the box.
+
+4. **Commander handles CLI parsing.** The entry point (`bin/dispatcher.js`) uses Commander for argument parsing, subcommand routing, help generation, and version display. No manual `process.argv` parsing.
+
+5. **js-yaml handles config files.** The `config.js` module uses `js-yaml` for parsing and serializing YAML. No custom YAML parser needed.
+
+6. **@inquirer/prompts handles interactive input.** Team selection prompts and confirmations use @inquirer/prompts. Non-TTY fallback uses flag defaults.
+
+7. **Ink manages the dashboard lifecycle.** The dashboard is a full Ink app with React state. Ink handles screen buffer management, resize events, and cleanup on exit (including `SIGINT`/`SIGTERM`).
+
+8. **Windows compatibility.** Chalk and Ink handle Windows Terminal compatibility automatically. Legacy `cmd.exe` without Windows Terminal may not support all features — Chalk's TTY detection handles this gracefully.
+
+---
+
+## 6. Integration Points
+
+### 6.1 Squad
 - **Setup:** Runs `npx github:bradygaster/squad` to initialize team state
 - **Export/Import:** Future enhancement — `dispatcher setup --from <export.json>` could use Squad's `export`/`import` to bootstrap from an existing team snapshot
-- **Invocation:** After worktree setup, Dispatcher invokes Squad within the worktree context. The exact invocation mechanism (Copilot agent mode, CLI, etc.) is an open question (see §8).
+- **Invocation:** After worktree setup, Dispatcher invokes Squad within the worktree context. The exact invocation mechanism (Copilot agent mode, CLI, etc.) is an open question (see §9).
 
-### 5.2 Git
+### 6.2 Git
 - **Worktrees:** `git worktree add <path> -b <branch>` and `git worktree remove <path>`
 - **Exclude:** Direct file write to `.git/info/exclude`
 - **Branches:** `git branch`, `git checkout`
 - **Symlinks:** `fs.symlinkSync()` with platform-appropriate handling
 
-### 5.3 GitHub CLI (`gh`)
+### 6.3 GitHub CLI (`gh`)
 - **Issues:** `gh issue view <n> --json title,body,labels,assignees`
 - **PRs:** `gh pr view <n> --json title,body,headRefName,baseRefName,changedFiles`
 - **PR creation:** Future — `gh pr create` after implementation is complete
 - **Auth check:** `gh auth status`
 
-### 5.4 Platform
+### 6.4 Platform
 - **Symlinks on Windows:** Requires Developer Mode or admin privileges. Dispatcher should detect and provide clear error messages.
 - **Path separators:** All paths use `path.join()` — never hardcoded separators.
 
 ---
 
-## 6. Non-Goals
+## 7. Non-Goals
 
 1. **Dispatcher does not replace Squad.** It orchestrates Squad — it doesn't duplicate any Squad functionality (no team management, no agent definitions, no skills).
 2. **Dispatcher does not manage git branching strategy.** It creates branches with a `dispatcher/` prefix, but it doesn't enforce merge strategies or branch protection.
@@ -511,30 +926,30 @@ dispatcher/
 
 ---
 
-## 7. Technical Constraints
+## 8. Technical Constraints
 
 | Constraint | Detail |
 |-----------|--------|
 | **Runtime** | Node.js (minimum version TBD — at least v18 for stable built-in test runner) |
-| **Dependencies** | Zero runtime dependencies. Node.js built-ins only (`fs`, `path`, `os`, `child_process`). |
+| **Dependencies** | Curated set of production-quality npm packages (see §5.0). Node.js built-ins (`fs`, `path`, `os`, `child_process`) plus Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts. |
 | **Test framework** | `node:test` + `node:assert/strict` |
 | **Platforms** | Windows, macOS, Linux. All paths via `path.join()`. Symlink handling must account for Windows. |
 | **External tools** | Requires `git` and `gh` (GitHub CLI) on PATH. Requires `npx` for Squad installation. |
 | **Error handling** | `fatal(msg)` pattern — clean user-facing messages, no stack traces. |
 | **Idempotency** | All commands must be safe to re-run. Skip-if-exists pattern throughout. |
-| **Output style** | `✓` for success, `✗` for errors, dim text for skipped operations. ANSI color constants. |
+| **Output style** | `✓` for success, `✗` for errors, dim text for skipped operations. Chalk for styling. |
 
 ---
 
-## 8. Open Questions
+## 9. Open Questions
 
-### 8.1 How does Dispatcher invoke Squad after worktree setup?
+### 9.1 How does Dispatcher invoke Squad after worktree setup?
 Squad is normally invoked via Copilot agent mode in the IDE. When Dispatcher creates a worktree and sets up context, how does the user actually start working with Squad?
 - **Option A:** Dispatcher just sets up the environment and prints instructions ("cd into worktree, open in editor, start Copilot")
 - **Option B:** Dispatcher invokes a Squad CLI command directly
 - **Option C:** Dispatcher opens the worktree in VS Code with Copilot agent mode activated
 
-### 8.2 Per-project vs. shared team state? *(Partially resolved)*
+### 9.2 Per-project vs. shared team state? *(Partially resolved)*
 The `onboard` command now prompts users to choose between a shared team and a project-specific team. This resolves the basic question of "should we support both?" — yes, via a prompt at onboard time.
 
 **What's been decided:**
@@ -548,30 +963,30 @@ The `onboard` command now prompts users to choose between a shared team and a pr
 - **Team templates:** Should `dispatcher onboard --team new` support `--from <export.json>` to bootstrap a project-specific team from a Squad export?
 - **Base team + overlays (Option C from original question):** The current design is all-or-nothing. A layered approach (shared base + project-specific overrides) might be valuable but adds complexity. Defer to v2.
 
-### 8.3 Worktree location
+### 9.3 Worktree location
 - **Option A:** Inside the repo at `.worktrees/` (current design — easy to find, but adds a directory to the repo root)
 - **Option B:** Outside the repo at `~/.dispatcher/worktrees/<project>/` (clean repo, but harder to navigate)
 - **Option C:** Sibling to the repo at `../<repo>-worktrees/` (git's default suggestion)
 
-### 8.4 Dispatch context format
+### 9.4 Dispatch context format
 What goes in `.squad/dispatch-context.md`? How structured should it be?
 - Issue title, body, labels, comments?
 - For PRs: diff stats, file list, review comments?
 - Should it reference existing Squad skills or decisions?
 
-### 8.5 Status tracking granularity
+### 9.5 Status tracking granularity
 Current design has 5 statuses (`planning` → `implementing` → `reviewing` → `done` → `cleaned`). Is this enough? Should status be inferred from git state (branch merged = done) or manually set?
 
-### 8.6 Dashboard clean behavior
+### 9.6 Dashboard clean behavior
 Should `dashboard clean` delete the branch too? Just the worktree? Should it require confirmation?
 
-### 8.7 Windows symlink permissions
+### 9.7 Windows symlink permissions
 Windows requires Developer Mode or elevated privileges for symlinks. Should Dispatcher:
 - Detect and error clearly?
 - Fall back to directory junctions?
 - Fall back to copying instead of symlinking?
 
-### 8.8 Squad export/import integration
+### 9.8 Squad export/import integration
 Should `dispatcher setup` accept a Squad export JSON to bootstrap from an existing team? This would enable team sharing without committing state:
 ```bash
 dispatcher setup --from teammate-export.json

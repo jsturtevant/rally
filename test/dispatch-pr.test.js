@@ -32,6 +32,16 @@ beforeEach(() => {
   writeFileSync(join(repoPath, 'README.md'), '# Test');
   execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'ignore' });
   execFileSync('git', ['commit', '-m', 'Initial commit'], { cwd: repoPath, stdio: 'ignore' });
+
+  // Create a PR head ref branch with distinct content for checkout verification
+  execFileSync('git', ['checkout', '-b', 'fix/login'], { cwd: repoPath, stdio: 'ignore' });
+  writeFileSync(join(repoPath, 'pr-change.txt'), 'PR content');
+  execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'ignore' });
+  execFileSync('git', ['commit', '-m', 'PR commit'], { cwd: repoPath, stdio: 'ignore' });
+  execFileSync('git', ['checkout', '-'], { cwd: repoPath, stdio: 'ignore' });
+
+  // Add self as remote so worktree can fetch PR head ref
+  execFileSync('git', ['remote', 'add', 'origin', repoPath], { cwd: repoPath, stdio: 'ignore' });
 });
 
 afterEach(() => {
@@ -280,6 +290,10 @@ describe('dispatchPr happy path', () => {
 
     // Verify worktree was created
     assert.ok(existsSync(result.worktreePath), 'worktree directory should exist');
+
+    // Verify worktree is checked out at PR's head ref
+    assert.ok(existsSync(join(result.worktreePath, 'pr-change.txt')),
+      'worktree should contain PR head ref content');
 
     // Verify dispatch-context.md was written with PR details
     const contextPath = join(result.worktreePath, '.squad', 'dispatch-context.md');

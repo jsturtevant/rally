@@ -155,3 +155,11 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - Mal: Schedule decision sync ASAP
 - Awaiting resolution before Kaylee/Wash full implementation
 - Jayne: Blocked on blocker resolution before test suite + TESTING.md
+
+### 2026-02-22 02:28 — Charter Updated: Zero-Dependency References Removed
+
+**From Scribe (cross-agent propagation):**
+- **Charter refresh:** All "zero-dependency" language removed from `.squad/agents/jayne/charter.md`.
+  - Testing section now mentions `ink-testing-library` alongside `node:test` for testing Ink UI components
+- **Why:** Post-dependency pivot, all stale zero-dep docs cleaned across `.squad/` and `docs/`
+- **Impact:** Your charter is now fully aligned with current npm-stack architecture. Reference it with confidence.

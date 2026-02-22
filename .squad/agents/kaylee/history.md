@@ -71,3 +71,12 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - Use Ink for terminal rendering, Chalk for colors, Ora for spinners—no raw ANSI codes in app code
 - Review PRD §5 (Ink component architecture) and §4.3 (module structure) before implementing
 - Await blocker resolution before full implementation (target: after Mal decision sync)
+
+### 2026-02-22 02:28 — Charter Updated: Zero-Dependency References Removed
+
+**From Scribe (cross-agent propagation):**
+- **Charter refresh:** All "zero-dependency" language removed from `.squad/agents/kaylee/charter.md`. 
+  - "How I Work" section now explicitly lists production CLI stack: Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts
+  - Voice section reinforced: Loves clean code, excited about elegant solutions, follows squad-conventions skill to the letter, uses production CLI stack — no hand-rolled modules
+- **Why:** Post-dependency pivot, all stale zero-dep docs have been cleaned across `.squad/` and `docs/`
+- **Impact:** Your charter is now fully aligned with current architecture. Reference it with confidence.

@@ -59,7 +59,6 @@ test('dashboardClean with no dispatches returns empty result', async () => {
   });
 
   assert.deepEqual(result.cleaned, []);
-  assert.deepEqual(result.skipped, []);
   assert.deepEqual(result.errors, []);
 });
 

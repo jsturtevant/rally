@@ -342,3 +342,41 @@ Documented the five patterns from the retro:
 Includes examples from Rally (what we did right, what we should have done) and anti-patterns.
 
 **Outcome:** PRD is now comprehensive and unambiguous. All blocker resolutions documented and committed. Design phase checklist is institutional knowledge for future projects.
+
+### 2026-02-22 — Retrospective: Phase 2 Implementation Sprint — Workflow Success
+
+Facilitated Phase 2 retro (issues #9–#13, PRs #30–#34).
+
+**What Went Right:**
+- **Workflow discipline restored.** All 5 PRs used feature branches (`rally/9-setup`, `rally/10-onboard`, `rally/11-url-onboard`, `rally/12-team-selection`, `rally/13-status`). Zero direct commits to main. 180° improvement from Phase 1's complete failure.
+- **Code review as quality gate worked.** 8 review cycles across 5 PRs. Mal reviews caught real issues: Node 18 API incompatibility (PR #30), path traversal security (PR #33), partial state bug (PR #34), interactive prompt unreachable (PR #34).
+- **All acceptance criteria verified in review before merge.** 52 test cases written covering 4 features (setup, onboard, status) + test files and integration tests included.
+- **CI validation on every PR.** Node 18/20/22 compatibility tested. Squad CI included. Zero CI failures on final merges.
+- **Copilot review provided value.** PRs #32 and #33 had Copilot comments (7 + 13 respectively); all were addressed before merge.
+
+**What Didn't Go Well:**
+- **Interactive behavior validation incomplete initially.** PR #34's team selection prompt was unreachable in production (gated by test-only hook). Caught in second review → fixed → re-approved. Shows that interactive behavior needs end-to-end testing.
+- **@copilot not consistently added as reviewer.** Copilot reviewed some PRs but not all. Process gap: should be mandatory gate.
+- **Edge case review was lucky, not systematic.** Path traversal and trailing slash bugs (PR #33) weren't enumerated upfront. Caught by reviewer's security mindset, not by a checklist.
+- **docs/TESTING.md not written yet.** Unblocks Phase 3 but is a follow-up item from Phase 1 retro.
+
+**Key Insights:**
+1. Explicit workflow instructions matter. Agents need step-by-step directions (branch → commit → push → PR → wait → merge), not "implement feature X."
+2. Feature branches + worktree approach enables true parallelism (5 agents, 5 branches, zero conflicts).
+3. Acceptance criteria as test names is a good practice; keeps review honest.
+4. Interactive behavior is hard to verify from code; needs TTY testing or end-to-end validation.
+5. Reviewer diligence > automated tools. Mal's specific, actionable reviews caught all real issues.
+
+**Process Improvements for Phase 3:**
+1. **Copilot review is mandatory.** Add `@copilot` to all Phase 3 PRs. If Copilot comments, they must be addressed (like human review).
+2. **Interactive testing checklist.** For dispatch command (heavily interactive), add pre-review validation: "Test this end-to-end with a real TTY."
+3. **Edge case checklist.** Before Phase 3, enumerate dispatch edge cases (aborted invocation, network errors, worktree conflicts, Squad state corruption) and include in review template.
+4. **Dispatch context spec.** Write format spec with James before Kaylee codes (takes 15 min, prevents rework).
+
+**Action Items:**
+- Mal: Create `.squad/skills/interactive-testing/SKILL.md` for Phase 3
+- Mal: Create edge-case review checklist for dispatch commands
+- Jayne: Write `docs/TESTING.md` (unblocked by Phase 1 blocker resolutions)
+- Mal: Verify dispatch context format with James before Phase 3 kickoff
+
+**Retro artifact:** `.squad/decisions/inbox/mal-phase2-retro.md`

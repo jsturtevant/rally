@@ -170,3 +170,29 @@ All decisions documented and merged. You (Kaylee) are unblocked to begin Phase 1
 - config.js, symlink.js, exclude.js, worktree.js, github.js, CLI entry (bin/rally.js with Commander)
 
 See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—ready to implement.
+
+### 2026-02-22 — Setup Command Implemented (Issue #9, PR #31)
+
+**Status:** `lib/setup.js` implemented with 11 tests, all 58 tests passing (47 existing + 11 new).
+
+**What was built:**
+- `lib/setup.js` — Creates `~/.rally/team/` and `~/.rally/projects/`, runs `npx github:bradygaster/squad` in team dir, writes `config.yaml`
+- `bin/rally.js` — Wired `rally setup` as a Commander subcommand with `--dir` option
+- `test/setup.test.js` — 11 tests covering all 4 acceptance criteria + 3 error cases
+
+**Key design decisions:**
+- Used dependency injection (`_exec` option) for `execFileSync` to make Squad init testable without actually running npx
+- Idempotency: checks `existsSync()` for team dir, projects dir, and `.squad/` before creating/running
+- Ora spinner for Squad init, Chalk green checkmarks for success, plain text for skip messages
+- Error cases: ENOENT for missing npx, generic message for Squad init failures, fs errors propagate naturally
+- `execFileSync('npx', ...)` directly instead of `findNpx()` + path resolution — simpler and `execFileSync` resolves via PATH natively
+
+**Branch:** `rally/9-setup` → PR #31 on jsturtevant/rally
+
+### 2026-02-22 — Status Command Implemented (Issue #13, PR #30)
+
+- **lib/status.js** — `getStatus()` gathers config paths (with existence checks), teamDir, projectsDir, onboarded projects, and active dispatches into a structured object. `formatStatus()` renders human-readable output with ✓/✗ markers.
+- **bin/rally.js** — Wired `status` as Commander subcommand with `--json` flag. JSON output uses `JSON.stringify(status, null, 2)`.
+- **test/status.test.js** — 12 tests: config paths shown + existence detection, directories from config, empty/populated projects, empty/populated dispatches, CLI `--json` parsing, CLI text section headers, formatStatus edge cases.
+- **Pattern:** `withTempHome()` helper wraps `RALLY_HOME` env var and temp dir lifecycle for clean test isolation — reusable in future test files.
+- **All 59 tests pass** (47 existing + 12 new).

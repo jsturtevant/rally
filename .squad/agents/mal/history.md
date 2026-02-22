@@ -254,6 +254,52 @@ Facilitated full team retro on planning phase (PRD design through GitHub issue d
 
 **Key Learning:** Blockers should be resolved upfront with stakeholder sync, not discovered during team review. Earlier validation (gh CLI, feature scope) saves iteration cost. Test framework spec unblocks implementers earlier. Next phase will be smoother with these process adjustments.
 
+### 2026-02-22 — Retrospective: Phase 1 Implementation Sprint — Process Failure
+
+Facilitated critical process failure retro. **All Phase 1 code was committed directly to main instead of via feature branches and PRs.**
+
+**What Went Wrong:**
+- All 5 commits in Phase 1 landed on `main` branch, no feature branches
+- Zero PRs created; CI workflow exists but was never triggered
+- Mal never reviewed code, Jayne never reviewed tests
+- Issues #2–#8 still open despite code being in main (issue/commit decoupling)
+- 5 agents worked in parallel on same branch with no review gate
+
+**Root Cause:**
+Coordinator's task instructions to agents said "implement feature X" without explicitly requiring feature branches, PRs, or code review. Agents defaulted to simplest path (direct `git commit`). No gate prevented it. Mal didn't validate workflow upfront.
+
+**Contributing Factors:**
+- Solo dev project feels informal; typical team workflows weren't enforced
+- Agents are autonomous; once they have commit access, they use it
+- CI workflow exists but no PR triggers it (no automated quality gate)
+- Onboarding gap: agents weren't shown what "correct" workflow looks like
+
+**Proposed Solution: Option C (Parallel Worktrees per Agent)**
+- Each agent gets their own worktree + feature branch for their assigned issues
+- Agents work simultaneously on separate branches (zero conflict risk)
+- All commits go to feature branches, not main
+- Each agent opens a PR (feature → main), waits for Mal review + CI gate
+- Mal reviews in dependency order, merges after approval
+- GitHub auto-closes linked issues when PR merges
+- Process discipline: no direct main commits, no merges without review
+
+**Why This Works:**
+- Explicit instructions + worktree setup removes "should I branch?" ambiguity
+- Worktrees enable true parallelism (5 agents simultaneously)
+- Review bottleneck is OK (Mal handles sequential reviews; CI waits anyway)
+- Transparency: all PRs visible on GitHub
+- Quality gate: CI must pass, tests must exist, review must approve
+
+**Action Items:**
+1. Mal: Write Phase 2 dispatch plan (assign issues, specify branch names, call out deps)
+2. Mal: Create Rally Development Workflow skill document
+3. Coordinator: Set up worktrees for Phase 2 agents before sprint starts
+4. Mal: Update agent instructions to include workflow steps (branch → commit → push → PR → wait → merge)
+
+**Key Learning:** Explicit workflow instructions matter. Agents are smart but not telepathic. If you want PRs, you must say "create a PR" in the task steps. Worktrees solve parallelism cleanly. Review bottleneck is acceptable for small teams. Process > hope.
+
+**Retro artifact:** `.squad/decisions/inbox/mal-retro-phase1-process.md`
+
 ### 2026-02-22 — Team Notification: Project Scaffold Complete
 
 **From Scribe (cross-agent update):**

@@ -354,6 +354,25 @@ Integrate Docker sandbox support for Copilot coding agent. Not for current (v1) 
 
 ---
 
+## Follow-up: Zero-Dependency Reference Cleanup
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Complete
+
+Following the Dependency Pivot decision, all stale "zero-dependency" references across team documentation have been corrected. The following files were updated to reflect the new production CLI stack (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts):
+
+- `.squad/team.md` — Stack description updated
+- `.squad/agents/kaylee/charter.md` — Removed zero-dep claim, documented production stack
+- `.squad/agents/jayne/charter.md` — Testing strategy clarified (node:test + ink-testing-library)
+- `.squad/agents/scribe/history.md` — Stack reference updated
+- `.squad/skills/squad-conventions/SKILL.md` — Marked as deprecated (applies to Squad, not Dispatcher)
+- `.squad/decisions.md` → Decision #3 (Config format YAML) — Appended note that js-yaml supersedes hand-rolled parser
+
+**No breaking changes.** Historical decision records preserved for audit trail. All current documentation now accurately reflects the architecture.
+
+---
+
 ## Follow-up: Hand-rolled YAML Parser Superseded by js-yaml
 
 **By:** Mal (Lead)  

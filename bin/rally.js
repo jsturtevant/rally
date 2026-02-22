@@ -28,9 +28,10 @@ program
   .command('onboard')
   .description('Onboard a repo to Rally (local path, GitHub URL, or owner/repo)')
   .argument('[path]', 'Path, GitHub URL, or owner/repo (defaults to current directory)')
-  .action(async (pathArg) => {
+  .option('--team <name>', 'Use a named team (skips interactive prompt)')
+  .action(async (pathArg, opts) => {
     try {
-      await onboard({ path: pathArg });
+      await onboard({ path: pathArg, team: opts.team });
     } catch (err) {
       console.error(`✗ ${err.message}`);
       process.exit(1);

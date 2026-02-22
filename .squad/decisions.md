@@ -654,3 +654,27 @@ Phase 1 implementation reveals a critical workflow failure: **all code was commi
 - Mal will review PRs in order before merging
 - Process integrity enforced by tooling (CI + review gate)
 - All Phase 1 code remains in main; Phase 2 starts fresh with proper workflow
+
+---
+
+## Directive: GitHub Copilot PR Review & Acceptance Criteria Gate
+
+**By:** James Sturtevant  
+**Date:** 2026-02-22T02:59:46Z  
+**Status:** Policy
+
+### Decision
+
+1. **All PRs must have GitHub Copilot as a reviewer.** Agents add Copilot via `gh pr edit --add-reviewer @copilot`. 
+2. **All Copilot review comments must be addressed before merge.** Agents read and respond to every comment.
+3. **Acceptance criteria verification required.** Before approving a PR, reviewers (Mal, Jayne, and GitHub Copilot) must verify that ALL acceptance criteria from the issue are checked off. Look for evidence in CI logs that tests cover the criteria. No approval without verification.
+
+### Rationale
+
+User requirement. Ensures automated code review coverage and that PRs genuinely meet the issue's definition of done.
+
+### Impact
+
+- PR review workflow: Add Copilot → wait for review → address comments → verify acceptance criteria → approval
+- Reviewers must spot-check CI logs for test coverage alignment with issue acceptance criteria
+- Merge blocked until all criteria verified and Copilot review addressed

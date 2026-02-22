@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { setup } from '../lib/setup.js';
+import { getStatus, formatStatus } from '../lib/status.js';
 
 const program = new Command();
 
@@ -19,6 +20,19 @@ program
     } catch (err) {
       console.error(`✗ ${err.message}`);
       process.exit(1);
+    }
+  });
+
+program
+  .command('status')
+  .description('Show Rally configuration and active dispatches for debugging')
+  .option('--json', 'Output as JSON')
+  .action((opts) => {
+    const status = getStatus();
+    if (opts.json) {
+      console.log(JSON.stringify(status, null, 2));
+    } else {
+      console.log(formatStatus(status));
     }
   });
 

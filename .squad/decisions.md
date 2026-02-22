@@ -582,3 +582,75 @@ User requirement. This is a hard gate, not a suggestion.
 - Test coverage is mandatory for all implementation work
 - CI pipeline validation required for all PRs
 - Team review is a merge blocker — design this into workflow from start
+
+---
+
+## Retrospective: Phase 1 Implementation Sprint — Process Failure & Phase 2 Workflow
+
+**Facilitated by:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Complete  
+**Related Artifact:** `.squad/log/2026-02-22T025300Z-phase1-retro-ci-fix.md`
+
+### Executive Summary
+
+Phase 1 implementation reveals a critical workflow failure: **all code was committed directly to `main` instead of via feature branches and PRs.** The directive was clear ("Every PR must include tests. CI runs on every PR. Full review before merge."), but execution bypassed that entire workflow. This decision documents the root cause analysis and proposes a concrete solution for Phase 2.
+
+### Root Cause
+
+**Coordinator's instructions to agents lacked explicit workflow steps.** Agents received task descriptions ("implement feature X") without being told to create a feature branch, push, or open a PR. They defaulted to the simplest path: `git commit` and `git push` to main.
+
+**Contributing factors:**
+- No branch strategy defined upfront
+- Agents coordinated via commit messages, not pull requests
+- No tool enforced the "must be a PR" rule
+- Coordinator didn't communicate review expectations
+
+### Phase 2 Solution: Parallel Worktrees Per Agent
+
+**Recommended approach:** Option C (worktrees per agent for maximum parallelism)
+
+#### Workflow Steps
+
+1. **Sprint Planning (Mal):** Assign issues to agents, specify branch names (`rally/<issue>-<slug>`)
+2. **Agent Onboarding (Mal):** Provide explicit workflow instructions including:
+   ```bash
+   git worktree add .worktrees/rally-<issue> --track origin/main -b rally/<issue>-<slug>
+   cd .worktrees/rally-<issue>
+   # [do work]
+   npm test  # must pass
+   git add . && git commit -m "feat: ..."
+   git push -u origin rally/<issue>-<slug>
+   gh pr create --title "..." --body "Closes #<issue>" --draft
+   # WAIT for Mal's review
+   gh pr ready <pr-number>
+   gh pr merge <pr-number> --admin --delete-branch
+   git worktree remove .worktrees/rally-<issue>
+   ```
+3. **Parallel Development:** Each agent has their own worktree — no conflicts
+4. **Code Review (Mal):** Review PRs in dependency order
+5. **Merge:** After approval + CI passes
+
+### Why This Works
+
+- **Explicit instructions:** Clear task assignment with workflow steps
+- **Worktrees eliminate conflicts:** No git stash gymnastics, agents work truly in parallel
+- **Safety gate:** CI won't pass without proper branch + PR + tests
+- **Review bottleneck is OK:** One person can handle 5 agents in sequence
+
+### Key Changes vs. Phase 1
+
+| Aspect | Phase 1 | Phase 2 |
+|--------|---------|---------|
+| **Commits** | Direct to main | Via feature branches |
+| **Review** | None | Mandatory (Mal) |
+| **Parallelism** | 5 agents on same branch (risky) | 5 agents on separate worktrees (safe) |
+| **Issue tracking** | Commits and issues decoupled | PR closes issue automatically |
+| **CI** | Workflow exists, never triggered | Runs on every PR, required gate |
+
+### Impact
+
+- Phase 2 agents get explicit workflow instructions with worktree commands
+- Mal will review PRs in order before merging
+- Process integrity enforced by tooling (CI + review gate)
+- All Phase 1 code remains in main; Phase 2 starts fresh with proper workflow

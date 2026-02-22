@@ -51,7 +51,7 @@ program
     }
   });
 
-program
+const dashboard = program
   .command('dashboard')
   .description('Show active dispatch dashboard')
   .option('--json', 'Output as JSON instead of interactive UI')
@@ -68,6 +68,21 @@ program
         const { default: Dashboard } = await import('../lib/ui/Dashboard.jsx');
         render(React.createElement(Dashboard, { project: opts.project }));
       }
+    } catch (err) {
+      console.error(`✗ ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+dashboard
+  .command('clean')
+  .description('Clean done dispatches (remove worktrees, preserve branches)')
+  .option('--all', 'Clean all dispatches, not just done ones')
+  .option('--yes', 'Skip confirmation prompt for --all')
+  .action(async (opts) => {
+    try {
+      const { dashboardClean } = await import('../lib/dashboard-clean.js');
+      await dashboardClean({ all: opts.all, yes: opts.yes });
     } catch (err) {
       console.error(`✗ ${err.message}`);
       process.exit(1);

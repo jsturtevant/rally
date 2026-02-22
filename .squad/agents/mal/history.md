@@ -18,6 +18,41 @@ Rally is a command line tool that works with Squad. Key commands:
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
 
+### 2026-02-22 — Team Reviewer PR Review Process Finalized
+
+**Directive received (2026-02-22T171200Z):** Mal (Lead) must conduct mandatory code review on every PR in addition to Copilot's automated review. Both reviews must complete, all comments must be addressed (fix or explain), out-of-scope feedback opens GitHub issues with optional @copilot assignment.
+
+**Deliverables completed:**
+1. Updated `.squad/decisions/inbox/mal-pr-review-skill-outline.md` to incorporate:
+   - NEW section 1.6: Understanding dual-review process (Copilot + Mal)
+   - NEW section 2.4: Team Reviewer (Mal) workflow — pulling diff, reading context, posting comments, enforcing "address or explain"
+   - NEW section 2.5: Out-of-scope comment handling (open issues, @copilot assignment)
+   - NEW section 3.5: Mal's approval decision (when to approve, when to request changes)
+   - Updated section 3: Clarified both reviewers apply (all comments from both must be addressed)
+   - Updated section 4: Dual-gate merge requirement (CI green + both approvals + all comments addressed)
+   - NEW section 6.2: Mal's team reviewer commands (gh pr diff, gh pr review, gh pr comment)
+   - NEW section 6.5: Out-of-scope issue handling commands
+
+2. Created `.squad/skills/pr-review-process/SKILL.md`:
+   - Formalized from outline using rally-design-checklist as format template
+   - Confidence: "medium" (Phase 3 will validate; bump to high after dispatch PRs complete)
+   - Covers all patterns, key commands, Phase 2 examples, acceptance criteria, validation plan
+   - Includes both agent responsibilities and Mal's team reviewer responsibilities
+
+**Key patterns formalized:**
+- Dual-review gate: Copilot automatic + Mal manual (both required for merge)
+- "Address or explain" rule: ZERO unaddressed comments allowed (hard policy)
+- Out-of-scope handling: Opens GitHub issue, optionally assigns @copilot, replies in review thread
+- Merge gate three-fold: CI green + both approvals + all comments addressed
+- Revision workflow: Original author cannot self-revise (different agent picks up if Mal requests changes)
+
+**Commands documented:**
+- Mal's review commands: `gh pr diff <number>`, `gh pr review <number> --approve/--request-changes`, `gh pr comment <number>`
+- Line-level comments: Posted via web UI (gh CLI limitation; workaround documented)
+- Out-of-scope issue creation: `gh issue create --title "..." --body "..." --repo jsturtevant/rally`
+
+**Validation plan:** Phase 3 dispatch PRs (#14–#19) will test dual-review process. Retrospective after Phase 3 will refine skill for v2.0 (high confidence).
+
 ### 2026-02-21 — PRD Draft
 
 - **PRD location:** `docs/PRD.md` — comprehensive, covers all 5 commands with CLI examples, error cases, state layout, and open questions.
@@ -380,3 +415,31 @@ Facilitated Phase 2 retro (issues #9–#13, PRs #30–#34).
 - Mal: Verify dispatch context format with James before Phase 3 kickoff
 
 **Retro artifact:** `.squad/decisions/inbox/mal-phase2-retro.md`
+
+### 2026-02-22 — PR Review Process Skill Design (Complete)
+
+Designed comprehensive "PR Review Process" skill for the team based on Phase 2 actual workflow (PRs #30–#34) and post-implementation retro findings.
+
+**Skill scope:**
+1. **PR Creation** — branch naming (`rally/<issue>-<slug>`), commit message format (`Closes #X`, Co-authored-by trailer), PR description template (changes/acceptance criteria/test results), issue linking, reviewer setup (Copilot auto + Mal manual)
+2. **Waiting for Review** — Copilot's automatic run (2–5 min), polling pattern (check every 5–10 min), reading Copilot comments, what to look for (security, Node compat, error handling, edge cases, TTY handling)
+3. **Responding to Review Comments** — read all before responding, address each individually, commit/push strategy, reply in GitHub threads with evidence, re-request review after fixes
+4. **Review Approval & Merge** — verify CI green (4 checks: Node 18/20/22 + Squad CI), verify acceptance criteria with test count evidence, merge strategy (squash + merge), auto-close linked issues
+5. **Review Rejection Workflow** — coordinator enforces lockout (original author can't self-revise), different agent picks up revision, branch strategy for minor vs major fixes, hand-off context, Phase 2 experience (zero rejections but policy still defined)
+
+**Grounded in real Phase 2 data:**
+- PR #32 (Onboard): Copilot 7 comments → Wash fixed all in one commit, Mal approved
+- PR #34 (Team Selection): Initial feedback (interactive prompt unreachable + partial state bug) → Wash pushed fixes → Mal re-reviewed → Copilot approved
+- All 5 PRs used feature branches (`rally/<issue>-<slug>`), squash+merge, auto-closed issues
+- All 5 PRs had Node 18/20/22 + Squad CI green before merge
+
+**Key learnings incorporated:**
+1. Acceptance criteria as checklist in PR description (works, verified in all 5 PRs)
+2. Copilot reviews must be mandatory (policy change for Phase 3+)
+3. Interactive behavior validation incomplete initially (TTY testing gap identified)
+4. Edge case enumeration should be pre-review, not luck (added to skill as Copilot comment patterns)
+5. Coordinator role must enforce "different agent revises" (rare in Phase 2, but policy needed)
+
+**Artifact:** `.squad/decisions/inbox/mal-pr-review-skill-outline.md` — 19KB outline, ready for team review and formalization into SKILL.md
+
+**Status:** Awaiting team review before finalizing SKILL.md

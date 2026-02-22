@@ -281,3 +281,17 @@ See GitHub issues for full specs. Blockers resolved—proceed with implementatio
 - Validation throws descriptive errors for invalid input
 
 **PR:** #36 on branch `rally/19-active-tracking`
+
+### 2026-02-22T1725 — Phase 3 Wave 1: Cross-Agent Update
+
+**From Scribe (cross-agent propagation):**
+
+**Wave 1 parallel results (your peers):**
+
+1. **Kaylee (Core Dev):** Implemented `lib/dispatch.js` with `resolveRepo()` and core dispatch routing. 22 tests passing. PR #35 on `rally/14-dispatch-core`. Your `lib/active.js` will be consumed by dispatch workflows in Wave 2.
+
+2. **Jayne (Tester):** Wrote 35 anticipatory test stubs for Issues #15 and #17 — `test/dispatch-issue.test.js` (14 tests) and `test/dispatch-context.test.js` (21 tests). Tests validate active.yaml tracking integration with your module.
+
+**Your PR #36 status:** Awaiting dual review (Copilot + Mal).
+
+**Your atomic writes decision** has been merged into `.squad/decisions.md`. All agents now know `lib/active.js` owns dispatch CRUD exclusively.

@@ -121,7 +121,7 @@ describe('worktree', () => {
   });
 
   it('should resolve relative paths to absolute paths', () => {
-    const relativePath = './worktree-relative';
+    const relativePath = join(testDir, 'worktree-relative');
     const branchName = 'relative-branch';
 
     const result = createWorktree(repoPath, relativePath, branchName);

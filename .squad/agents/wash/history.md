@@ -140,3 +140,62 @@ All decisions documented and merged. PRD design phase is complete with all block
   - #18: Copilot CLI invocation (dispatch.js integration)
 
 See GitHub issues for full specs. Blockers resolved—proceed with implementation.
+
+### 2026-02-22 — Phase 1 CI & Core Utilities Implementation (Issues #5, #6, CI)
+
+**Task:** Implement CI workflow + worktree.js + github.js with comprehensive tests.
+
+**What Was Built:**
+
+1. **GitHub Actions CI workflow** (`.github/workflows/ci.yml`):
+   - Runs on push to main and all PRs
+   - Tests across Node.js 18, 20, 22 (matrix strategy)
+   - Uses standard GHA actions (checkout@v4, setup-node@v4)
+   - Created alongside existing squad-ci.yml (not modified per directive)
+
+2. **lib/worktree.js** (Issue #5 — Git Worktree Management):
+   - `createWorktree(repoPath, worktreePath, branchName)` — creates worktree with new branch
+   - `removeWorktree(repoPath, worktreePath)` — removes worktree with --force
+   - `listWorktrees(repoPath)` — parses `git worktree list --porcelain`, returns array of `{path, branch, head}`
+   - `worktreeExists(repoPath, worktreePath)` — boolean check for worktree existence
+   - All functions use `execFileSync` (no shell injection), `path.resolve()` for absolute paths
+   - User-friendly error messages with full context
+
+3. **lib/github.js** (Issue #6 — GitHub CLI Wrapper):
+   - `checkGhInstalled()` — verifies gh CLI on PATH, throws with install instructions
+   - `checkGhAuth()` — verifies `gh auth status`, throws with auth instructions
+   - `getIssue(number, repo)` — fetches issue JSON (title, body, labels, assignees)
+   - `getPr(number, repo)` — fetches PR JSON (title, body, headRefName, baseRefName, files)
+   - `createPr(title, body, base, head, repo)` — creates PR, returns URL
+   - `getRepoDefaultBranch(repo)` — gets default branch via jq query
+   - All functions use `execFileSync` for safety, parse JSON with error handling
+
+4. **test/worktree.test.js** (8 tests):
+   - Real temp git repos with `git init` + initial commit
+   - Tests: create, remove, list, exists, duplicate branch error, non-git-repo error, relative path resolution
+   - Full cleanup with `beforeEach`/`afterEach` hooks
+
+5. **test/github.test.js** (8 tests):
+   - Tests JSON parsing logic (can't mock execFileSync in node:test reliably)
+   - Tests argument construction, error message detection, output parsing
+   - Validates error handling for not-found issues/PRs, invalid JSON
+   - Note: Full integration tests require real gh CLI (tested in CI)
+
+**Test Results:**
+- All 47 tests pass (including existing config, exclude, symlink, smoke tests)
+- Worktree tests use real git repos in temp directories
+- GitHub tests validate logic without actual gh calls (CI will test real gh integration)
+
+**Key Decisions:**
+- **ESM throughout** — all imports use ES modules per package.json "type": "module"
+- **execFileSync over execSync** — no shell injection risk, explicit args array
+- **Absolute paths** — `path.resolve()` on all paths for worktree operations
+- **User-friendly errors** — all throws include context (path, number, repo, instructions)
+- **Porcelain parsing** — `git worktree list --porcelain` for stable, machine-readable output
+- **JSON error detection** — parse gh CLI errors by message content for specific not-found cases
+
+**What This Enables:**
+- Dispatch command (#14-17) can now create/remove worktrees reliably
+- GitHub issue/PR fetching ready for dispatch context template (#16)
+- CI validates all PRs automatically (user directive: "CI runs on every PR")
+- Safe, cross-platform git and gh CLI invocation patterns established

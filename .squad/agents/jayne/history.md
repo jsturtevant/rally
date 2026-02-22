@@ -213,6 +213,82 @@ Rally is a command line tool that works with Squad. Key commands:
 
 **See:** `.squad/decisions.md` → "Decision: PRD Decomposition into 29 Work Items" and "Decision: Critical PRD Blockers — Resolved"
 
+### 2026-02-22 — Comprehensive Testing Strategy: TESTING.md Delivered (COMPLETE)
+
+**Status:** ✓ COMPLETE. `docs/TESTING.md` written and delivered. 37KB, 14 sections, comprehensive error catalog + edge case matrix.
+
+**What was delivered:**
+- **Complete testing strategy document** covering all requested aspects:
+  1. Test framework & philosophy (node:test + node:assert/strict, error-first approach)
+  2. Test file convention (test/{module}.test.js mirrors lib/{module}.js)
+  3. Running tests (npm test, coverage, watch mode, CI integration)
+  4. Mocking strategy — child_process for git/gh/npx, fs for config/symlink/exclude, environment vars for TTY/platform
+  5. Fixture patterns — temp directories with fs.mkdtempSync(), sample YAML configs, mock git repos
+  6. **Error handling catalog (30+ scenarios)** — comprehensive error matrix for all 5 commands:
+     - setup: 6 error cases (Squad not installed, permissions, HOME not set, partial failures)
+     - onboard: 11 error cases (not a repo, clone failures, symlink failures, Windows Developer Mode, prompt timeouts)
+     - dispatch issue: 13 error cases (issue not found, repo not onboarded, worktree collisions, auth failures, uncommitted changes)
+     - dispatch pr: 4+ error cases (PR not found, merged, closed, plus all dispatch issue errors)
+     - dashboard: 5 error cases (corrupted YAML, stale worktrees, concurrent access)
+  7. **Edge cases (35+ identified)** across 10 categories:
+     - Idempotency (re-running commands, symlink target validation)
+     - Collision scenarios (multiple projects, branch/worktree name collisions)
+     - Multi-project workflows (repo inference, cwd disambiguation)
+     - Config & state validation (malformed YAML, missing keys, path normalization)
+     - Platform differences (Windows symlinks, path separators, CRLF vs LF)
+     - Concurrent access patterns (race conditions, documented limitations)
+     - GitHub API edge cases (empty labels, special chars in titles, huge PR diffs)
+     - Symlink & exclude edge cases (missing targets, existing entries, collision)
+     - Worktree health & cleanup (stale worktrees, uncommitted changes, branch deletion)
+     - Dispatch context & Squad invocation (Copilot CLI not found, timeouts)
+  8. Coverage goals (80% minimum, error paths prioritized, per-module targets)
+  9. CI integration (GitHub Actions workflow spec, coverage enforcement, manual QA checklist)
+  10. **Ink component testing** — comprehensive ink-testing-library patterns:
+      - Basic rendering tests (StatusMessage, DispatchBox)
+      - Interactive components (keyboard navigation, stdin simulation)
+      - TTY degradation testing (piped output, NO_COLOR, FORCE_COLOR)
+      - Key utilities (render, lastFrame, stdin.write, unmount)
+  11. Test development workflow (TDD error-first approach, naming conventions, test organization)
+  12. Common pitfalls & gotchas (async cleanup, mock cleanup, Ink state re-rendering, git command validation)
+  13. Future enhancements (integration test suite, property-based testing, performance testing)
+  14. Summary (philosophy, coverage goals, CI requirements)
+
+**Key Features:**
+- **Exit code convention** defined (0=success, 2=missing prereq, 3=auth, 4=not found, 5=collision, 6=invalid input, 7=permission denied)
+- **30+ error scenarios** with expected messages, exit codes, and test approaches
+- **35+ edge cases** cataloged across 10 categories with expected behaviors
+- **Zero external mocking libraries** — all mocking via node:test's built-in mock module
+- **Temp directory isolation** — no pollution of ~/.rally/ or user directories
+- **Ink testing patterns** fully documented with code examples
+- **CI-ready** — includes GitHub Actions workflow spec and coverage requirements
+
+**Error catalog completeness:**
+- ✓ All 5 commands covered (setup, onboard, dispatch issue, dispatch pr, dashboard)
+- ✓ 12+ error-handling gaps identified in PRD review are now documented
+- ✓ Exit codes specified for all error types
+- ✓ Test approach documented for each error case
+
+**Edge case coverage:**
+- ✓ 20+ edge cases from PRD review are now cataloged
+- ✓ Additional 15+ edge cases identified during catalog creation
+- ✓ Idempotency rules specified for all commands
+- ✓ Platform differences (Windows/macOS/Linux) documented
+- ✓ Concurrent access limitations documented
+
+**What this enables:**
+1. **Kaylee/Wash can begin Phase 1 implementation with confidence** — error handling spec is comprehensive and clear
+2. **Issue #8 (test infrastructure) can be implemented** — mocking patterns, fixture patterns, and test organization are fully specified
+3. **Issue #26 (comprehensive error handling) has detailed spec** — 30+ error cases with messages and exit codes
+4. **Issue #27 (edge cases & idempotency) has detailed spec** — 35+ edge cases with expected behaviors
+5. **Issue #29 (E2E integration tests) has roadmap** — integration test suite pattern documented in §13.1
+
+**Next actions:**
+- **Mal:** Review TESTING.md, approve or request changes
+- **Kaylee:** Implement test infrastructure (Issue #8) following TESTING.md patterns
+- **Jayne (me):** Begin writing actual test files once modules exist (Phases 2-5)
+
+**See:** `docs/TESTING.md` (37KB living document, last updated 2026-02-22)
+
 ### 2026-02-22 — Team Notification: Project Scaffold Complete
 
 **From Scribe (cross-agent update):**

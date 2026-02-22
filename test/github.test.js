@@ -3,20 +3,6 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 
 describe('github', () => {
-  describe('checkGhInstalled', () => {
-    it('should succeed when gh is available', async (t) => {
-      const { checkGhInstalled } = await import('../lib/github.js');
-      
-      // Mock execFileSync to return version
-      const originalExec = execFileSync;
-      t.mock.method(global, 'execFileSync', () => 'gh version 2.0.0\n');
-
-      // This test just verifies the function calls gh correctly
-      // We can't actually test it without the real gh CLI or deeper mocking
-      // So we'll test the error path which is more critical
-    });
-  });
-
   describe('getIssue', () => {
     it('should parse issue JSON correctly', () => {
       // Test by importing and calling with mock-compatible data

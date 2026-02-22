@@ -51,4 +51,27 @@ program
     }
   });
 
+program
+  .command('dashboard')
+  .description('Show active dispatch dashboard')
+  .option('--json', 'Output as JSON instead of interactive UI')
+  .option('--project <name>', 'Filter by project (repo name)')
+  .action(async (opts) => {
+    try {
+      if (opts.json) {
+        const { getDashboardData } = await import('../lib/ui/Dashboard.jsx');
+        const data = getDashboardData({ project: opts.project });
+        console.log(JSON.stringify(data, null, 2));
+      } else {
+        const React = await import('react');
+        const { render } = await import('ink');
+        const { default: Dashboard } = await import('../lib/ui/Dashboard.jsx');
+        render(React.createElement(Dashboard, { project: opts.project }));
+      }
+    } catch (err) {
+      console.error(`✗ ${err.message}`);
+      process.exit(1);
+    }
+  });
+
 program.parse();

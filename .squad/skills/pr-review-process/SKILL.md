@@ -364,7 +364,7 @@ This skill is complete when:
 
 ---
 
-**Skill created:** 2026-02-22T23:XX:XXZ  
+**Skill created:** 2026-02-22T23:00:00Z  
 **Status:** Formalized from outline, confidence: medium (Phase 3 will validate)  
 **Domain:** PR workflow, code review, process discipline  
 **Applies to:** All Rally agents opening PRs, Mal as team reviewer

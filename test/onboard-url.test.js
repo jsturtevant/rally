@@ -95,6 +95,9 @@ describe('onboard URL cloning', () => {
   let tempDir;
   let originalEnv;
 
+  // Mock select that picks "shared" team (used for tests that don't test team selection itself)
+  const sharedSelect = async () => 'shared';
+
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'rally-url-test-'));
     originalEnv = process.env.RALLY_HOME;
@@ -162,7 +165,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['clone', barePath, join(projectsDir, 'my-project')], { stdio: 'ignore' });
 
     // Now onboard with a "shorthand" — it should detect the existing clone and skip
-    await onboard({ path: 'octocat/my-project' });
+    await onboard({ path: 'octocat/my-project', _select: sharedSelect });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
@@ -180,7 +183,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['clone', barePath, join(projectsDir, 'existing-repo')], { stdio: 'ignore' });
 
     // Should not throw or attempt a second clone
-    await onboard({ path: 'someone/existing-repo' });
+    await onboard({ path: 'someone/existing-repo', _select: sharedSelect });
 
     assert.ok(existsSync(join(projectsDir, 'existing-repo', '.squad')), '.squad symlink should exist');
   });
@@ -194,7 +197,7 @@ describe('onboard URL cloning', () => {
     mkdirSync(projectsDir, { recursive: true });
     execFileSync('git', ['clone', barePath, join(projectsDir, 'flow-test')], { stdio: 'ignore' });
 
-    await onboard({ path: 'user/flow-test' });
+    await onboard({ path: 'user/flow-test', _select: sharedSelect });
 
     const clonedPath = join(projectsDir, 'flow-test');
     // Verify symlinks created
@@ -226,7 +229,7 @@ describe('onboard URL cloning', () => {
     mkdirSync(repoPath, { recursive: true });
     execFileSync('git', ['init', repoPath], { stdio: 'ignore' });
 
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     assert.ok(existsSync(join(repoPath, '.squad')), '.squad should exist for local path');
   });

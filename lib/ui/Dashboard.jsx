@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Text } from 'ink';
+import React, { useState, useEffect } from 'react';
+import { Box, Text, useInput, useApp } from 'ink';
 import { existsSync } from 'node:fs';
 import { getActiveDispatches } from '../active.js';
 import DispatchTable from './components/DispatchTable.jsx';
@@ -69,9 +69,14 @@ function SummaryLine({ summary }) {
 
 /**
  * Main Dashboard component — full-screen Ink app.
- * Loads data synchronously on render since getActiveDispatches is sync.
+ * Supports keyboard navigation: ↑/↓ to select, Enter to print path, r to refresh, q to quit.
+ * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project }) {
+export default function Dashboard({ project, onSelect, refreshInterval = 5000 }) {
+  const { exit } = useApp();
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   let data;
   let error;
 
@@ -80,6 +85,42 @@ export default function Dashboard({ project }) {
   } catch (err) {
     error = err.message;
   }
+
+  const count = data ? data.dispatches.length : 0;
+
+  // Auto-refresh at the configured interval
+  useEffect(() => {
+    if (!refreshInterval) return;
+    const timer = setInterval(() => {
+      setRefreshKey(k => k + 1);
+    }, refreshInterval);
+    return () => clearInterval(timer);
+  }, [refreshInterval]);
+
+  // Clamp selectedIndex when dispatch count changes
+  useEffect(() => {
+    if (count > 0 && selectedIndex >= count) {
+      setSelectedIndex(count - 1);
+    }
+  }, [count, selectedIndex]);
+
+  useInput((input, key) => {
+    if (key.upArrow) {
+      setSelectedIndex(i => (i > 0 ? i - 1 : 0));
+    } else if (key.downArrow) {
+      setSelectedIndex(i => (i < count - 1 ? i + 1 : i));
+    } else if (key.return && count > 0) {
+      const selected = data.dispatches[selectedIndex];
+      if (onSelect) {
+        onSelect(selected.worktreePath ?? '');
+      }
+      exit();
+    } else if (input === 'r') {
+      setRefreshKey(k => k + 1);
+    } else if (input === 'q') {
+      exit();
+    }
+  });
 
   if (error) {
     return (
@@ -94,8 +135,11 @@ export default function Dashboard({ project }) {
       <Box marginBottom={1}>
         <Text bold>Rally Dashboard</Text>
       </Box>
-      <DispatchTable dispatches={data.dispatches} />
+      <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
+      <Box marginTop={1}>
+        <Text dimColor>↑/↓ navigate · Enter select · r refresh · q quit</Text>
+      </Box>
     </Box>
   );
 }

@@ -62,6 +62,9 @@ program
         const { getDashboardData } = await import('../lib/ui/Dashboard.jsx');
         const data = getDashboardData({ project: opts.project });
         console.log(JSON.stringify(data, null, 2));
+      } else if (!process.stdout.isTTY) {
+        const { renderPlainDashboard } = await import('../lib/ui/Dashboard.jsx');
+        console.log(renderPlainDashboard({ project: opts.project }));
       } else {
         const React = await import('react');
         const { render } = await import('ink');

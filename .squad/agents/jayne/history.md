@@ -163,3 +163,52 @@ Rally is a command line tool that works with Squad. Key commands:
   - Testing section now mentions `ink-testing-library` alongside `node:test` for testing Ink UI components
 - **Why:** Post-dependency pivot, all stale zero-dep docs cleaned across `.squad/` and `docs/`
 - **Impact:** Your charter is now fully aligned with current npm-stack architecture. Reference it with confidence.
+
+### 2026-02-22 01:13 — All 5 Critical Blockers Resolved: Ready for Test & Error Catalog Work
+
+**From User Decision (via Scribe → merged to decisions.md):**
+
+**Status:** PRD design phase complete. All blockers resolved. PRD decomposition finalized into 29 work items. **You are unblocked. Proceed with testing strategy and error catalog.**
+
+**3 Major Blocker Resolutions:**
+1. ✓ **Squad invocation (§9.1):** Automated Copilot CLI invocation (not instructions-only). `dispatch.js` invokes `npx copilot` and waits for completion.
+2. ✓ **Windows symlinks (§9.7):** Hard error with Developer Mode message. No junctions/copy fallback in v1. `symlink.js` tests support upfront and throws on Windows without symlinks.
+3. ✓ **dispatch-context.md format (§9.4):** Simple markdown template. Issue/PR number, title, labels, creation date, body, files changed (PRs), instructions (worktree path, branch). Squad parses markdown natively.
+
+**PRD Decomposition into 29 Work Items (#1–#29):**
+- **Phase 1: Foundation (8 issues)** — config.js, symlink.js, exclude.js, worktree.js, github.js, CLI entry, test infrastructure, package.json scaffold
+- **Phase 2: Core Commands (5 issues)** — setup, onboard (local + GitHub URL + team selection), status
+- **Phase 3: Dispatch (6 issues)** — dispatch module, issue/PR workflows, context.md template, Copilot CLI invocation, active.yaml tracking
+- **Phase 4: Dashboard (6 issues)** — UI components (Ink), main view, keyboard nav, clean, TTY fallback
+- **Phase 5: Polish (4 issues)** — Error handling, edge cases, docs, E2E tests
+
+**Your Assigned Work (5 issues total):**
+- #8: Test infrastructure setup (Phase 1)
+- #18: Copilot CLI invocation testing (Phase 3)
+- #26: Comprehensive error handling (Phase 5)
+- #27: Edge cases & idempotency (Phase 5)
+- #29: End-to-end integration tests (Phase 5)
+
+**What You Found Earlier — Still Valid:**
+- 12 error-handling gaps (setup/onboard/dispatch/dashboard edge cases)
+- 20+ edge cases (idempotency, collisions, multi-project, config validation, concurrency)
+- Test framework not yet specified
+
+**Next Actions for You (Post-Blocker Confirmation):**
+1. **Write `docs/TESTING.md`** — Define test strategy:
+   - Framework: `node:test` (built-in)
+   - Ink component testing: `ink-testing-library`
+   - Git/gh/npx mocking strategy (fixture approach, temp dirs, mocking libraries)
+   - Integration test patterns (setup→onboard→dispatch→dashboard workflow)
+2. **Create error handling catalog** for PRD §8:
+   - List all error cases per command (setup, onboard, dispatch, dashboard, cleanup)
+   - Specify exit codes (0=success, distinct codes for auth/not-found/collision/io-error)
+   - Include error messages and recovery steps
+3. **Design test fixtures** — Avoid ~/.rally/ pollution in tests; temp dir strategy
+
+**Timeline:**
+- Blocker confirmation in PRD (Mal): 2026-02-22 soon
+- Your target for TESTING.md + error catalog: 2026-02-23
+- After you deliver testing docs, Kaylee/Wash can begin Phase 1 implementation with confidence
+
+**See:** `.squad/decisions.md` → "Decision: PRD Decomposition into 29 Work Items" and "Decision: Critical PRD Blockers — Resolved"

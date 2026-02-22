@@ -390,3 +390,171 @@ This has been superseded by the Dependency Pivot decision (see above).
 The dependency pivot adopted `js-yaml` (`^4.0.0`) for YAML parsing and serialization. This eliminates the risk and maintenance burden of a hand-rolled YAML parser. The `config.js` module now uses `js-yaml` instead of custom parsing logic.
 
 **Impact:** No changes to the three-file state model or YAML structure — only the implementation of the parser. Config files remain human-readable YAML.
+
+---
+
+## Decision: PRD Decomposition into 29 Work Items
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Complete (GitHub issues #1–#29 created)
+
+### Summary
+
+Decomposed `docs/PRD.md` into 29 sequential implementation work items across 5 phases with explicit dependencies, sizing (S/M/L), and ownership. Identified 3 critical blockers that must be resolved before dispatch implementation can begin.
+
+### Phases & Issue Breakdown
+
+- **Phase 1: Foundation (8 issues #1–#8)** — Project scaffold, config.js, symlink.js, exclude.js, worktree.js, github.js, CLI entry, test setup
+- **Phase 2: Core Commands (5 issues #9–#13)** — setup, onboard (local + GitHub URL + team selection), status
+- **Phase 3: Dispatch (6 issues #14–#19)** — dispatch module, issue/PR workflows, context template, Copilot CLI invocation, active.yaml
+- **Phase 4: Dashboard (6 issues #20–#25)** — UI components, main view, keyboard nav, clean command, TTY fallback
+- **Phase 5: Polish (4 issues #26–#29)** — Error handling, edge cases, docs, E2E tests
+
+### Identified Blockers (All Now Resolved — See Below)
+
+1. **Squad invocation mechanism** ✓ RESOLVED
+2. **Windows symlink strategy** ✓ RESOLVED
+3. **dispatch-context.md format** ✓ RESOLVED
+
+Also found:
+- **PRD inconsistencies:** §3.3 vs §6.3 field names (issue/PR field sets differ)
+- **Missing docs:** `docs/TESTING.md` (Jayne to own)
+- **Error handling gaps:** 12 identified (Jayne to catalog)
+- **Edge cases:** 20+ identified (scope for Kaylee/Jayne)
+
+### Parallelization Strategy
+
+**Can parallelize:**
+- Phase 1 utilities are independent (config, symlink, exclude, worktree, github)
+- Phase 2 commands are independent once Phase 1 utilities exist
+- Phase 4 UI components are independent of each other
+
+**Must serialize:**
+- dispatch depends on Phase 1–2 (onboard, worktree, github utils)
+- dashboard depends on dispatch (needs active.yaml)
+- Phase 4 must follow Phase 3
+
+### Impact
+
+- All agents have explicit work items with dependencies and sizing
+- Implementation can begin in phases with clear parallelization windows
+- 29 GitHub issues ready for sprint planning
+
+---
+
+## Decision: GitHub Issues Created for Rally Implementation Roadmap
+
+**By:** Wash (Integration Dev)  
+**Date:** 2026-02-22  
+**Status:** Complete
+
+### Summary
+
+All 29 implementation issues have been created on the `jsturtevant/rally` GitHub repository following Mal's decomposition exactly. Issues include:
+- 15 labels (10 categories + 5 phases)
+- 5 milestones (Phase 1–5)
+- 29 sequential issues (#1–#29) with dependencies documented in issue bodies
+- Ownership assigned: Kaylee (17), Wash (3), Jayne (5), Mal (1)
+- Sizes and acceptance criteria included for sprint planning
+
+### Implementation Process
+
+1. Created labels with `gh label create --force`
+2. Created milestones via GitHub REST API
+3. Created issues in 3 batches (paused between for GitHub processing)
+4. Dependencies documented as "Depends on: #N" in issue bodies
+
+### Impact
+
+- Clear, prioritized roadmap visible on GitHub
+- All team members know their assigned work
+- Dependency relationships documented for sequencing
+- Ready for sprint planning and assignment
+
+---
+
+## Decision: Critical PRD Blockers — Resolved
+
+**By:** James Sturtevant (User)  
+**Date:** 2026-02-22  
+**Status:** Resolved
+**Timestamp:** 2026-02-22T01:13:00Z
+
+### Blocker 1: Squad Invocation Mechanism (PRD §9.1)
+
+**Question:** How does Rally invoke Squad after worktree setup?
+
+**Resolution:** Automated CLI invocation. Rally automatically launches Copilot CLI in the worktree with the appropriate prompt (review PR or plan/implement fix for issue). Rally captures the session ID for later resume if needed.
+
+**Why:** Automated invocation is Rally's core value proposition. Manual launch defeats the purpose.
+
+**Implementation note:** `dispatch.js` must invoke Copilot CLI via `npx copilot` and wait for completion.
+
+### Blocker 2: Windows Symlink Strategy (PRD §9.7)
+
+**Question:** What happens when symlinks fail on Windows without Developer Mode?
+
+**Resolution:** Hard error with clear message. "Enable Windows Developer Mode". No junctions or copy fallback in v1.
+
+**Why:** Simplicity — avoid maintaining multiple code paths for v1.
+
+**Implementation note:** `symlink.js` should test symlink support upfront and throw if not available on Windows.
+
+### Blocker 3: dispatch-context.md Format (PRD §9.4)
+
+**Question:** What goes in `.squad/dispatch-context.md`?
+
+**Resolution:** Simple markdown template. Squad parses markdown natively. Include:
+- Issue/PR number, title, labels, creation date
+- Description (body from GitHub)
+- Files changed (for PRs only)
+- Instructions (worktree path, branch name)
+
+**Why:** Minimal, markdown-native, Squad-friendly.
+
+**Implementation note:** `dispatch.js` writes template to `.squad/dispatch-context.md` when creating worktree.
+
+### Impact
+
+- Implementation can proceed without blockers
+- All three decisions are implementer-friendly (clear, no ambiguity)
+- Dispatchers (Kaylee/Wash) can begin Phase 1–3 implementation immediately
+
+---
+
+## Retrospective: PRD Design Phase Complete
+
+**Date:** 2026-02-22  
+**Facilitated By:** Mal (Lead)  
+**Participants:** Full team review cycle (Mal, Wash, Kaylee, Jayne)
+
+### Status
+
+PRD design phase is complete. Architecturally sound, internally consistent, blockers resolved. **Ready for implementation phase.**
+
+### What Went Well
+
+- PRD is architecturally sound and internally consistent
+- Dependency pivot (Ink/Chalk/Ora/Commander) cleared decks for implementation
+- Stale docs caught and fixed (zero-dep references updated)
+- Full team review cycle completed with blockers explicit and documented
+- Target user clarified: solo dev on shared repos (not team adoption)
+
+### What Needs Attention
+
+1. **Error handling catalog** — 12 error-handling gaps identified. Jayne to write comprehensive catalog for each command.
+2. **Test framework spec** — `docs/TESTING.md` missing. Jayne to document mocking strategy, fixture patterns, Ink component testing.
+3. **Edge cases** — 20+ edge cases identified (idempotency, collisions, multi-project, config validation, concurrency).
+4. **PRD §9 updates** — Blocker resolutions must be written into PRD and committed.
+
+### Action Items (Post-Blocker Resolution)
+
+1. **Mal:** Update `docs/PRD.md` with blocker resolutions and commit
+2. **Jayne:** Write `docs/TESTING.md` and error handling catalog (target: 2026-02-23)
+3. **Kaylee/Wash:** Begin Phase 1 module implementation (config, symlink, exclude, worktree, github, CLI)
+4. **All:** Review updated PRD before next standup
+
+### Next Phase
+
+Implementation begins with Phase 1 foundation modules. Kaylee and Wash can parallelize work across utilities. Jayne supports with testing strategy and error catalog.

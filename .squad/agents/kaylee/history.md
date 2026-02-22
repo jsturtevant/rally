@@ -80,3 +80,38 @@ Rally is a command line tool that works with Squad. Key commands:
   - Voice section reinforced: Loves clean code, excited about elegant solutions, follows squad-conventions skill to the letter, uses production CLI stack — no hand-rolled modules
 - **Why:** Post-dependency pivot, all stale zero-dep docs have been cleaned across `.squad/` and `docs/`
 - **Impact:** Your charter is now fully aligned with current architecture. Reference it with confidence.
+
+### 2026-02-22 01:13 — PRD Decomposition Complete: 29 Work Items Across 5 Phases
+
+**From Mal (Lead) → Scribe (merged to decisions.md):**
+
+**Status:** PRD design complete. All blockers resolved. Work decomposition finalized. **Ready for implementation.**
+
+**29 GitHub Issues Created (#1–#29):**
+- **Phase 1: Foundation (8 issues #1–#8)** — Project scaffold, config.js YAML module, symlink.js (cross-platform), exclude.js (.git/info/exclude), worktree.js (git operations), github.js (gh CLI), bin/rally.js (CLI entry with Commander), test infrastructure
+- **Phase 2: Core Commands (5 issues #9–#13)** — setup command, onboard (local repos), onboard (GitHub URLs + clone), team selection prompt, status debug command
+- **Phase 3: Dispatch (6 issues #14–#19)** — dispatch.js core module, dispatch issue workflow, dispatch PR workflow, dispatch-context.md template writer, Copilot CLI invocation, active.yaml dispatch tracking
+- **Phase 4: Dashboard (6 issues #20–#25)** — StatusMessage & DispatchBox UI components (Ink), DispatchTable component, dashboard main view, keyboard navigation, dashboard clean command, TTY graceful degradation
+- **Phase 5: Polish (4 issues #26–#29)** — Comprehensive error handling, edge cases & idempotency, user documentation, E2E integration tests
+
+**Ownership for Kaylee:** 17 issues (core implementation across all phases)
+
+**Parallelization Strategy:**
+- **Phase 1 utilities can run in parallel:** config, symlink, exclude, worktree, github modules are independent
+- **Phase 2 depends on Phase 1:** setup and onboard independent once utilities exist
+- **Phase 3 depends on Phase 1–2:** dispatch depends on onboard + worktree + github utils
+- **Phase 4 depends on Phase 3:** dashboard depends on dispatch (needs active.yaml)
+
+**All 3 Critical Blockers Now Resolved:**
+1. ✓ **Squad invocation:** Automated Copilot CLI invocation (not instructions-only)
+2. ✓ **Windows symlinks:** Hard error with Developer Mode message (no fallback in v1)
+3. ✓ **dispatch-context.md:** Simple markdown template with issue/PR details, files changed, instructions
+
+**What This Means for You:**
+- Begin with Phase 1 foundation modules (all 8 can be developed in parallel)
+- Review `docs/PRD.md` §4.3 (module structure) and §5 (Ink/Chalk/Ora/Commander architecture) before starting
+- Use Ink for terminal rendering—no raw ANSI codes in app code
+- GitHub issues #1–#29 are ready for sprint planning on jsturtevant/rally
+- See `.squad/decisions.md` → "Decision: PRD Decomposition into 29 Work Items" for full details
+
+**Next Action:** After blockers confirmed in PRD update, begin Phase 1 implementation (target: parallel development across utilities)

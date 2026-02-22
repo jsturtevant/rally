@@ -81,3 +81,40 @@ Rally is a command line tool that works with Squad. Key commands:
 - Jayne: Await blocker resolution, then write test suite and `docs/TESTING.md`
 
 See `.squad/decisions.md` → "PRD Review Findings" for full status and team action items.
+
+### 2026-02-22 — GitHub Issues Creation Complete
+
+**Task:** Created all 29 implementation issues on jsturtevant/rally.
+
+**What was done:**
+1. **15 labels created** with color assignments per specification:
+   - Core categories: core, setup, cli, ui, testing, docs, git, github, debug, utilities
+   - Phase labels: phase:1-foundation through phase:5-polish
+
+2. **5 milestones created:**
+   - Phase 1: Foundation
+   - Phase 2: Core Commands
+   - Phase 3: Dispatch
+   - Phase 4: Dashboard
+   - Phase 5: Polish
+
+3. **29 issues created in sequential order** (#1 through #29):
+   - **Phase 1 (8 issues):** Scaffolding, utilities (config, symlink, exclude, worktree, github modules), CLI setup, test infrastructure
+   - **Phase 2 (5 issues):** setup, onboard (local + GitHub URLs + team selection), status command
+   - **Phase 3 (6 issues):** dispatch core, issue mode, PR mode, context templates, Copilot CLI invocation, active.yaml tracking
+   - **Phase 4 (6 issues):** UI components (StatusMessage, DispatchBox, DispatchTable), dashboard main view, keyboard navigation, clean command, TTY graceful degradation
+   - **Phase 5 (4 issues):** Error handling, edge cases/idempotency, documentation, end-to-end tests
+
+**Key details:**
+- Each issue includes acceptance criteria, owner assignment, size estimate (S/M/L), and dependency notes in body
+- All issues labeled with appropriate categories and phase
+- Created sequentially to ensure numeric order #1–#29
+- Process: bash scripts (3 batches) using `gh issue create` CLI for reliability
+
+**Owner assignments honored from specification:**
+- Kaylee: Core command implementation (issues #1-4, 7, 9-10, 12-17, 20-24)
+- Wash: Git/GitHub integration (issues #5-6, #11, #18)
+- Jayne: Testing & error handling (issues #8, #25-27, #29)
+- Mal: Documentation (#28)
+
+**Files modified:** None (GitHub-only task). All state in jsturtevant/rally repo.

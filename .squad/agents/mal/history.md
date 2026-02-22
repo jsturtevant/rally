@@ -153,6 +153,29 @@ Fixed all stale "zero-dependency" references across team documentation post-depe
 - Updated implementation agents (Kaylee, Wash, Jayne) with cross-agent context
 - All squad/ changes committed
 
+### 2026-02-22 — PRD Decomposition into Work Items
+
+Decomposed `docs/PRD.md` into 28 implementation work items across 5 phases:
+
+**Phase 1 (Foundation):** 8 items — scaffold, config utilities, symlink, exclude, worktree, github wrapper, CLI entry point, basic tests
+**Phase 2 (Core Commands):** 5 items — setup command, onboard command (w/ GitHub URL + team prompt), status command
+**Phase 3 (Dispatch):** 6 items — dispatch core, issue mode, PR mode, context writer, Squad invocation, active registry
+**Phase 4 (Dashboard):** 5 items — Ink components, dashboard layout, keyboard nav, clean subcommand, non-TTY fallback
+**Phase 5 (Polish):** 4 items — error catalog, edge case handling, docs, final integration tests
+
+**Blocking open questions (my recommendations):**
+1. **Squad invocation (§9.1):** Option A — print instructions, don't invoke. Keeps Rally decoupled from editors.
+2. **Windows symlinks (§9.7):** Hard error with Developer Mode guidance. No fallback in v1.
+3. **Dispatch context format (§9.4):** Simple markdown template with issue/PR metadata and instructions.
+
+**Non-blocking open questions:** Worktree location (keep inside repo), status tracking (keep 5 statuses, manual), dashboard clean (worktree only, no branch delete).
+
+**PRD inconsistency:** §3.3 vs §6.3 gh field names differ — use §6.3 as authoritative.
+
+**Key insight:** Phase 1 utilities can all be built in parallel. Phase 3 serializes. Phase 4 can mostly parallelize once dispatch works.
+
+Decision filed: `.squad/decisions/inbox/mal-prd-decomposition.md`
+
 ### 2026-02-22 — Project Rename: Dispatcher → Rally
 
 Executed comprehensive project rename per James Sturtevant's directive.

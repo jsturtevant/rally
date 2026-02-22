@@ -77,11 +77,38 @@ gh pr edit <number> --add-reviewer jsturtevant
 
 **What Mal does (team reviewer):**
 1. Waits for Copilot to finish (same code state)
-2. Pulls full diff: `gh pr diff <number>`
+2. Pulls full diff: `gh pr diff <number>` — read every changed line
 3. Reads related source files for context (bin/, lib/, test/, PRD)
-4. Posts comments (general PR comment or line-level feedback via web UI)
+4. **Posts INLINE review comments on specific file+line** — NOT general PR comments.
+   Use the GitHub PR review API to attach comments to the exact line of code:
+   ```bash
+   # Submit a review with inline comments (preferred):
+   gh api repos/{owner}/{repo}/pulls/{number}/reviews \
+     --method POST \
+     -f event=COMMENT \
+     -f body="Overall review summary" \
+     --jsonc '{"comments": [
+       {"path": "lib/dispatch.js", "line": 42, "body": "This needs null-checking"},
+       {"path": "lib/active.js", "line": 15, "body": "Use atomic write pattern here"}
+     ]}'
+   
+   # Or create individual inline comments:
+   gh api repos/{owner}/{repo}/pulls/{number}/comments \
+     --method POST \
+     -f path="lib/dispatch.js" \
+     -F line=42 \
+     -f side=RIGHT \
+     -f body="This needs null-checking" \
+     -f commit_id="$(gh pr view {number} --json headRefOid -q .headRefOid)"
+   ```
+   **NEVER use `gh pr comment` for code feedback** — that posts a general PR comment
+   with no file/line context. Only use `gh pr comment` for non-code discussion.
 5. Monitors agent responses in threads
-6. Posts approval/request-changes when satisfied
+6. Posts approval/request-changes via `gh pr review`:
+   ```bash
+   gh pr review <number> --approve --body "LGTM — all criteria met"
+   gh pr review <number> --request-changes --body "See inline comments"
+   ```
 
 **Mal's review checklist:**
 - [ ] All Copilot comments addressed (code fixed OR explained)
@@ -266,14 +293,37 @@ gh pr create --title "feat: ..." --body "Closes #<issue>\n\n## Changes\n..." --b
 gh pr edit <number> --add-reviewer jsturtevant
 ```
 
-**Mal's review (team reviewer):**
+**Mal's review (team reviewer) — INLINE comments required:**
 ```bash
+# 1. Pull the full diff — read every line
 gh pr diff <number>
 gh pr diff <number> --stat
+
+# 2. Post inline review comments on specific file+line (REQUIRED)
+#    Submit a review with inline comments:
+gh api repos/{owner}/{repo}/pulls/{number}/reviews \
+  --method POST \
+  -f event=COMMENT \
+  -f body="Review summary" \
+  --jsonc '{"comments": [
+    {"path": "lib/file.js", "line": 42, "body": "Comment on this line"}
+  ]}'
+
+# 3. Or create individual inline comments:
+gh api repos/{owner}/{repo}/pulls/{number}/comments \
+  --method POST \
+  -f path="lib/file.js" \
+  -F line=42 \
+  -f side=RIGHT \
+  -f body="Comment text" \
+  -f commit_id="$(gh pr view {number} --json headRefOid -q .headRefOid)"
+
+# 4. Final verdict (approve or request changes)
 gh pr review <number> --approve --body "..."
-gh pr review <number> --request-changes --body "..."
-gh pr comment <number> --body "..."
+gh pr review <number> --request-changes --body "See inline comments"
 ```
+**⚠️ NEVER use `gh pr comment` for code feedback — it has no file/line context.**
+Only use `gh pr comment` for non-code discussion (e.g., "opened issue #X to track").
 
 **Respond to review:**
 ```bash
@@ -364,7 +414,7 @@ This skill is complete when:
 
 ---
 
-**Skill created:** 2026-02-22T23:00:00Z  
+**Skill created:** 2026-02-22T23:XX:XXZ  
 **Status:** Formalized from outline, confidence: medium (Phase 3 will validate)  
 **Domain:** PR workflow, code review, process discipline  
 **Applies to:** All Rally agents opening PRs, Mal as team reviewer

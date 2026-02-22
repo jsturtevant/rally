@@ -26,8 +26,8 @@ program
 
 program
   .command('onboard')
-  .description('Onboard a local repo to Rally (symlink Squad team files)')
-  .argument('[path]', 'Path to the repo (defaults to current directory)')
+  .description('Onboard a repo to Rally (local path, GitHub URL, or owner/repo)')
+  .argument('[path]', 'Path, GitHub URL, or owner/repo (defaults to current directory)')
   .action(async (pathArg) => {
     try {
       await onboard({ path: pathArg });

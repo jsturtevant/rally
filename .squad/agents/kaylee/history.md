@@ -245,3 +245,16 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
    - Keep `execFileSync` with array args (safety against injection)
 
 **Next step for you:** Review Phase 2 retro in `.squad/decisions.md` → "Retrospective: Phase 2 Implementation" section. Understand what went well and where the gaps are. You're building dispatch — it will be scrutinized for these same patterns and process gates.
+
+### 2026-02-22T171200Z: PR Review Skill Finalized
+
+**Directive:** A new PR review skill exists at `.squad/skills/pr-review-process/SKILL.md`. You must read this before opening any PR in Phase 3.
+
+**Key changes from Phase 2:**
+- Mal (Lead) now conducts mandatory review in addition to Copilot's automated review
+- All comments from both reviewers must be addressed (no exceptions — hard policy)
+- If feedback is out-of-scope, Mal opens a GitHub issue and optionally assigns @copilot
+- Merge gate is three-fold: CI green + Copilot approved + Mal approved + all comments addressed
+- Your revision workflow: if Mal requests changes, don't self-revise — a different agent will pick it up
+
+**Action:** Read `.squad/skills/pr-review-process/SKILL.md` before Phase 3 PRs.

@@ -906,3 +906,105 @@ Phase 2 showed Copilot provides valuable edge case detection (13 comments on PR 
 - Mal enforces this as merge gate (no merge without Copilot reviewed)
 - Copilot review latency may affect PR cycle time (typically 30-60 sec)
 - All Phase 3+ PRs must follow this pattern (dispatch, dashboard, error handling)
+
+---
+
+## Directive: Team Reviewer (Mal) — Mandatory Review on All Phase 3+ PRs
+
+**By:** James Sturtevant (User)  
+**Date:** 2026-02-22T17:12:00Z  
+**Status:** Policy
+
+### Decision
+
+In addition to Copilot's mandatory automated review, **Mal (as Team Lead) must conduct a manual code review on every PR** starting Phase 3. Process:
+
+1. **Review pull:** `gh pr diff <number>` — understand scope and changes
+2. **Review context:** Read related files, understand patterns, trace edge cases
+3. **Post comments:** `gh pr review <number>` or `gh pr comment <number>` — leave detailed feedback
+4. **Enforce address-or-explain:** All comments from both Copilot and Mal must be addressed (fixed or explicitly stated why not fixing). **No unaddressed comments allowed (hard policy).**
+5. **Out-of-scope handling:** If a comment raises work that shouldn't be in current PR, open a GitHub issue for it and optionally assign to @copilot. Reply in PR thread with link.
+6. **Approval:** Approve only when all comments addressed AND code is solid
+
+### Rationale
+
+User request — captured for team memory. Dual-review gate (Copilot + Mal) ensures both automated and human judgment apply before merge.
+
+### Impact
+
+- **Merge gate becomes three-fold:** CI green + Copilot approved + Mal approved + all comments addressed (zero exceptions)
+- **Review coordination:** Both reviewers must complete reviews; both must approve; all comments must be addressed
+- **Revision workflow:** Original author cannot self-revise (different agent picks up if Mal requests changes, per Phase 2 learnings)
+- **Out-of-scope issue workflow:** Mal opens GitHub issue when feedback is out-of-scope, tags @copilot if appropriate
+
+### Key Commands
+
+- **Pull PR diff:** `gh pr diff <number>`
+- **Review/approve:** `gh pr review <number> --approve` or `--request-changes`
+- **Post comment:** `gh pr comment <number> -b "<comment text>"`
+- **Create out-of-scope issue:** `gh issue create --title "..." --body "..." --assignee @copilot`
+
+---
+
+## Skill: PR Review Process
+
+**Created by:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Medium Confidence (Phase 3 validation pending)  
+**Location:** `.squad/skills/pr-review-process/SKILL.md`
+
+### Decision
+
+Formalized the complete PR review workflow (Copilot automatic + Mal manual) into a skill document using rally-design-checklist format. Skill covers:
+
+1. **PR creation patterns** — branch naming, commit format, PR description template
+2. **Agent workflow during review** — polling, response strategy, revision pickup
+3. **Copilot review patterns** — common edge cases caught, command usage
+4. **Team reviewer (Mal) workflow** — diff pulling, context reading, comment posting, address-or-explain enforcement
+5. **Out-of-scope issue handling** — when to open issues, @copilot assignment, tracking
+6. **Merge gate validation** — all comments addressed, both approvals present, CI green
+7. **Revision workflow** — hand-off strategy for requested changes (original author doesn't self-revise)
+
+### Confidence Rationale
+
+**Current: "medium"** because:
+- ✅ Patterns grounded in Phase 2 actual experience (5 PRs, 8 review cycles)
+- ✅ Skill written by Mal who conducted most of the Phase 2 reviews
+- ⏳ Dual-review workflow (Copilot + Mal) untested at scale (Phase 2 was Copilot-only)
+- ⏳ Out-of-scope issue handling not yet exercised in practice
+
+**Promotion to "high" after Phase 3:**
+- First 3 Phase 3 PRs complete full dual review with both approvals
+- Out-of-scope issues opened and tracked successfully
+- Skill used without modification or clarification requests
+
+### Impact
+
+- All agents must read `.squad/skills/pr-review-process/SKILL.md` before opening PRs in Phase 3
+- Skill is the canonical reference for "how do we do PR reviews?"
+- Out-of-scope issue handling is now systematic (not ad hoc)
+- Revision workflow clarified (hand-off pattern prevents self-revision)
+
+
+---
+
+## Directive: Model Selection — Claude Opus 4.6 for All Agents
+
+**By:** James Sturtevant (User)  
+**Date:** 2026-02-22T17:20:00Z  
+**Status:** Policy
+
+### Decision
+
+All agents must use **claude-opus-4.6** as the model for all spawned tasks and agent invocations. Every team member (Mal, Kaylee, Wash, Jayne, Scribe) spawns agents with `model: "claude-opus-4.6"`.
+
+### Rationale
+
+User request — captured for team memory.
+
+### Impact
+
+- All task spawns include `model: "claude-opus-4.6"` parameter
+- Agent prompt templates updated to reference this model
+- Phase 3+ workflows use this model exclusively
+

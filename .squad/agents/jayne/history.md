@@ -392,3 +392,16 @@ Timeline: Target completion by 2026-02-23, enabling Kaylee/Wash Phase 1 implemen
    - Include integration tests (real git/gh calls in test fixtures)
 
 **Next step for you:** Review Phase 2 retro in `.squad/decisions.md` → "Retrospective: Phase 2 Implementation" section. Your error catalog and testing infrastructure are now the team's systematic edge case checklist. This is a big responsibility and a big opportunity to prevent bugs.
+
+### 2026-02-22T171200Z: PR Review Skill Finalized
+
+**Directive:** A new PR review skill exists at `.squad/skills/pr-review-process/SKILL.md`. You must read this before opening any PR in Phase 3.
+
+**Key changes from Phase 2:**
+- Mal (Lead) now conducts mandatory review in addition to Copilot's automated review
+- All comments from both reviewers must be addressed (no exceptions — hard policy)
+- If feedback is out-of-scope, Mal opens a GitHub issue and optionally assigns @copilot
+- Merge gate is three-fold: CI green + Copilot approved + Mal approved + all comments addressed
+- Your revision workflow: if Mal requests changes, don't self-revise — a different agent will pick it up
+
+**Action:** Read `.squad/skills/pr-review-process/SKILL.md` before Phase 3 PRs.

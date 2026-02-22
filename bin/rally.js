@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { setup } from '../lib/setup.js';
+import { onboard } from '../lib/onboard.js';
 import { getStatus, formatStatus } from '../lib/status.js';
 
 const program = new Command();
@@ -17,6 +18,19 @@ program
   .action(async (options) => {
     try {
       await setup(options);
+    } catch (err) {
+      console.error(`✗ ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('onboard')
+  .description('Onboard a local repo to Rally (symlink Squad team files)')
+  .argument('[path]', 'Path to the repo (defaults to current directory)')
+  .action(async (pathArg) => {
+    try {
+      await onboard({ path: pathArg });
     } catch (err) {
       console.error(`✗ ${err.message}`);
       process.exit(1);

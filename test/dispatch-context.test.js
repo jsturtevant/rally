@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 // Module under test — will exist when #17 lands
 // import { writeIssueContext, writePrContext } from '../lib/dispatch-context.js';
 
-describe('dispatch-context', () => {
+describe('dispatch-context', { skip: 'awaiting #17 implementation' }, () => {
   let tempDir;
   let worktreePath;
 

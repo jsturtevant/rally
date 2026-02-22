@@ -12,7 +12,7 @@ import yaml from 'js-yaml';
 // Module under test — will exist when #15 lands
 // import { dispatchIssue } from '../lib/dispatch-issue.js';
 
-describe('dispatch issue', () => {
+describe('dispatch issue', { skip: 'awaiting #15 implementation' }, () => {
   let tempDir;
   let repoPath;
   let originalEnv;

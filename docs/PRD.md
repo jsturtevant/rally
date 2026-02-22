@@ -1,4 +1,4 @@
-# Dispatcher — Product Requirements Document
+# Rally — Product Requirements Document
 
 **Version:** 0.1.0 (Draft)
 **Author:** Mal (Lead)
@@ -18,7 +18,7 @@ Squad gives you an AI team. But getting that team into a project — especially 
 3. **No issue-to-PR pipeline.** Going from "here's a GitHub issue" to "here's a PR with tests and a code review" requires manually: creating a branch, setting up the worktree, adding the squad, running the plan, iterating on implementation, adding tests, and requesting review.
 4. **No visibility.** When you have multiple issues in flight across worktrees, there's no way to see what's active, what's done, and what's blocked.
 
-Dispatcher solves all four. One CLI, five commands.
+Rally solves all four. One CLI, five commands.
 
 ---
 
@@ -31,53 +31,53 @@ Dispatcher solves all four. One CLI, five commands.
 - Want to parallelize work across multiple issues using worktrees
 
 ### Non-users
-- People who don't use Squad (Dispatcher is tightly coupled to Squad)
-- People who want Squad committed to their repo (they don't need Dispatcher — vanilla Squad works fine)
+- People who don't use Squad (Rally is tightly coupled to Squad)
+- People who want Squad committed to their repo (they don't need Rally — vanilla Squad works fine)
 
 ---
 
 ## 3. Commands & Workflows
 
-### 3.1 `dispatcher setup`
+### 3.1 `rally setup`
 
 **Purpose:** Initialize Squad team state in an external directory (outside any repo). This is the "portable team" that gets symlinked into projects.
 
 **Usage:**
 ```bash
-dispatcher setup [--dir <path>]
+rally setup [--dir <path>]
 ```
 
 **Behavior:**
-1. Create a directory for external team state (default: `~/.dispatcher/team/`)
-2. Create a directory for cloned projects (default: `~/.dispatcher/projects/`)
+1. Create a directory for external team state (default: `~/.rally/team/`)
+2. Create a directory for cloned projects (default: `~/.rally/projects/`)
 3. Run `npx github:bradygaster/squad` inside that directory to generate the full `.squad/` tree, `.squad-templates/`, and `.github/agents/squad.agent.md`
-4. Store the setup paths in `~/.dispatcher/config.yaml`
+4. Store the setup paths in `~/.rally/config.yaml`
 
 **Options:**
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--dir <path>` | `~/.dispatcher/team/` | Where to create external team state |
+| `--dir <path>` | `~/.rally/team/` | Where to create external team state |
 
 **Example:**
 ```bash
-$ dispatcher setup
-✓ Created team directory at ~/.dispatcher/team/
-✓ Initialized Squad in ~/.dispatcher/team/
-✓ Saved config to ~/.dispatcher/config.yaml
+$ rally setup
+✓ Created team directory at ~/.rally/team/
+✓ Initialized Squad in ~/.rally/team/
+✓ Saved config to ~/.rally/config.yaml
 ```
 
 **Output on re-run (idempotent):**
 ```bash
-$ dispatcher setup
+$ rally setup
   Team directory already exists — skipping
   Squad already initialized — skipping
 ✓ Config verified
 ```
 
-**Config file (`~/.dispatcher/config.yaml`):**
+**Config file (`~/.rally/config.yaml`):**
 ```yaml
-teamDir: /home/user/.dispatcher/team
-projectsDir: /home/user/.dispatcher/projects
+teamDir: /home/user/.rally/team
+projectsDir: /home/user/.rally/projects
 version: 0.1.0
 ```
 
@@ -87,49 +87,49 @@ version: 0.1.0
 
 ---
 
-### 3.2 `dispatcher onboard`
+### 3.2 `rally onboard`
 
 **Purpose:** Connect a repo to your external Squad team without committing anything. Uses symlinks + `.git/info/exclude`. Accepts a local path or a GitHub URL — when given a URL, clones the repo first.
 
-**Precondition:** `dispatcher setup` has been run.
+**Precondition:** `rally setup` has been run.
 
 **Usage:**
 ```bash
-dispatcher onboard [<repo-url-or-path>]
+rally onboard [<repo-url-or-path>]
 ```
 
 The argument can be:
 - **Nothing** — onboards the current working directory (existing behavior)
-- **A local path** — onboards the repo at that path (e.g., `dispatcher onboard ~/projects/my-app`)
+- **A local path** — onboards the repo at that path (e.g., `rally onboard ~/projects/my-app`)
 - **A GitHub URL** — `https://github.com/owner/repo` or the shorthand `owner/repo`. Clones the repo into the configured projects directory first, then onboards it.
 
 **Behavior:**
-1. Read `~/.dispatcher/config.yaml` to find team directory and projects directory
+1. Read `~/.rally/config.yaml` to find team directory and projects directory
 2. **If the argument is a GitHub URL or `owner/repo` shorthand:**
-   - Clone the repo into `<projectsDir>/<repo-name>/` (default: `~/.dispatcher/projects/<repo-name>/`)
+   - Clone the repo into `<projectsDir>/<repo-name>/` (default: `~/.rally/projects/<repo-name>/`)
    - If the directory already exists, skip the clone and use the existing checkout
 3. **Team selection prompt:** Ask the user which team configuration to use:
    ```
    ? Use your existing team or create a new one for this project?
-     ❯ Existing team — use shared team from ~/.dispatcher/team/
+     ❯ Existing team — use shared team from ~/.rally/team/
        New team — create a project-specific team for <project-name>
    ```
    - **Existing team:** Symlinks point to the shared `<teamDir>/` (default behavior, same as before)
-   - **New team:** Creates a project-specific team directory at `~/.dispatcher/teams/<project-name>/`, runs `npx github:bradygaster/squad` inside it, and symlinks point there instead
+   - **New team:** Creates a project-specific team directory at `~/.rally/teams/<project-name>/`, runs `npx github:bradygaster/squad` inside it, and symlinks point there instead
 4. In the target repo, create symlinks (pointing to whichever team directory was selected):
    - `.squad/` → `<selectedTeamDir>/.squad/`
    - `.squad-templates/` → `<selectedTeamDir>/.squad-templates/`
    - `.github/agents/squad.agent.md` → `<selectedTeamDir>/.github/agents/squad.agent.md`
 5. Add entries to `.git/info/exclude` (NOT `.gitignore` — local only, never committed):
    ```
-   # Dispatcher — Squad symlinks
+   # Rally — Squad symlinks
    .squad
    .squad/
    .squad-templates
    .squad-templates/
    .github/agents/squad.agent.md
    ```
-6. Register the repo in `~/.dispatcher/projects.yaml` (including which team type was selected)
+6. Register the repo in `~/.rally/projects.yaml` (including which team type was selected)
 
 **Why `.git/info/exclude`?**
 From Tamir Dresher's technique: `.git/info/exclude` works identically to `.gitignore` but is local-only. It's never committed, so the repo stays clean. On Windows, both the symlink name and the directory form need separate entries (e.g., `.squad` and `.squad/`).
@@ -142,27 +142,27 @@ From Tamir Dresher's technique: `.git/info/exclude` works identically to `.gitig
 **Example (local repo, shared team):**
 ```bash
 $ cd ~/projects/my-app
-$ dispatcher onboard
+$ rally onboard
 ? Use your existing team or create a new one for this project?
   ❯ Existing team
-✓ Symlinked .squad/ → ~/.dispatcher/team/.squad/
-✓ Symlinked .squad-templates/ → ~/.dispatcher/team/.squad-templates/
-✓ Symlinked .github/agents/squad.agent.md → ~/.dispatcher/team/.github/agents/squad.agent.md
+✓ Symlinked .squad/ → ~/.rally/team/.squad/
+✓ Symlinked .squad-templates/ → ~/.rally/team/.squad-templates/
+✓ Symlinked .github/agents/squad.agent.md → ~/.rally/team/.github/agents/squad.agent.md
 ✓ Updated .git/info/exclude
 ✓ Registered project: my-app (shared team)
 ```
 
 **Example (GitHub URL, new project-specific team):**
 ```bash
-$ dispatcher onboard owner/cool-project
-✓ Cloned owner/cool-project → ~/.dispatcher/projects/cool-project/
+$ rally onboard owner/cool-project
+✓ Cloned owner/cool-project → ~/.rally/projects/cool-project/
 ? Use your existing team or create a new one for this project?
   ❯ New team
-✓ Created team directory at ~/.dispatcher/teams/cool-project/
-✓ Initialized Squad in ~/.dispatcher/teams/cool-project/
-✓ Symlinked .squad/ → ~/.dispatcher/teams/cool-project/.squad/
-✓ Symlinked .squad-templates/ → ~/.dispatcher/teams/cool-project/.squad-templates/
-✓ Symlinked .github/agents/squad.agent.md → ~/.dispatcher/teams/cool-project/.github/agents/squad.agent.md
+✓ Created team directory at ~/.rally/teams/cool-project/
+✓ Initialized Squad in ~/.rally/teams/cool-project/
+✓ Symlinked .squad/ → ~/.rally/teams/cool-project/.squad/
+✓ Symlinked .squad-templates/ → ~/.rally/teams/cool-project/.squad-templates/
+✓ Symlinked .github/agents/squad.agent.md → ~/.rally/teams/cool-project/.github/agents/squad.agent.md
 ✓ Updated .git/info/exclude
 ✓ Registered project: cool-project (project-specific team)
 ```
@@ -171,51 +171,51 @@ $ dispatcher onboard owner/cool-project
 
 **Error cases:**
 - Not inside a git repo (when no argument given) → `✗ Not a git repository. Run from inside a repo or provide a GitHub URL.`
-- Setup not run → `✗ No team directory found. Run: dispatcher setup`
-- Symlink target doesn't exist → `✗ Team directory missing: <path>. Run: dispatcher setup`
+- Setup not run → `✗ No team directory found. Run: rally setup`
+- Symlink target doesn't exist → `✗ Team directory missing: <path>. Run: rally setup`
 - Clone fails → `✗ Failed to clone <url>: <git error>`
 - Invalid URL/shorthand → `✗ Not a valid GitHub URL or owner/repo shorthand: <input>`
 
-**Projects registry (`~/.dispatcher/projects.yaml`):**
+**Projects registry (`~/.rally/projects.yaml`):**
 ```yaml
 projects:
   - name: my-app
     path: /home/user/projects/my-app
     team: shared
-    teamDir: /home/user/.dispatcher/team
+    teamDir: /home/user/.rally/team
     onboarded: "2026-02-21T10:00:00Z"
   - name: cool-project
-    path: /home/user/.dispatcher/projects/cool-project
+    path: /home/user/.rally/projects/cool-project
     team: project
-    teamDir: /home/user/.dispatcher/teams/cool-project
+    teamDir: /home/user/.rally/teams/cool-project
     onboarded: "2026-02-21T11:00:00Z"
 ```
 
 ---
 
-### 3.3 `dispatcher dispatch issue` (Issue Mode)
+### 3.3 `rally dispatch issue` (Issue Mode)
 
 **Purpose:** Take a GitHub issue and run the full Squad lifecycle: branch → worktree → plan → implement → test → review → PR.
 
-**Precondition:** Repo is onboarded (`dispatcher onboard` has been run).
+**Precondition:** Repo is onboarded (`rally onboard` has been run).
 
 **Usage:**
 ```bash
-dispatcher dispatch issue <issue-number> [--repo <owner/repo>]
+rally dispatch issue <issue-number> [--repo <owner/repo>]
 ```
 
 **Behavior:**
 1. Resolve the target repo (see **Repo resolution** below)
 2. Fetch issue metadata from GitHub (`gh issue view <number> --json title,body,labels`)
-3. Create a branch named `dispatcher/<issue-number>-<slug>` from the default branch
-4. Create a git worktree at `<repo>/.worktrees/dispatcher-<issue-number>/`
+3. Create a branch named `rally/<issue-number>-<slug>` from the default branch
+4. Create a git worktree at `<repo>/.worktrees/rally-<issue-number>/`
 5. Symlink Squad files into the worktree (leverages `.git/info/exclude` entries from `onboard` — they apply to all worktrees automatically)
 6. Write issue context to `.squad/dispatch-context.md` in the worktree
 7. Invoke Squad to plan: `npx github:bradygaster/squad` with issue context
-8. Log the dispatch to `~/.dispatcher/active.yaml`
+8. Log the dispatch to `~/.rally/active.yaml`
 
 **Repo resolution (applies to both `issue` and `pr` subcommands):**
-The `--repo <owner/repo>` flag explicitly specifies the GitHub repo to target. If omitted, Dispatcher infers the repo:
+The `--repo <owner/repo>` flag explicitly specifies the GitHub repo to target. If omitted, Rally infers the repo:
 1. **Current directory** — if the cwd is inside an onboarded project, use that project's repo
 2. **Single project** — if `projects.yaml` contains exactly one onboarded project, use it
 3. **Ambiguous** — if multiple projects are onboarded and cwd doesn't match any, error: `✗ Multiple projects onboarded. Specify with --repo owner/repo`
@@ -232,31 +232,31 @@ Git exclude entries in the main `.git/info/exclude` apply to ALL worktrees. This
 
 **Example:**
 ```bash
-$ dispatcher dispatch issue 42
+$ rally dispatch issue 42
 ✓ Fetched issue #42: "Add user authentication"
-✓ Created branch: dispatcher/42-add-user-authentication
-✓ Created worktree: .worktrees/dispatcher-42/
+✓ Created branch: rally/42-add-user-authentication
+✓ Created worktree: .worktrees/rally-42/
 ✓ Symlinked Squad into worktree
 ✓ Wrote dispatch context
 ✓ Squad is planning…
 
-  Worktree ready at: .worktrees/dispatcher-42/
-  To work with Squad: cd .worktrees/dispatcher-42/
+  Worktree ready at: .worktrees/rally-42/
+  To work with Squad: cd .worktrees/rally-42/
 ```
 
 **Example (explicit repo):**
 ```bash
-$ dispatcher dispatch issue 42 --repo owner/my-app
+$ rally dispatch issue 42 --repo owner/my-app
 ```
 
-**Active dispatch registry (`~/.dispatcher/active.yaml`):**
+**Active dispatch registry (`~/.rally/active.yaml`):**
 ```yaml
 dispatches:
   - id: my-app-42
     repo: /home/user/projects/my-app
     issue: 42
-    branch: dispatcher/42-add-user-authentication
-    worktree: /home/user/projects/my-app/.worktrees/dispatcher-42
+    branch: rally/42-add-user-authentication
+    worktree: /home/user/projects/my-app/.worktrees/rally-42
     status: planning
     created: "2026-02-21T10:30:00Z"
 ```
@@ -265,30 +265,30 @@ dispatches:
 
 **Error cases:**
 - Issue not found → `✗ Issue #42 not found. Check the issue number and repo.`
-- Repo not onboarded → `✗ Repo not onboarded. Run: dispatcher onboard`
-- Worktree already exists → `✗ Worktree for issue #42 already exists at .worktrees/dispatcher-42/`
+- Repo not onboarded → `✗ Repo not onboarded. Run: rally onboard`
+- Worktree already exists → `✗ Worktree for issue #42 already exists at .worktrees/rally-42/`
 - `gh` CLI not installed → `✗ GitHub CLI (gh) not found. Install from: https://cli.github.com`
 - Not authenticated → `✗ Not authenticated with GitHub. Run: gh auth login`
 
 ---
 
-### 3.4 `dispatcher dispatch pr` (PR Review Mode)
+### 3.4 `rally dispatch pr` (PR Review Mode)
 
 **Purpose:** Dispatch Squad to review an existing pull request.
 
 **Usage:**
 ```bash
-dispatcher dispatch pr <pr-number> [--repo <owner/repo>]
+rally dispatch pr <pr-number> [--repo <owner/repo>]
 ```
 
 **Behavior:**
 1. Resolve the target repo (see **Repo resolution** in §3.3)
 2. Fetch PR metadata from GitHub (`gh pr view <number> --json title,body,headRefName,baseRefName,files`)
-3. Create a worktree from the PR's head branch at `.worktrees/dispatcher-pr-<number>/`
+3. Create a worktree from the PR's head branch at `.worktrees/rally-pr-<number>/`
 4. Symlink Squad into the worktree
 5. Write PR context (diff summary, changed files, PR description) to `.squad/dispatch-context.md`
 6. Invoke Squad with a review-focused prompt
-7. Log to `~/.dispatcher/active.yaml` with status `reviewing`
+7. Log to `~/.rally/active.yaml` with status `reviewing`
 
 **Options:**
 | Flag | Default | Description |
@@ -297,19 +297,19 @@ dispatcher dispatch pr <pr-number> [--repo <owner/repo>]
 
 **Example:**
 ```bash
-$ dispatcher dispatch pr 87
+$ rally dispatch pr 87
 ✓ Fetched PR #87: "Refactor auth middleware"
 ✓ Created worktree from branch: feature/refactor-auth
 ✓ Symlinked Squad into worktree
 ✓ Wrote review context (12 files changed)
 ✓ Squad is reviewing…
 
-  Worktree ready at: .worktrees/dispatcher-pr-87/
+  Worktree ready at: .worktrees/rally-pr-87/
 ```
 
 **Example (explicit repo):**
 ```bash
-$ dispatcher dispatch pr 87 --repo owner/api-srv
+$ rally dispatch pr 87 --repo owner/api-srv
 ```
 
 **Error cases:**
@@ -319,31 +319,31 @@ $ dispatcher dispatch pr 87 --repo owner/api-srv
 
 ---
 
-### 3.5 `dispatcher dashboard`
+### 3.5 `rally dashboard`
 
 **Purpose:** Show all active dispatches across all onboarded projects.
 
 **Usage:**
 ```bash
-dispatcher dashboard
+rally dashboard
 ```
 
 **Behavior:**
-1. Read `~/.dispatcher/active.yaml`
+1. Read `~/.rally/active.yaml`
 2. For each active dispatch, check worktree health (does it still exist?)
 3. Display a table of active work
 
 **Example output:**
 ```
-Dispatcher Dashboard
+Rally Dashboard
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
  Project    Issue   Branch                              Status       Age
  ───────    ─────   ──────                              ──────       ───
- my-app     #42     dispatcher/42-add-user-auth         implementing 2h
- my-app     #51     dispatcher/51-fix-login-bug         planning     30m
+ my-app     #42     rally/42-add-user-auth         implementing 2h
+ my-app     #51     rally/51-fix-login-bug         planning     30m
  api-srv    PR #87  feature/refactor-auth               reviewing    1d
- my-app     #38     dispatcher/38-update-deps           done         3d
+ my-app     #38     rally/38-update-deps           done         3d
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -358,8 +358,8 @@ Dispatcher Dashboard
 
 **Subcommands:**
 ```bash
-dispatcher dashboard clean           # Remove 'done' dispatches and delete their worktrees
-dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
+rally dashboard clean           # Remove 'done' dispatches and delete their worktrees
+rally dashboard clean --all     # Remove ALL dispatches and worktrees
 ```
 
 ---
@@ -369,7 +369,7 @@ dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
 ### 4.1 State Layout
 
 ```
-~/.dispatcher/
+~/.rally/
 ├── config.yaml          # Global config (team directory, projects directory)
 ├── projects.yaml        # Registry of onboarded projects
 ├── active.yaml          # Active dispatches across all projects
@@ -387,24 +387,24 @@ dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
 │           └── agents/
 │               └── squad.agent.md
 └── projects/            # Cloned repos (from GitHub URLs)
-    └── cool-project/    # A repo cloned via `dispatcher onboard owner/cool-project`
+    └── cool-project/    # A repo cloned via `rally onboard owner/cool-project`
 
 ~/projects/my-app/                   # An onboarded project (shared team)
-├── .squad/ → ~/.dispatcher/team/.squad/           (symlink)
-├── .squad-templates/ → ~/.dispatcher/team/...     (symlink)
+├── .squad/ → ~/.rally/team/.squad/           (symlink)
+├── .squad-templates/ → ~/.rally/team/...     (symlink)
 ├── .github/agents/squad.agent.md → ...            (symlink)
 ├── .git/
 │   └── info/
 │       └── exclude                  # Contains Squad symlink patterns
 └── .worktrees/
-    ├── dispatcher-42/               # Worktree for issue #42
+    ├── rally-42/               # Worktree for issue #42
     │   ├── .squad/ → ...            (symlink)
     │   └── (project files)
-    └── dispatcher-pr-87/            # Worktree for PR review
+    └── rally-pr-87/            # Worktree for PR review
 
-~/.dispatcher/projects/cool-project/ # An onboarded project (project-specific team)
-├── .squad/ → ~/.dispatcher/teams/cool-project/.squad/    (symlink)
-├── .squad-templates/ → ~/.dispatcher/teams/cool-project/...  (symlink)
+~/.rally/projects/cool-project/ # An onboarded project (project-specific team)
+├── .squad/ → ~/.rally/teams/cool-project/.squad/    (symlink)
+├── .squad-templates/ → ~/.rally/teams/cool-project/...  (symlink)
 ├── .github/agents/squad.agent.md → ...                   (symlink)
 ├── .git/
 │   └── info/
@@ -415,20 +415,20 @@ dispatcher dashboard clean --all     # Remove ALL dispatches and worktrees
 ### 4.2 Data Flow
 
 ```
-dispatcher setup
-  └─→ Creates ~/.dispatcher/team/ with Squad files
-  └─→ Writes ~/.dispatcher/config.yaml
+rally setup
+  └─→ Creates ~/.rally/team/ with Squad files
+  └─→ Writes ~/.rally/config.yaml
 
-dispatcher onboard
+rally onboard
   └─→ Reads config.yaml
   └─→ If GitHub URL: clones repo into projectsDir
   └─→ Prompts for team selection (shared or project-specific)
-  └─→ If new team: creates ~/.dispatcher/teams/<project>/ and runs Squad init
+  └─→ If new team: creates ~/.rally/teams/<project>/ and runs Squad init
   └─→ Creates symlinks in repo (pointing to selected team dir)
   └─→ Updates .git/info/exclude
   └─→ Writes to projects.yaml (with team type)
 
-dispatcher dispatch issue <issue>
+rally dispatch issue <issue>
   └─→ Resolves target repo (--repo flag, cwd, or projects.yaml)
   └─→ Reads config.yaml, projects.yaml
   └─→ Calls gh CLI for issue data
@@ -438,7 +438,7 @@ dispatcher dispatch issue <issue>
   └─→ Invokes Squad
   └─→ Updates active.yaml
 
-dispatcher dashboard
+rally dashboard
   └─→ Reads active.yaml
   └─→ Validates worktree health
   └─→ Renders table
@@ -447,15 +447,15 @@ dispatcher dashboard
 ### 4.3 Module Structure
 
 ```
-dispatcher/
+rally/
 ├── bin/
-│   └── dispatcher.js        # Entry point, CLI parsing via Commander
+│   └── rally.js        # Entry point, CLI parsing via Commander
 ├── lib/
 │   ├── setup.js             # setup command
 │   ├── onboard.js           # onboard command
 │   ├── dispatch.js          # dispatch command (issue + PR modes)
 │   ├── dashboard.js         # dashboard command
-│   ├── config.js            # Config read/write (~/.dispatcher/*.yaml) — uses js-yaml
+│   ├── config.js            # Config read/write (~/.rally/*.yaml) — uses js-yaml
 │   ├── symlink.js           # Symlink creation + validation
 │   ├── exclude.js           # .git/info/exclude management
 │   ├── worktree.js          # Git worktree create/remove
@@ -485,11 +485,11 @@ dispatcher/
 
 ## 5. Terminal UI/UX
 
-Dispatcher's terminal interface is built on **Ink** (React for the terminal), **Chalk** (styling), and **Ora** (spinners) — the same stack used by GitHub Copilot CLI, Claude Code CLI, and other polished Node.js CLIs. UI components are Ink React components in `lib/ui/`. Interactive prompts use **@inquirer/prompts**. The interface degrades gracefully when output is piped.
+Rally's terminal interface is built on **Ink** (React for the terminal), **Chalk** (styling), and **Ora** (spinners) — the same stack used by GitHub Copilot CLI, Claude Code CLI, and other polished Node.js CLIs. UI components are Ink React components in `lib/ui/`. Interactive prompts use **@inquirer/prompts**. The interface degrades gracefully when output is piped.
 
 ### 5.0 Dependencies
 
-Dispatcher uses a curated set of production-quality npm packages — the same stack powering tools like GitHub Copilot CLI and Claude Code CLI.
+Rally uses a curated set of production-quality npm packages — the same stack powering tools like GitHub Copilot CLI and Claude Code CLI.
 
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -540,11 +540,11 @@ Chalk automatically handles TTY detection, `NO_COLOR`, and `FORCE_COLOR` — no 
 
 | Element | Chalk Style | Example |
 |---------|-------------|---------|
-| Section headers | `chalk.bold.cyan(…)` | `Dispatcher Dashboard` |
-| Command names | `chalk.cyan(…)` | `dispatcher setup` |
-| File paths | `chalk.dim(…)` | `~/.dispatcher/config.yaml` |
+| Section headers | `chalk.bold.cyan(…)` | `Rally Dashboard` |
+| Command names | `chalk.cyan(…)` | `rally setup` |
+| File paths | `chalk.dim(…)` | `~/.rally/config.yaml` |
 | User input / values | `chalk.bold(…)` | `my-app` |
-| Hints / help text | `chalk.dim(…)` | `Run: dispatcher setup` |
+| Hints / help text | `chalk.dim(…)` | `Run: rally setup` |
 | Error messages | `chalk.bold.red('✗') + msg` | `✗ Message here` |
 | Success messages | `chalk.green('✓') + msg` | `✓ Message here` |
 | Skipped operations | `chalk.dim(…)`, indented | `  Team directory already exists — skipping` |
@@ -578,8 +578,8 @@ import { Box, Text } from 'ink';
 
 // <DispatchBox title="Dispatch #42">
 //   <Text>Issue:    #42 Add user authentication</Text>
-//   <Text>Branch:   dispatcher/42-add-user-auth</Text>
-//   <Text>Worktree: .worktrees/dispatcher-42/</Text>
+//   <Text>Branch:   rally/42-add-user-auth</Text>
+//   <Text>Worktree: .worktrees/rally-42/</Text>
 // </DispatchBox>
 ```
 
@@ -589,7 +589,7 @@ import { Box, Text } from 'ink';
 ┌─────────────── Dispatch #42 ───────────────┐
 │                                            │
 │  Issue:   Add user authentication          │
-│  Branch:  dispatcher/42-add-user-auth      │
+│  Branch:  rally/42-add-user-auth      │
 │  Status:  ◆ implementing                   │
 │  Age:     2h 15m                           │
 │                                            │
@@ -616,8 +616,8 @@ Ink handles column width calculation and terminal-width truncation automatically
 ```
  Project    Issue   Branch                              Status        Age
  ───────    ─────   ──────                              ──────        ───
- my-app     #42     dispatcher/42-add-user-auth         ◆ implementing 2h
- my-app     #51     dispatcher/51-fix-login-bug         ● planning     30m
+ my-app     #42     rally/42-add-user-auth         ◆ implementing 2h
+ my-app     #51     rally/51-fix-login-bug         ● planning     30m
  api-srv    PR #87  feature/refactor-auth               ● reviewing    1d
 ```
 
@@ -667,7 +667,7 @@ import { select } from '@inquirer/prompts';
 const teamChoice = await select({
   message: 'Use your existing team or create a new one for this project?',
   choices: [
-    { name: 'Existing team — use shared team from ~/.dispatcher/team/', value: 'shared' },
+    { name: 'Existing team — use shared team from ~/.rally/team/', value: 'shared' },
     { name: 'New team — create a project-specific team', value: 'new' },
   ],
 });
@@ -677,7 +677,7 @@ const teamChoice = await select({
 
 ```
 ? Use your existing team or create a new one for this project?
-  ❯ Existing team — use shared team from ~/.dispatcher/team/
+  ❯ Existing team — use shared team from ~/.rally/team/
     New team — create a project-specific team
 ```
 
@@ -705,18 +705,18 @@ import { useState, useEffect } from 'react';
 #### Layout (responsive to terminal width/height)
 
 ```
-┌────────────────────────────────── Dispatcher Dashboard ──────────────────────────────────┐
+┌────────────────────────────────── Rally Dashboard ──────────────────────────────────┐
 │                                                                                          │
 │  ┌─ Active Dispatches ─────────────────────────────────────────────────────────────────┐  │
 │  │  Project    Issue   Branch                         Status          Age              │  │
 │  │  ───────    ─────   ──────                         ──────          ───              │  │
-│  │  my-app     #42     dispatcher/42-add-user-auth    ◆ implementing  2h              │  │
-│  │  my-app     #51     dispatcher/51-fix-login        ● planning      30m             │  │
+│  │  my-app     #42     rally/42-add-user-auth    ◆ implementing  2h              │  │
+│  │  my-app     #51     rally/51-fix-login        ● planning      30m             │  │
 │  │  api-srv    PR #87  feature/refactor-auth          ● reviewing     1d              │  │
 │  └─────────────────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                          │
 │  ┌─ Projects ──────────────────────────┐  ┌─ Team ──────────────────────────────────┐   │
-│  │  my-app       3 dispatches (shared) │  │  Team dir:  ~/.dispatcher/team/         │   │
+│  │  my-app       3 dispatches (shared) │  │  Team dir:  ~/.rally/team/         │   │
 │  │  api-srv      1 dispatch   (shared) │  │  Agents:    5                           │   │
 │  │  cool-proj    0 dispatches (own)    │  │  Type:      shared                      │   │
 │  └─────────────────────────────────────┘  └─────────────────────────────────────────┘   │
@@ -744,12 +744,12 @@ import { useState, useEffect } from 'react';
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Move selection in dispatches table |
-| `Enter` | Print worktree path and exit (for `cd $(dispatcher dashboard --select)`) |
+| `Enter` | Print worktree path and exit (for `cd $(rally dashboard --select)`) |
 | `r` | Refresh data |
 | `c` | Clean completed dispatches |
 | `q` / `Ctrl-C` | Exit dashboard (Ink unmounts, restores screen) |
 
-**Non-TTY mode:** When piped (e.g., `dispatcher dashboard | cat`), skip the Ink app entirely. Render the table once as plain text (same as §3.5 output) using Chalk (which auto-strips colors when piped), and exit.
+**Non-TTY mode:** When piped (e.g., `rally dashboard | cat`), skip the Ink app entirely. Render the table once as plain text (same as §3.5 output) using Chalk (which auto-strips colors when piped), and exit.
 
 ---
 
@@ -774,31 +774,31 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
 
 ### 5.5 Example Output Mockups
 
-#### `dispatcher setup`
+#### `rally setup`
 
 ```
-  ┌─ dispatcher setup ─────────────────────────────┐
+  ┌─ rally setup ─────────────────────────────┐
   │                                                 │
-  │  ✓ Created team directory at ~/.dispatcher/team/│
+  │  ✓ Created team directory at ~/.rally/team/│
   │  ⠹ Initializing Squad…                         │
-  │  ✓ Initialized Squad in ~/.dispatcher/team/     │
+  │  ✓ Initialized Squad in ~/.rally/team/     │
   │  ✓ Created projects directory                   │
-  │  ✓ Saved config to ~/.dispatcher/config.yaml    │
+  │  ✓ Saved config to ~/.rally/config.yaml    │
   │                                                 │
   │  Ready! Next step:                              │
-  │    dispatcher onboard                           │
+  │    rally onboard                           │
   │                                                 │
   └─────────────────────────────────────────────────┘
 ```
 
-#### `dispatcher onboard` (with team prompt)
+#### `rally onboard` (with team prompt)
 
 ```
   ⠹ Cloning owner/cool-project…
-  ✓ Cloned owner/cool-project → ~/.dispatcher/projects/cool-project/
+  ✓ Cloned owner/cool-project → ~/.rally/projects/cool-project/
 
   ? Use your existing team or create a new one for this project?
-    ❯ Existing team — use shared team from ~/.dispatcher/team/
+    ❯ Existing team — use shared team from ~/.rally/team/
       New team — create a project-specific team
 
   ✓ Symlinked .squad/
@@ -808,7 +808,7 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
   ✓ Registered project: cool-project (shared team)
 ```
 
-#### `dispatcher dispatch issue 42`
+#### `rally dispatch issue 42`
 
 ```
   ⠹ Fetching issue #42…
@@ -816,8 +816,8 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
 
   ┌─ Dispatch ─────────────────────────────────────┐
   │  Issue:    #42 Add user authentication         │
-  │  Branch:   dispatcher/42-add-user-auth         │
-  │  Worktree: .worktrees/dispatcher-42/           │
+  │  Branch:   rally/42-add-user-auth         │
+  │  Worktree: .worktrees/rally-42/           │
   └────────────────────────────────────────────────┘
 
   ✓ Created branch
@@ -828,23 +828,23 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
   ⠹ Squad is planning…
   ✓ Squad planning complete
 
-  Worktree ready at: .worktrees/dispatcher-42/
-  To work with Squad: cd .worktrees/dispatcher-42/
+  Worktree ready at: .worktrees/rally-42/
+  To work with Squad: cd .worktrees/rally-42/
 ```
 
-#### `dispatcher dashboard` (full-screen Ink app)
+#### `rally dashboard` (full-screen Ink app)
 
 ```
-┌──────────────────────────── Dispatcher Dashboard ────────────────────────────┐
+┌──────────────────────────── Rally Dashboard ────────────────────────────┐
 │                                                                              │
 │  Active Dispatches                                                           │
 │  ─────────────────────────────────────────────────────────────────────────── │
 │  Project    Issue   Branch                         Status          Age       │
 │  ───────    ─────   ──────                         ──────          ───       │
-│▸ my-app     #42     dispatcher/42-add-user-auth    ◆ implementing  2h       │
-│  my-app     #51     dispatcher/51-fix-login        ● planning      30m      │
+│▸ my-app     #42     rally/42-add-user-auth    ◆ implementing  2h       │
+│  my-app     #51     rally/51-fix-login        ● planning      30m      │
 │  api-srv    PR #87  feature/refactor-auth          ● reviewing     1d       │
-│  my-app     #38     dispatcher/38-update-deps      ✓ done          3d       │
+│  my-app     #38     rally/38-update-deps      ✓ done          3d       │
 │                                                                              │
 │  3 active · 1 done · 0 blocked                                              │
 │                                                                              │
@@ -856,13 +856,13 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
 #### Non-TTY (piped) output example
 
 ```
-$ dispatcher dashboard | cat
-Dispatcher Dashboard
+$ rally dashboard | cat
+Rally Dashboard
 
 Project    Issue   Branch                              Status        Age
 -------    -----   ------                              ------        ---
-my-app     #42     dispatcher/42-add-user-auth         implementing  2h
-my-app     #51     dispatcher/51-fix-login-bug         planning      30m
+my-app     #42     rally/42-add-user-auth         implementing  2h
+my-app     #51     rally/51-fix-login-bug         planning      30m
 api-srv    PR #87  feature/refactor-auth               reviewing     1d
 
 3 active · 0 done · 0 blocked
@@ -878,7 +878,7 @@ api-srv    PR #87  feature/refactor-auth               reviewing     1d
 
 3. **Ora handles all spinners.** No custom spinner implementation. Ora provides braille-dot animation, TTY detection, and graceful fallback out of the box.
 
-4. **Commander handles CLI parsing.** The entry point (`bin/dispatcher.js`) uses Commander for argument parsing, subcommand routing, help generation, and version display. No manual `process.argv` parsing.
+4. **Commander handles CLI parsing.** The entry point (`bin/rally.js`) uses Commander for argument parsing, subcommand routing, help generation, and version display. No manual `process.argv` parsing.
 
 5. **js-yaml handles config files.** The `config.js` module uses `js-yaml` for parsing and serializing YAML. No custom YAML parser needed.
 
@@ -894,8 +894,8 @@ api-srv    PR #87  feature/refactor-auth               reviewing     1d
 
 ### 6.1 Squad
 - **Setup:** Runs `npx github:bradygaster/squad` to initialize team state
-- **Export/Import:** Future enhancement — `dispatcher setup --from <export.json>` could use Squad's `export`/`import` to bootstrap from an existing team snapshot
-- **Invocation:** After worktree setup, Dispatcher invokes Squad within the worktree context. The exact invocation mechanism (Copilot agent mode, CLI, etc.) is an open question (see §9).
+- **Export/Import:** Future enhancement — `rally setup --from <export.json>` could use Squad's `export`/`import` to bootstrap from an existing team snapshot
+- **Invocation:** After worktree setup, Rally invokes Squad within the worktree context. The exact invocation mechanism (Copilot agent mode, CLI, etc.) is an open question (see §9).
 
 ### 6.2 Git
 - **Worktrees:** `git worktree add <path> -b <branch>` and `git worktree remove <path>`
@@ -910,19 +910,19 @@ api-srv    PR #87  feature/refactor-auth               reviewing     1d
 - **Auth check:** `gh auth status`
 
 ### 6.4 Platform
-- **Symlinks on Windows:** Requires Developer Mode or admin privileges. Dispatcher should detect and provide clear error messages.
+- **Symlinks on Windows:** Requires Developer Mode or admin privileges. Rally should detect and provide clear error messages.
 - **Path separators:** All paths use `path.join()` — never hardcoded separators.
 
 ---
 
 ## 7. Non-Goals
 
-1. **Dispatcher does not replace Squad.** It orchestrates Squad — it doesn't duplicate any Squad functionality (no team management, no agent definitions, no skills).
-2. **Dispatcher does not manage git branching strategy.** It creates branches with a `dispatcher/` prefix, but it doesn't enforce merge strategies or branch protection.
-3. **Dispatcher does not implement AI agents.** It sets up the environment and invokes Squad. The actual AI work (planning, coding, reviewing) is Squad's responsibility.
-4. **Dispatcher does not commit Squad files.** The entire point is keeping the repo clean. If you want committed Squad state, use vanilla Squad.
-5. **Dispatcher does not manage advanced team configurations.** v1 supports choosing between a shared team and a project-specific team at onboard time. More advanced setups (team overlays, partial sharing, team migration between projects) are future considerations.
-6. **Dispatcher does not provide a GUI or web dashboard.** Terminal-only for v1.
+1. **Rally does not replace Squad.** It orchestrates Squad — it doesn't duplicate any Squad functionality (no team management, no agent definitions, no skills).
+2. **Rally does not manage git branching strategy.** It creates branches with a `rally/` prefix, but it doesn't enforce merge strategies or branch protection.
+3. **Rally does not implement AI agents.** It sets up the environment and invokes Squad. The actual AI work (planning, coding, reviewing) is Squad's responsibility.
+4. **Rally does not commit Squad files.** The entire point is keeping the repo clean. If you want committed Squad state, use vanilla Squad.
+5. **Rally does not manage advanced team configurations.** v1 supports choosing between a shared team and a project-specific team at onboard time. More advanced setups (team overlays, partial sharing, team migration between projects) are future considerations.
+6. **Rally does not provide a GUI or web dashboard.** Terminal-only for v1.
 
 ---
 
@@ -943,29 +943,29 @@ api-srv    PR #87  feature/refactor-auth               reviewing     1d
 
 ## 9. Open Questions
 
-### 9.1 How does Dispatcher invoke Squad after worktree setup?
-Squad is normally invoked via Copilot agent mode in the IDE. When Dispatcher creates a worktree and sets up context, how does the user actually start working with Squad?
-- **Option A:** Dispatcher just sets up the environment and prints instructions ("cd into worktree, open in editor, start Copilot")
-- **Option B:** Dispatcher invokes a Squad CLI command directly
-- **Option C:** Dispatcher opens the worktree in VS Code with Copilot agent mode activated
+### 9.1 How does Rally invoke Squad after worktree setup?
+Squad is normally invoked via Copilot agent mode in the IDE. When Rally creates a worktree and sets up context, how does the user actually start working with Squad?
+- **Option A:** Rally just sets up the environment and prints instructions ("cd into worktree, open in editor, start Copilot")
+- **Option B:** Rally invokes a Squad CLI command directly
+- **Option C:** Rally opens the worktree in VS Code with Copilot agent mode activated
 
 ### 9.2 Per-project vs. shared team state? *(Partially resolved)*
 The `onboard` command now prompts users to choose between a shared team and a project-specific team. This resolves the basic question of "should we support both?" — yes, via a prompt at onboard time.
 
 **What's been decided:**
-- Users choose at onboard time: shared team (`~/.dispatcher/team/`) or project-specific team (`~/.dispatcher/teams/<project>/`)
+- Users choose at onboard time: shared team (`~/.rally/team/`) or project-specific team (`~/.rally/teams/<project>/`)
 - Project-specific teams get a fresh Squad init — independent `.squad/` state, decisions, history
 - The `--team <shared|new>` flag allows scripting without the prompt
 - `projects.yaml` tracks which team type each project uses
 
 **What remains open:**
 - **Migration:** Can a project switch from shared to project-specific (or vice versa) after onboarding? What happens to accumulated history/decisions?
-- **Team templates:** Should `dispatcher onboard --team new` support `--from <export.json>` to bootstrap a project-specific team from a Squad export?
+- **Team templates:** Should `rally onboard --team new` support `--from <export.json>` to bootstrap a project-specific team from a Squad export?
 - **Base team + overlays (Option C from original question):** The current design is all-or-nothing. A layered approach (shared base + project-specific overrides) might be valuable but adds complexity. Defer to v2.
 
 ### 9.3 Worktree location
 - **Option A:** Inside the repo at `.worktrees/` (current design — easy to find, but adds a directory to the repo root)
-- **Option B:** Outside the repo at `~/.dispatcher/worktrees/<project>/` (clean repo, but harder to navigate)
+- **Option B:** Outside the repo at `~/.rally/worktrees/<project>/` (clean repo, but harder to navigate)
 - **Option C:** Sibling to the repo at `../<repo>-worktrees/` (git's default suggestion)
 
 ### 9.4 Dispatch context format
@@ -981,15 +981,15 @@ Current design has 5 statuses (`planning` → `implementing` → `reviewing` →
 Should `dashboard clean` delete the branch too? Just the worktree? Should it require confirmation?
 
 ### 9.7 Windows symlink permissions
-Windows requires Developer Mode or elevated privileges for symlinks. Should Dispatcher:
+Windows requires Developer Mode or elevated privileges for symlinks. Should Rally:
 - Detect and error clearly?
 - Fall back to directory junctions?
 - Fall back to copying instead of symlinking?
 
 ### 9.8 Squad export/import integration
-Should `dispatcher setup` accept a Squad export JSON to bootstrap from an existing team? This would enable team sharing without committing state:
+Should `rally setup` accept a Squad export JSON to bootstrap from an existing team? This would enable team sharing without committing state:
 ```bash
-dispatcher setup --from teammate-export.json
+rally setup --from teammate-export.json
 ```
 
 ---
@@ -998,12 +998,12 @@ dispatcher setup --from teammate-export.json
 
 | Command | Description |
 |---------|-------------|
-| `dispatcher setup` | Initialize external Squad team state |
-| `dispatcher onboard` | Connect a repo to your team via symlinks |
-| `dispatcher dispatch issue <issue>` | Dispatch Squad to a GitHub issue |
-| `dispatcher dispatch pr <pr>` | Dispatch Squad to review a PR |
-| `dispatcher dashboard` | View all active dispatches |
-| `dispatcher dashboard clean` | Clean up completed dispatches |
+| `rally setup` | Initialize external Squad team state |
+| `rally onboard` | Connect a repo to your team via symlinks |
+| `rally dispatch issue <issue>` | Dispatch Squad to a GitHub issue |
+| `rally dispatch pr <pr>` | Dispatch Squad to review a PR |
+| `rally dashboard` | View all active dispatches |
+| `rally dashboard clean` | Clean up completed dispatches |
 
 ## Appendix B: Key Techniques
 
@@ -1015,8 +1015,8 @@ dispatcher setup --from teammate-export.json
 5. Exclude entries in main `.git/` apply to all worktrees — set up once, works everywhere
 
 ### Worktree Lifecycle
-1. `git worktree add .worktrees/dispatcher-N -b dispatcher/N-slug` — create
+1. `git worktree add .worktrees/rally-N -b rally/N-slug` — create
 2. Symlink Squad files into worktree
 3. Work happens in the worktree
-4. `git worktree remove .worktrees/dispatcher-N` — clean up
-5. `git branch -d dispatcher/N-slug` — optional branch cleanup
+4. `git worktree remove .worktrees/rally-N` — clean up
+5. `git branch -d rally/N-slug` — optional branch cleanup

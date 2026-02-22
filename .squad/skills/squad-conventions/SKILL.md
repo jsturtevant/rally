@@ -1,6 +1,6 @@
 ---
 name: "squad-conventions"
-description: "DEPRECATED: These conventions apply to the Squad CLI tool (create-squad), which is a separate project. Dispatcher uses a different dependency stack."
+description: "DEPRECATED: These conventions apply to the Squad CLI tool (create-squad), which is a separate project. Rally uses a different dependency stack."
 domain: "project-conventions"
 confidence: "low"
 source: "manual"
@@ -8,14 +8,14 @@ source: "manual"
 
 ## Status
 
-⚠️ **DEPRECATED:** This skill documents conventions from the Squad project (`create-squad`), which uses zero-dependency Node.js patterns. Dispatcher is a different project with its own conventions (see `.squad/agents/*/charter.md` for Dispatcher-specific guidance).
+⚠️ **DEPRECATED:** This skill documents conventions from the Squad project (`create-squad`), which uses zero-dependency Node.js patterns. Rally is a different project with its own conventions (see `.squad/agents/*/charter.md` for Rally-specific guidance).
 
-For Dispatcher, refer to:
+For Rally, refer to:
 - `.squad/decisions.md` → "Decision: Dependency Pivot" for the actual npm stack (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts)
 - `.squad/agents/kaylee/charter.md` for CLI development patterns
 - `.squad/agents/jayne/charter.md` for testing patterns
 
-This file should be replaced with Dispatcher-specific conventions. Keeping as historical reference only.
+This file should be replaced with Rally-specific conventions. Keeping as historical reference only.
 
 ## Patterns
 

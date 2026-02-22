@@ -25,7 +25,7 @@ Mal completed the initial Product Requirements Document (`docs/PRD.md`):
 
 - File-based state (not database or external services)
 - Symlink + `.git/info/exclude` as the portable team pattern
-- Worktrees nested in repo at `.worktrees/dispatcher-<N>/`
+- Worktrees nested in repo at `.worktrees/rally-<N>/`
 
 ## Open Items for Team
 

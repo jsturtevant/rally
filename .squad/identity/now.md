@@ -6,4 +6,4 @@ active_issues: []
 
 # What We're Focused On
 
-Building Dispatcher — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees. Commands: setup, onboard, dispatch, dashboard.
+Building Rally — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees. Commands: setup, onboard, dispatch, dashboard.

@@ -1,13 +1,13 @@
 # Project Context
 
 - **Owner:** James Sturtevant
-- **Project:** Dispatcher — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
+- **Project:** Rally — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
 - **Stack:** Node.js with curated npm packages (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts) + node:test for testing
 - **Created:** 2026-02-21
 
 ## Project Description
 
-Dispatcher is a command line tool that works with Squad. Key commands:
+Rally is a command line tool that works with Squad. Key commands:
 - **setup** — Sets up Squad outside of a repo
 - **onboard** — Onboards a new team to a repo without committing the files
 - **dispatch** — Takes a GitHub issue, creates a worktree, adds the Squad, has them plan, iterate, add tests, and do code reviews
@@ -21,17 +21,17 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 ### 2026-02-21 — PRD Draft
 
 - **PRD location:** `docs/PRD.md` — comprehensive, covers all 5 commands with CLI examples, error cases, state layout, and open questions.
-- **Architecture decision:** Three JSON config files under `~/.dispatcher/` — `config.json` (global setup), `projects.json` (onboarded repos), `active.json` (active dispatches). Simple, zero-dep, file-based state.
-- **Module structure:** `bin/dispatcher.js` entry point + `lib/` modules per command + shared utilities (`config.js`, `symlink.js`, `exclude.js`, `worktree.js`, `github.js`, `ui.js`).
+- **Architecture decision:** Three JSON config files under `~/.rally/` — `config.json` (global setup), `projects.json` (onboarded repos), `active.json` (active dispatches). Simple, zero-dep, file-based state.
+- **Module structure:** `bin/rally.js` entry point + `lib/` modules per command + shared utilities (`config.js`, `symlink.js`, `exclude.js`, `worktree.js`, `github.js`, `ui.js`).
 - **Core pattern:** Tamir Dresher's symlink + `.git/info/exclude` technique is the foundation of `onboard`. Exclude entries apply to all worktrees — set up once.
-- **Worktree convention:** `.worktrees/dispatcher-<issue>/` inside the repo. Branch naming: `dispatcher/<issue>-<slug>`.
+- **Worktree convention:** `.worktrees/rally-<issue>/` inside the repo. Branch naming: `rally/<issue>-<slug>`.
 - **Open questions logged in PRD §8:** Squad invocation method, per-project vs shared team, worktree location, Windows symlink fallback, Squad export/import integration.
 - **User preference:** James wants zero dependencies, `node:test`, Windows/macOS/Linux support — same constraints as Squad itself.
 
 ### 2026-02-21 — PRD Target User & CI/CD Corrections
 
 - **Target users (from James):** Individual developers using Squad on projects where the rest of the team doesn't use Squad. Examples: open source projects, large shared repos where committing `.squad/` isn't appropriate. This is NOT for teams adopting Squad together — it's for one person using Squad on a shared repo.
-- **No CI/CD (from James):** There will be no CI/CD integration for Dispatcher. No GitHub Actions triggers, no pipeline integration. Removed from PRD §2 and §6.
+- **No CI/CD (from James):** There will be no CI/CD integration for Rally. No GitHub Actions triggers, no pipeline integration. Removed from PRD §2 and §6.
 
 ### 2026-02-21 22:47 — Config format: YAML not JSON (completed)
 - Updated `docs/PRD.md` to use YAML for all config files
@@ -40,11 +40,11 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 
 ### 2026-02-22 — Onboard Command Expansion (§3.2)
 
-- **GitHub URL support:** `dispatcher onboard` now accepts `https://github.com/owner/repo` or `owner/repo` shorthand. Clones into configurable `projectsDir` (default: `~/.dispatcher/projects/`).
-- **Configurable projects directory:** New `projectsDir` key in `config.yaml`. Set during `dispatcher setup`.
-- **Team selection prompt:** At onboard time, user chooses shared team (`~/.dispatcher/team/`) or project-specific team (`~/.dispatcher/teams/<project>/`). Scriptable with `--team <shared|new>`.
+- **GitHub URL support:** `rally onboard` now accepts `https://github.com/owner/repo` or `owner/repo` shorthand. Clones into configurable `projectsDir` (default: `~/.rally/projects/`).
+- **Configurable projects directory:** New `projectsDir` key in `config.yaml`. Set during `rally setup`.
+- **Team selection prompt:** At onboard time, user chooses shared team (`~/.rally/team/`) or project-specific team (`~/.rally/teams/<project>/`). Scriptable with `--team <shared|new>`.
 - **projects.yaml expanded:** Each project entry now includes `team` (shared/project) and `teamDir` (absolute path to the team directory used).
-- **State layout expanded:** `~/.dispatcher/` now includes `teams/` (project-specific team dirs) and `projects/` (cloned repos).
+- **State layout expanded:** `~/.rally/` now includes `teams/` (project-specific team dirs) and `projects/` (cloned repos).
 - **§8.2 partially resolved:** Shared vs. per-project team is now a user choice at onboard time. Migration between team types and overlay approach remain open.
 - **§6 Non-Goals #5 updated:** Reflects that basic multi-team support (shared vs project-specific) now exists; advanced configurations remain out of scope.
 
@@ -58,7 +58,7 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - **Module structure updated:** §4.3 now shows `lib/ui/` directory with all 9 component files instead of the single `ui.js`.
 - **Sections renumbered:** Old §5–§8 became §6–§9 to accommodate the new section.
 
-- **Subcommands replace flags:** `dispatcher dispatch issue <number>` and `dispatcher dispatch pr <number>` replace `dispatcher dispatch <number>` and `dispatcher dispatch --pr <number>`. Explicit subcommands make the CLI self-documenting and avoid ambiguity.
+- **Subcommands replace flags:** `rally dispatch issue <number>` and `rally dispatch pr <number>` replace `rally dispatch <number>` and `rally dispatch --pr <number>`. Explicit subcommands make the CLI self-documenting and avoid ambiguity.
 - **`--repo <owner/repo>` flag:** Both subcommands accept an optional `--repo <owner/repo>` flag. If omitted, the repo is inferred from cwd (if inside an onboarded project), from `projects.yaml` (if only one project), or errors with a helpful message if ambiguous.
 - **Sections updated:** §3.3, §3.4, §4.2 Data Flow, Appendix A Command Summary — all now reflect the new syntax.
 
@@ -69,7 +69,7 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 - **PRD §5.0 added:** New Dependencies section listing all npm packages with version constraints and rationale.
 - **Module structure simplified:** `lib/ui/` now contains `App.jsx`, `Dashboard.jsx`, and `components/` directory with Ink React components instead of 9 standalone raw-ANSI modules.
 - **Config parsing:** `config.js` now uses `js-yaml` instead of a custom YAML parser.
-- **CLI parsing:** `bin/dispatcher.js` now uses Commander instead of manual `process.argv` parsing.
+- **CLI parsing:** `bin/rally.js` now uses Commander instead of manual `process.argv` parsing.
 - **Technical constraints updated:** §8 Dependencies row updated from "zero runtime dependencies" to curated npm package list.
 - **All zero-dep references removed** from PRD. Historical decision records in `.squad/decisions.md` preserved as-is for the record.
 
@@ -111,7 +111,7 @@ Fixed all stale "zero-dependency" references across team documentation post-depe
 2. `.squad/agents/kaylee/charter.md` — "How I Work" section updated to reference production CLI stack; Voice section updated
 3. `.squad/agents/jayne/charter.md` — Testing section updated to mention ink-testing-library alongside node:test
 4. `.squad/agents/scribe/history.md` — Stack context updated
-5. `.squad/skills/squad-conventions/SKILL.md` — Deprecated with note. This skill documents Squad (create-squad), not Dispatcher. Added redirect to Dispatcher-specific guidance.
+5. `.squad/skills/squad-conventions/SKILL.md` — Deprecated with note. This skill documents Squad (create-squad), not Rally. Added redirect to Rally-specific guidance.
 6. `.squad/decisions.md` — Appended follow-up entry (append-only) documenting js-yaml superseding hand-rolled YAML parser from Decision #3
 
 **Verification:**
@@ -152,3 +152,47 @@ Fixed all stale "zero-dependency" references across team documentation post-depe
 - Created orchestration log and session log
 - Updated implementation agents (Kaylee, Wash, Jayne) with cross-agent context
 - All squad/ changes committed
+
+### 2026-02-22 — Project Rename: Dispatcher → Rally
+
+Executed comprehensive project rename per James Sturtevant's directive.
+
+**Changes made:**
+
+1. **`docs/PRD.md`** — Complete document update:
+   - Title: "Dispatcher" → "Rally"
+   - All CLI commands: `dispatcher setup` → `rally setup`, `dispatcher dispatch` → `rally dispatch`, `dispatcher dashboard` → `rally dashboard`
+   - All file paths: `~/.dispatcher/` → `~/.rally/`, including config files, team directories, projects directory
+   - All branch naming: `dispatcher/<issue>` → `rally/<issue>`
+   - All worktree paths: `.worktrees/dispatcher-*` → `.worktrees/rally-*`
+   - UI copy: "Dispatcher Dashboard" → "Rally Dashboard", "Dispatcher CLI" → "Rally CLI"
+   - All technical references updated to use "Rally" as project name
+
+2. **Team documentation:**
+   - `.squad/agents/mal/history.md` — Updated all project references
+   - `.squad/agents/kaylee/history.md` — Updated all project references
+   - `.squad/agents/wash/history.md` — Updated all project references
+   - `.squad/agents/jayne/history.md` — Updated all project references
+   - `.squad/agents/scribe/history.md` — Updated all project references
+   - `.squad/identity/now.md` — Updated project focus description
+   - `.squad/skills/squad-conventions/SKILL.md` — Updated deprecated skill references to Rally
+
+3. **Historical logs (for team context):**
+   - `.squad/log/*.md` — Updated all orchestration logs
+   - `.squad/orchestration-log/*.md` — Updated all orchestration logs
+   - `.squad/decisions/inbox/*.md` — Updated directive files
+
+4. **Preserved (append-only):**
+   - `.squad/decisions.md` — NOT edited. Old decisions referencing "Dispatcher" remain as historical records per team policy (append-only decision log).
+
+**Key distinctions maintained:**
+- ✓ "dispatch" as a VERB/COMMAND NAME kept intact (e.g., "dispatch issue", "dispatch command")
+- ✓ Project name consistently changed: "Dispatcher" → "Rally" (capitalized), "dispatcher" → "rally" (lowercase)
+- ✓ CLI command consistently changed: `dispatcher` → `rally`
+- ✓ File paths consistently changed: `~/.dispatcher/` → `~/.rally/`
+
+**Verification:**
+- `docs/PRD.md`: 27 occurrences of "Rally", 144 occurrences of "rally" (total 171 project name references)
+- All team docs and logs updated
+- Decisions.md preserved with historical context intact
+

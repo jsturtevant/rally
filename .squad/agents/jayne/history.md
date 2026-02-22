@@ -1,13 +1,13 @@
 # Project Context
 
 - **Owner:** James Sturtevant
-- **Project:** Dispatcher — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
+- **Project:** Rally — a CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees
 - **Stack:** Node.js with curated npm packages (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts) + node:test for testing
 - **Created:** 2026-02-21
 
 ## Project Description
 
-Dispatcher is a command line tool that works with Squad. Key commands:
+Rally is a command line tool that works with Squad. Key commands:
 - **setup** — Sets up Squad outside of a repo
 - **onboard** — Onboards a new team to a repo without committing the files
 - **dispatch** — Takes a GitHub issue, creates a worktree, adds the Squad, has them plan, iterate, add tests, and do code reviews
@@ -71,7 +71,7 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 
 **Edge cases missing from spec:**
 - Re-onboarding same repo with different team selection
-- Dispatch same issue twice (error? re-use worktree? create dispatcher-42-2?)
+- Dispatch same issue twice (error? re-use worktree? create rally-42-2?)
 - Multiple projects onboarded + cwd ambiguity
 - Symlink target validation
 - Concurrent dispatch commands (race condition on active.yaml)
@@ -89,7 +89,7 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 **Test framework not spec'd:**
 - How to test Ink components + @inquirer/prompts? Use `ink-testing-library`?
 - Mock child_process for git/gh/npx calls?
-- Fixture strategy (temp dir? Avoid ~/.dispatcher/ pollution?)
+- Fixture strategy (temp dir? Avoid ~/.rally/ pollution?)
 - Integration tests for full workflow (setup→onboard→dispatch)?
 
 **Recommendations:**
@@ -103,26 +103,26 @@ Dispatcher is a command line tool that works with Squad. Key commands:
 ### 2026-02-21 — PRD Draft & Architecture
 
 - **All implementation begins with** `docs/PRD.md` — comprehensive spec covering 5 commands with CLI specs, error cases, state models, and open questions.
-- **State model:** Three YAML files under `~/.dispatcher/` — `config.yaml`, `projects.yaml`, `active.yaml`. Simple, file-based. (Changed from JSON per user directive on 2026-02-21.)
+- **State model:** Three YAML files under `~/.rally/` — `config.yaml`, `projects.yaml`, `active.yaml`. Simple, file-based. (Changed from JSON per user directive on 2026-02-21.)
 - **Core technique:** Symlink + `.git/info/exclude` (from Tamir Dresher's pattern). Foundation for `onboard` command.
-- **Worktree location:** `.worktrees/dispatcher-<N>/` with branch naming `dispatcher/<N>-<slug>`.
-- **Module structure:** `bin/dispatcher.js` entry + `lib/` modules per command + shared utilities.
+- **Worktree location:** `.worktrees/rally-<N>/` with branch naming `rally/<N>-<slug>`.
+- **Module structure:** `bin/rally.js` entry + `lib/` modules per command + shared utilities.
 - **Key decisions:** Three-file state, worktrees inside repo, module-per-command. Open questions logged in PRD §8–§9.
 - **Target user clarification (2026-02-21):** Solo developers on shared/OSS repos, NOT teams adopting Squad together.
-- **No CI/CD for Dispatcher (2026-02-21):** Zero CI/CD integration. No GitHub Actions, no pipeline triggers.
+- **No CI/CD for Rally (2026-02-21):** Zero CI/CD integration. No GitHub Actions, no pipeline triggers.
 
 
 ### 2026-02-21 22:47 — Config format: YAML not JSON
-- User directive: all Dispatcher config files use YAML, not JSON
+- User directive: all Rally config files use YAML, not JSON
 - **UPDATE (2026-02-22):** `js-yaml` package now used (dependency pivot). No hand-rolled YAML parser needed.
 - See `.squad/decisions.md` → "Decision: Config file format changed from JSON to YAML"
 
 ### 2026-02-22 — Onboard Expansion (§3.2) & Dispatch Subcommands (§3.3–3.4)
 
 **From Mal (Lead):**
-- **Onboard expansion:** Now accepts GitHub URLs (`https://github.com/owner/repo` or `owner/repo`), clones into configurable `projectsDir` (default: `~/.dispatcher/projects/`). User selects team type at onboard: shared (`~/.dispatcher/team/`) or project-specific (`~/.dispatcher/teams/<project>/`). Flag: `--team <shared|new>`. `projects.yaml` schema expanded to track `team` and `teamDir`.
-- **Dispatch subcommands:** Explicit subcommands `dispatcher dispatch issue <number>` and `dispatcher dispatch pr <number>` (was implicit + `--pr` flag). Both accept `--repo <owner/repo>` with fallback inference logic. Sections §3.3, §3.4, §4.2 updated in PRD.
-- **State layout:** `~/.dispatcher/` gains `teams/` (project-specific) and `projects/` (cloned repos).
+- **Onboard expansion:** Now accepts GitHub URLs (`https://github.com/owner/repo` or `owner/repo`), clones into configurable `projectsDir` (default: `~/.rally/projects/`). User selects team type at onboard: shared (`~/.rally/team/`) or project-specific (`~/.rally/teams/<project>/`). Flag: `--team <shared|new>`. `projects.yaml` schema expanded to track `team` and `teamDir`.
+- **Dispatch subcommands:** Explicit subcommands `rally dispatch issue <number>` and `rally dispatch pr <number>` (was implicit + `--pr` flag). Both accept `--repo <owner/repo>` with fallback inference logic. Sections §3.3, §3.4, §4.2 updated in PRD.
+- **State layout:** `~/.rally/` gains `teams/` (project-specific) and `projects/` (cloned repos).
 - **See:** `.squad/decisions.md` → "Onboard Command Expansion" and "Dispatch uses explicit subcommands"
 
 **What this means for you:**

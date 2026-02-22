@@ -13,7 +13,7 @@ Updated `docs/PRD.md` to expand onboarding workflow and restructure dispatch com
 
 2. **Dispatch restructuring (§3.3–3.4):** Replaced implicit+flag syntax with explicit subcommands (`dispatch issue <num>` and `dispatch pr <num>`), both supporting `--repo <owner/repo>` flag with inference fallback.
 
-3. **State layout:** `~/.dispatcher/` gains `teams/` (project-specific) and `projects/` (cloned repos). §8.2 (per-project vs shared team) partially resolved.
+3. **State layout:** `~/.rally/` gains `teams/` (project-specific) and `projects/` (cloned repos). §8.2 (per-project vs shared team) partially resolved.
 
 ## Decisions Filed
 

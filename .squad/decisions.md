@@ -678,3 +678,231 @@ User requirement. Ensures automated code review coverage and that PRs genuinely 
 - PR review workflow: Add Copilot → wait for review → address comments → verify acceptance criteria → approval
 - Reviewers must spot-check CI logs for test coverage alignment with issue acceptance criteria
 - Merge blocked until all criteria verified and Copilot review addressed
+
+---
+
+## Retrospective: Phase 2 Implementation — Process Validation & Code Quality
+
+**Facilitated by:** Mal (Lead)  
+**Date:** 2026-02-22  
+**Status:** Complete  
+**PRs Delivered:** #30–#34 (5 features, all merged)  
+**Issues Closed:** #9–#13
+
+### Executive Summary
+
+Phase 2 was a success. The team corrected the Phase 1 process failure by implementing the workflow improvements recommended in Phase 1 retro (feature branches, PRs, mandatory review, CI validation). All 5 Phase 2 features were delivered with solid code quality, 52 test cases, and zero post-merge bugs. **The new workflow is now established and should carry forward to Phase 3.**
+
+### What Went Well
+
+#### 1. Workflow Discipline Established
+
+Phase 1 was a complete process failure (all code direct to main, zero PRs). **Phase 2 corrected this completely.** The new workflow from the Phase 1 retro worked as designed:
+
+- **Feature branches:** All 5 PRs used feature branches (`rally/9-setup`, `rally/10-onboard`, `rally/11-url-onboard`, `rally/12-team-selection`, `rally/13-status`)
+- **Proper merge structure:** Commits on feature branches → PR → review → CI validation → merge to main
+- **Zero direct commits to main during Phase 2** (contrast: Phase 1 had 5 direct commits to main)
+- **Review gate enforced:** All review comments addressed before merge
+- **Issues properly closed:** GitHub auto-close via PR merge
+
+**This validates the process fix.** The workflow is now a team standard.
+
+#### 2. Code Quality Improved Over Phase 1
+
+- **Security:** Path traversal defenses (regex character classes, explicit `includes('..')` checks), command injection prevention (`execFileSync` with array args), proper error handling
+- **Dependency injection patterns:** `_exec`, `_select`, `_input` hooks make interactive flows testable without TTY mocking
+- **Edge case coverage:** Windows path handling (symlink vs junction auto-detect), Node 18 compatibility (no `import.meta.dirname`), trailing slashes in URLs, partial state recovery
+- **Integration testing:** Tests include actual git operations, Squad invocation, file system state verification
+- **Idempotency:** All 5 commands are idempotent — re-running produces same result, no duplicates, no errors
+
+#### 3. Code Review Effectiveness
+
+**Mal review metrics:**
+- 8 review cycles across 5 PRs (average 1.6 reviews per PR)
+- **All review comments addressed before merge**
+- **Specific and actionable:** Cited test names when validating acceptance criteria, identified root causes, provided fix recommendations with code examples
+- **No post-merge bugs found**
+
+**Copilot review (partial Phase 2):**
+- PR #32: 7 comments (worktree detection, defensive parsing, template symlinks). All addressed.
+- PR #33: 13 comments (URL parsing edge cases). All addressed.
+- All issues caught by Copilot and human review were addressed before merge
+
+#### 4. Testing Coverage
+
+- **52 test cases written** for Phase 2 features (7 + 16 + 15 + 10 + 4 across 5 test files)
+- **All tests use `node:test` framework** per project constraints
+- **CI pipeline validation:** Node 18, 20, 22 compatibility checks on every PR
+- **Zero CI failures** on final merged commits
+- **Integration tests included:** Actual git operations, Squad invocation, file system state verification
+
+### What Didn't Go Well
+
+#### 1. Interactive Prompts Broken Initially (PR #34)
+
+**Issue:** Team selection prompt was unreachable in production. The `selectTeam()` function was gated behind `_select` test hook, so plain `rally onboard` never triggered interactive flow.
+
+**Root cause:** Acceptance criteria for interactive behavior not fully enumerated before coding. Caught in code review on second pass → fixed → re-approved.
+
+**Impact:** Not caught until review; would have failed user acceptance. Process worked, but revealed that interactive behavior is harder to verify from code than file I/O.
+
+#### 2. Partial State Bug Also in PR #34
+
+**Issue:** If `squad init` failed after mkdir, team dir existed but was incomplete. Retry would skip init and leave broken symlinks.
+
+**Root cause:** State cleanup not included in error paths.
+
+**Fixed:** Added try/catch + `rmSync` on failure.
+
+**Impact:** User-facing bug if Squad invocation failed. Caught in review → fixed before merge.
+
+#### 3. Path Traversal & Trailing Slash Bugs in PR #33
+
+**Issue 1:** Repo names with `..` could slip through regex and escape projects directory.  
+**Issue 2:** URLs with trailing slash (`https://github.com/owner/repo/`) fell through to local path handling.
+
+Both caught in security-conscious review → fixed before merge.
+
+#### 4. Copilot Review Not Added as Reviewer on All PRs
+
+**Status:** Copilot generated useful comments on PR #32 and #33, but was not added as a formal reviewer on #30 and #31. Per Phase 1 retro directive, Copilot should be a mandatory reviewer on all PRs.
+
+**Impact:** Medium. Copilot found real issues, but all issues were caught by Mal's human review anyway. No quality loss. However, this is a process gap for Phase 3.
+
+#### 5. No Pre-Review Linting / Formatting Validation
+
+No linting output in PR descriptions. No mention of ESLint, Prettier, or style validation. May be intentional (project is new), but worth noting as a future process addition if not already planned.
+
+### Process Gaps for Phase 3
+
+#### 1. Copilot Review Must Be Mandatory
+
+**Finding:** Phase 2 had Copilot comments on some PRs but not others.
+
+**Recommendation:** Add `@copilot` as reviewer on ALL Phase 3 PRs (dispatch, dashboard, error handling). If Copilot generates comments, they must be addressed before merge (like human review).
+
+**Owner:** Mal (ensure this happens in review workflow)
+
+#### 2. Interactive Behavior Validation Needs End-to-End Testing
+
+**Finding:** PR #34 (team selection) bug wasn't fully tested in context until code review.
+
+**Recommendation:** For Phase 3's dispatch command (heavily interactive), add pre-review validation step: "Test this command end-to-end with a real TTY."
+
+**Action:** Create `.squad/skills/interactive-testing/SKILL.md` documenting how to test Ink components without automated tools.
+
+**Owner:** Jayne + Mal (establish as standard process)
+
+#### 3. Edge Case Review Should Be Systematic
+
+**Finding:** PR #33 (path traversal) and PR #34 (partial state) showed that edge cases need systematic review. Current approach is "lucky" (caught in review, but not guaranteed).
+
+**Recommendation:** Before Phase 3, create a checklist of common edge cases for dispatch and dashboard:
+- Aborted invocation (user kills worktree setup mid-flight)
+- Network errors (git clone fails, gh API fails, Copilot CLI timeout)
+- Worktree conflicts (user manually creates worktree with same name)
+- Squad state corruption (incomplete `.squad/` setup)
+- Partial merge or failed cleanup
+
+**Action:** Include in review template + checklist for reviewers.
+
+**Owner:** Mal (establish review template)
+
+#### 4. Acceptance Criteria As Test List
+
+**Recommendation:** Continue best practice from Phase 2. Acceptance criteria from issue = test names in test files. Mal should include "Acceptance Criteria Summary" section in merge reviews (like PR #31).
+
+#### 5. Code Patterns to Preserve for Phase 3
+
+- **Dependency injection for testing** (`_exec`, `_select`, `_input` parameters) — keep in dispatch and dashboard
+- **Idempotency** — all Phase 3 commands should be idempotent
+- **Node 18+ compatibility** — no `import.meta.dirname`, no modern-only APIs
+- **execFileSync with array args** — continue using for CLI invocation safety
+- **Defensive parsing** — try/catch on file operations, existence checks before mutations
+
+### Recommendations for Phase 3
+
+#### For Kaylee (Dispatch Implementation)
+
+1. **Dispatch context format spec** — Write `.squad/decisions/inbox/phase3-dispatch-context-spec.md` before starting #15.
+   - Should specify `dispatch-context.md` format (documented in blocker resolutions as "simple markdown template")
+   - Include: issue/PR number, title, labels, creation date, description, files changed, instructions
+   - Get James sign-off before coding
+
+2. **Squad invocation safety test** — Test that Copilot CLI can be invoked with dispatch context.
+   - PRD §9.1 says "Automated CLI invocation. Rally launches Copilot CLI automatically with appropriate prompt"
+   - Test plan: does `npx @github-copilot/cli chat < dispatch-context.md` work? What error cases exist?
+   - Get Wash to validate against real CLI before you code dispatch invocation
+
+3. **Dependency injection patterns** — Keep `_exec`, `_select`, `_input` hooks (from Phase 2) for testability. Dispatch is heavily interactive — test hooks are critical.
+
+#### For Wash (PR Integration / Dashboard)
+
+1. **Dashboard alternate screen buffer edge cases** — Test on multiple terminals before shipping.
+   - PRD §5 specifies `\x1b[?1049h/l` for alternate screen buffer
+   - Edge cases: terminal resize while dashboard running, rapid `q` presses, piped output (should not use buffer)
+   - Phase 4 concern, but flag now for planning
+
+#### For Jayne (Testing & Documentation)
+
+1. **docs/TESTING.md** — Write this in Phase 3 (was blocked by blocker resolutions, now clear).
+   - Document how to test interactive Ink components
+   - Document how to test node:test with injected exec/prompt hooks
+   - Include example test file (setup.test.js or team.test.js)
+
+#### For Mal (Team Lead)
+
+1. **Establish Phase 3 review standards:**
+   - All PRs have `@copilot` reviewer from day 1
+   - Include "Acceptance Criteria Summary" in merge reviews
+   - Include edge case checklist in review (aborted invocation, network errors, state corruption)
+   - Interactive behavior gets end-to-end TTY testing before review
+
+2. **Create interactive testing skill document** — `.squad/skills/interactive-testing/SKILL.md`
+
+3. **Standard retro checklist** for future retrospectives:
+   - [ ] Did PRs use feature branches? (workflow discipline)
+   - [ ] Did review catch acceptance criteria issues? (quality gate)
+   - [ ] Did all tests pass? What was the coverage ratio? (test health)
+   - [ ] Did CI gate any merges? (automation trust)
+   - [ ] Did edge case review happen or was it lucky? (robustness)
+
+### Summary
+
+**Phase 2 was a success.** The team corrected the Phase 1 process failure and delivered 5 solid features with proper reviews and tests. Feature branches worked, code review found real issues, and CI validated all merges. The new workflow is now established and should carry forward.
+
+**Three process gaps to fix for Phase 3:**
+1. Copilot review should be mandatory, not optional
+2. Interactive behavior needs end-to-end testing, not just unit tests
+3. Edge case review should be systematic, not lucky
+
+**Code quality is good.** No post-merge bugs, all acceptance criteria met, idempotency maintained, and security-conscious error handling in place. The team is ready for the larger Phase 3 (dispatch) implementation.
+
+**Recommended next step:** Resolve dispatch context format spec with James before Phase 3 kickoff (takes 15 min, prevents rework).
+
+---
+
+## Directive: Copilot Review Execution — Mandatory on All Phase 3+ PRs
+
+**By:** James Sturtevant (User)  
+**Date:** 2026-02-22T17:06:00Z  
+**Status:** Policy
+
+### Decision
+
+Copilot review is now **mandatory on every PR** starting Phase 3. All agents must:
+1. Add `@copilot` as a reviewer when creating a PR
+2. Wait for Copilot's review comments before proceeding
+3. Address all Copilot comments (like human review comments)
+4. Get Copilot approval (status shows reviewed) before merging
+
+### Rationale
+
+Phase 2 showed Copilot provides valuable edge case detection (13 comments on PR #33, 7 on PR #32). Making this systematic ensures all PRs get automated code review alongside human review. This prevents edge case bugs and raises code quality.
+
+### Impact
+
+- PR workflow change: Create PR → Add @copilot → Wait for review → Address comments → Merge
+- Mal enforces this as merge gate (no merge without Copilot reviewed)
+- Copilot review latency may affect PR cycle time (typically 30-60 sec)
+- All Phase 3+ PRs must follow this pattern (dispatch, dashboard, error handling)

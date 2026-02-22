@@ -319,3 +319,76 @@ All decisions documented and merged into `decisions.md`. All 5 blockers resolved
 3. Design test fixtures for Phase 1 utility testing
 
 Timeline: Target completion by 2026-02-23, enabling Kaylee/Wash Phase 1 implementation.
+
+### 2026-02-22 — Phase 2 Retrospective & Action Items for Phase 3
+
+**From Mal (Lead):**
+
+**Phase 2 was a success.** All 5 issues (#9–#13) closed, all 5 PRs (#30–#34) merged. Code quality improved, 52 test cases, zero post-merge bugs.
+
+**What went well:**
+- ✓ Feature branches used throughout (5 agents, 5 worktrees, zero direct commits to main)
+- ✓ Code review effective (8 review cycles, all comments addressed before merge)
+- ✓ Acceptance criteria became binding in review process (real bugs caught: Node 18 compat, path traversal, partial state)
+- ✓ Testing comprehensive (52 test cases, all tests passed, CI validation on every PR)
+- ✓ Idempotency maintained
+- ✓ Integration tests included (not just unit tests)
+
+**Process gaps for Phase 3 (your work — testing infrastructure, error catalog, E2E tests):**
+
+1. **Copilot review must be mandatory**
+   - Phase 2 had Copilot on some PRs but not all (#30, #31 missing @copilot)
+   - Action: Add `@copilot` reviewer to ALL Phase 3 PRs from day 1
+   - Your test PRs will be reviewed for coverage + acceptance criteria alignment
+
+2. **Interactive behavior needs end-to-end testing**
+   - PR #34 bug (team selection unreachable) caught in code review, not before
+   - Action: For Phase 3 dispatch tests, include end-to-end TTY tests (not just unit mocks)
+   - Update `docs/TESTING.md` with interactive testing patterns (you already started this)
+   - Create `.squad/skills/interactive-testing/SKILL.md` as reference skill for team
+
+3. **Edge case review must be systematic**
+   - Phase 2 found path traversal + partial state bugs via luck (lucky reviews), not by design
+   - Action: Your error catalog + edge case specs (#26, #27) will become the systematic checklist
+   - Reviewers will use your specs to validate edge case handling in Phase 3 implementations
+   - This elevates error handling from "lucky" to "systematic"
+
+4. **Acceptance criteria verification**
+   - Phase 2 established: AC from issue = test names in test files
+   - Action: When you write test files in Phase 3, name them to match issue acceptance criteria
+   - Example: Issue "dispatch issue command must handle auth failures" → test name `testDispatchAuthFailure()`
+   - Reviewers will spot-check this in PR reviews
+
+5. **Your priority for Phase 3**
+   - **Before** Kaylee/Wash ship Phase 2+ features, you provide test infrastructure (Issue #8)
+   - **During** Phase 3, you shadow Kaylee/Wash implementation with test files
+   - **Goal:** Tests written before/alongside code (TDD mindset), so review can verify AC coverage
+   - **Outcome:** No test gaps, no post-merge bugs (like Phase 2)
+
+**Key findings from Phase 2 retro:**
+- 52 test cases across 5 test files (7 + 16 + 15 + 10 + 4)
+- No post-merge bugs found
+- All acceptance criteria verified in review before merge
+- Integration tests included (real git/Squad operations, not mocks)
+- Idempotency rules tested systematically
+
+**Your action items for Phase 3:**
+1. **docs/TESTING.md** — Already written. Ensure it covers:
+   - node:test framework patterns
+   - Mocking git/gh/Copilot CLI with dependency injection
+   - Ink component testing with ink-testing-library
+   - Integration test patterns
+2. **Error catalog** — Already written. Ensure coverage of:
+   - All error cases for dispatch/dashboard (network, auth, state corruption, etc.)
+   - Exit codes for each error type
+   - Test approach for each error case
+3. **Interactive testing skill** — Create `.squad/skills/interactive-testing/SKILL.md`:
+   - How to test Ink components with real TTY (not just mocks)
+   - How to test prompts without automation (manual key simulation)
+   - Examples from Phase 2 (setup, team selection, status)
+4. **Shadow Kaylee/Wash** — As they implement dispatch, write test files alongside
+   - Use your docs/TESTING.md patterns
+   - Name tests to match issue acceptance criteria
+   - Include integration tests (real git/gh calls in test fixtures)
+
+**Next step for you:** Review Phase 2 retro in `.squad/decisions.md` → "Retrospective: Phase 2 Implementation" section. Your error catalog and testing infrastructure are now the team's systematic edge case checklist. This is a big responsibility and a big opportunity to prevent bugs.

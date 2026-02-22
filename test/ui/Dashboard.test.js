@@ -2,17 +2,21 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.jsx';
 
-const TEST_DIR = join(tmpdir(), `rally-dashboard-test-${process.pid}`);
+let TEST_DIR;
+let WORKTREE_DIR;
+let originalRallyHome;
 
 function setupTestEnv(dispatches = []) {
-  if (existsSync(TEST_DIR)) {
-    rmSync(TEST_DIR, { recursive: true });
+  originalRallyHome = process.env.RALLY_HOME;
+  if (!TEST_DIR) {
+    TEST_DIR = join(tmpdir(), `rally-dashboard-test-${process.pid}-${Date.now()}`);
+    WORKTREE_DIR = join(TEST_DIR, 'worktree-check');
   }
   mkdirSync(TEST_DIR, { recursive: true });
   const content = yaml.dump({ dispatches });
@@ -21,13 +25,17 @@ function setupTestEnv(dispatches = []) {
 }
 
 function teardownTestEnv() {
-  delete process.env.RALLY_HOME;
-  if (existsSync(TEST_DIR)) {
-    rmSync(TEST_DIR, { recursive: true });
+  if (originalRallyHome !== undefined) {
+    process.env.RALLY_HOME = originalRallyHome;
+  } else {
+    delete process.env.RALLY_HOME;
+  }
+  if (TEST_DIR) {
+    rmSync(TEST_DIR, { recursive: true, force: true });
+    TEST_DIR = null;
+    WORKTREE_DIR = null;
   }
 }
-
-const WORKTREE_DIR = join(TEST_DIR, 'worktree-check');
 
 function makeSampleDispatches() {
   return [
@@ -68,9 +76,10 @@ function makeSampleDispatches() {
 }
 
 function setupWithDispatches() {
+  TEST_DIR = join(tmpdir(), `rally-dashboard-test-${process.pid}-${Date.now()}`);
+  WORKTREE_DIR = join(TEST_DIR, 'worktree-check');
   const dispatches = makeSampleDispatches();
   setupTestEnv(dispatches);
-  // Create worktree dir after setupTestEnv (which wipes TEST_DIR)
   mkdirSync(WORKTREE_DIR, { recursive: true });
 }
 

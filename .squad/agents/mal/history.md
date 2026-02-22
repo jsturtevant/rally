@@ -443,3 +443,46 @@ Designed comprehensive "PR Review Process" skill for the team based on Phase 2 a
 **Artifact:** `.squad/decisions/inbox/mal-pr-review-skill-outline.md` — 19KB outline, ready for team review and formalization into SKILL.md
 
 **Status:** Awaiting team review before finalizing SKILL.md
+
+### 2026-02-22 — PR #36 Review: active.yaml dispatch tracking (#19)
+
+**Verdict:** Approved. Clean, well-structured module with correct atomic write pattern and comprehensive tests (19 tests).
+
+**Review findings:**
+- `lib/active.js` correctly implements CRUD with atomic writes (temp+rename), matching the decision doc
+- Record schema matches issue #19 spec exactly
+- Validation covers required fields, type enum, status enum, duplicate ids
+- Tests cover happy paths, error paths, and edge cases
+- Reuses `readActive()` and `getConfigDir()` from config.js — good composability
+
+**Observations flagged (non-blocking):**
+1. `writeActive()` still exported from config.js — bypass risk for downstream consumers (#15, #16). Should deprecate or remove in follow-up.
+2. No `updated` timestamp on status changes — dashboard (#16) may need this later.
+
+**Quality notes:**
+- Error messages are clean and user-facing (include invalid value + valid options)
+- Test isolation via RALLY_HOME env var override is the right pattern
+- `makeRecord()` helper in tests keeps them DRY
+- CI green on all Node versions
+
+### 2026-02-22 — PR #35 Review (dispatch.js core module, issue #14)
+
+**Verdict:** Approve ✅ — posted as comment (can't self-approve via API since James owns the repo).
+
+**Acceptance criteria:** All 4 met. `resolveRepo()` handles --repo flag, cwd detection, single-project fallback, and clear ambiguous-repo errors. Resolution priority order is correct and tested.
+
+**Code quality observations:**
+- dispatch.js follows established patterns perfectly: ES modules, `execFileSync` with arrays, `path.resolve`, js-yaml via config.js
+- DI via `_exec` injectable for testing — good pattern, consistent with how we test git operations
+- Error messages are user-facing with actionable guidance ("Run: rally onboard", "Use --repo owner/repo")
+- No security issues — no shell strings, no unsanitized input
+- API surface `{ owner, repo, fullName, project }` is clean and composable for #15/#16/#17
+
+**Items flagged (non-blocking):**
+1. **Scope creep:** `lib/active.js` + tests are not part of issue #14. Well-written but should be tracked under a separate issue or #19. Clean issue-to-PR traceability matters.
+2. **writeActiveAtomic duplication:** active.js introduces atomic writes (temp file + rename) but config.js already has `writeActive()` doing direct writes to the same file. Two competing write functions for active.yaml. Must consolidate before downstream PRs consume active.js.
+
+**Patterns noted for future reviews:**
+- `resolveRepo` matches --repo flag by project `name` only (ignores owner for lookup). Conscious design choice — owner comes from the flag, project comes from projects.yaml by name match.
+- `findProjectByCwd` hardcodes `process.cwd()` (not injectable). Tests use `process.chdir()` as workaround. Acceptable but worth noting if cwd injection becomes needed later.
+- Copilot review was clean — only flagged a placeholder timestamp in SKILL.md.

@@ -258,3 +258,17 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - Your revision workflow: if Mal requests changes, don't self-revise — a different agent will pick it up
 
 **Action:** Read `.squad/skills/pr-review-process/SKILL.md` before Phase 3 PRs.
+
+### 2026-02-22T1725 — Phase 3 Wave 1: Cross-Agent Update
+
+**From Scribe (cross-agent propagation):**
+
+**Wave 1 parallel results (your peers):**
+
+1. **Wash (Integration Dev):** Implemented `lib/active.js` — dispatch record CRUD with atomic writes (temp + rename). 19 tests passing. PR #36 on `rally/19-active-tracking`. **Key decision:** active.yaml uses atomic writes; `lib/active.js` owns all dispatch CRUD — do not bypass with raw `writeActive()` from config.js.
+
+2. **Jayne (Tester):** Wrote 35 anticipatory test stubs for Issues #15 and #17 — `test/dispatch-issue.test.js` (14 tests) and `test/dispatch-context.test.js` (21 tests). Tests expect your dispatch modules to exist. Edge cases discovered: slug generation needs truncation, worktree collision needs dual check, Copilot CLI invocation method TBD.
+
+**Your PR #35 status:** Awaiting dual review (Copilot + Mal).
+
+**Next:** Wave 2 will implement Issues #15, #16, #17 using your dispatch.js core + Wash's active.js.

@@ -1,0 +1,28 @@
+{
+  "name": "rally",
+  "version": "0.1.0",
+  "description": "CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees",
+  "type": "module",
+  "bin": {
+    "rally": "./bin/rally.js"
+  },
+  "scripts": {
+    "test": "node --test ./test/*.test.js"
+  },
+  "dependencies": {
+    "ink": "^5.0.0",
+    "chalk": "^5.0.0",
+    "ora": "^8.0.0",
+    "commander": "^12.0.0",
+    "js-yaml": "^4.0.0",
+    "@inquirer/prompts": "^7.0.0",
+    "ink-table": "^3.1.0",
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "ink-testing-library": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

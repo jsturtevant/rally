@@ -192,11 +192,11 @@ describe('team selection', () => {
       );
     });
 
-    test('onboard without --team falls back to shared config (backward compat)', async () => {
+    test('onboard without --team uses selectTeam interactive prompt', async () => {
       const { teamDir } = setupRallyHome();
       const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-      await onboard({ path: repoPath });
+      await onboard({ path: repoPath, _select: async () => 'shared' });
 
       const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
       const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
@@ -219,6 +219,69 @@ describe('team selection', () => {
       // No projects.yaml should be created
       const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
       assert.ok(!existsSync(projectsPath) || yaml.load(readFileSync(projectsPath, 'utf8'))?.projects?.length === 0 || !existsSync(projectsPath));
+    });
+  });
+
+  // --- Partial team dir recovery (review issue PR#34) ---
+
+  describe('partial team dir recovery', () => {
+    test('--team re-inits when dir exists but .squad/ is missing', async () => {
+      setupRallyHome();
+      const teamsDir = join(process.env.RALLY_HOME, 'teams');
+      const partialDir = join(teamsDir, 'broken-team');
+      mkdirSync(partialDir, { recursive: true });
+      // Dir exists but no .squad inside
+
+      let execCalled = false;
+      const result = await selectTeam({
+        team: 'broken-team',
+        _exec: (cmd, args, opts) => {
+          execCalled = true;
+          fakeExec(cmd, args, opts);
+        },
+      });
+
+      assert.ok(execCalled, 'should re-run init for partial team dir');
+      assert.strictEqual(result.teamDir, partialDir);
+      assert.ok(existsSync(join(partialDir, '.squad')), '.squad should now exist');
+    });
+
+    test('interactive re-inits when dir exists but .squad/ is missing', async () => {
+      setupRallyHome();
+      const teamsDir = join(process.env.RALLY_HOME, 'teams');
+      const partialDir = join(teamsDir, 'half-done');
+      mkdirSync(partialDir, { recursive: true });
+
+      let execCalled = false;
+      const result = await selectTeam({
+        _select: async () => 'project',
+        _input: async () => 'half-done',
+        _exec: (cmd, args, opts) => {
+          execCalled = true;
+          fakeExec(cmd, args, opts);
+        },
+      });
+
+      assert.ok(execCalled, 'should re-run init for partial team dir');
+      assert.strictEqual(result.teamDir, partialDir);
+      assert.ok(existsSync(join(partialDir, '.squad')), '.squad should now exist');
+    });
+
+    test('failed squad init cleans up team directory', async () => {
+      setupRallyHome();
+
+      const failingExec = () => { throw new Error('squad init exploded'); };
+
+      await assert.rejects(
+        () => selectTeam({ team: 'doomed-team', _exec: failingExec }),
+        (err) => {
+          assert.ok(err.message.includes('Squad init failed'));
+          return true;
+        }
+      );
+
+      const teamDir = join(process.env.RALLY_HOME, 'teams', 'doomed-team');
+      assert.ok(!existsSync(teamDir), 'team dir should be cleaned up after failed init');
     });
   });
 });

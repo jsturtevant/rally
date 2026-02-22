@@ -29,6 +29,9 @@ describe('onboard', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
+  // Mock select that picks "shared" team (used for tests that don't test team selection itself)
+  const sharedSelect = async () => 'shared';
+
   /**
    * Helper: set up a fake team directory with Squad files and write config.yaml
    */
@@ -63,7 +66,7 @@ describe('onboard', () => {
     const { teamDir } = setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     const squadLink = join(repoPath, '.squad');
     assert.ok(existsSync(squadLink), '.squad should exist');
@@ -76,7 +79,7 @@ describe('onboard', () => {
     const { teamDir } = setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     const agentLink = join(repoPath, '.github', 'agents', 'squad.agent.md');
     assert.ok(existsSync(agentLink), 'squad.agent.md should exist');
@@ -92,7 +95,7 @@ describe('onboard', () => {
     setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     assert.ok(existsSync(join(repoPath, '.github', 'agents')), '.github/agents/ should exist');
   });
@@ -103,7 +106,7 @@ describe('onboard', () => {
     setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     const excludePath = join(repoPath, '.git', 'info', 'exclude');
     assert.ok(existsSync(excludePath), 'exclude file should exist');
@@ -121,7 +124,7 @@ describe('onboard', () => {
     const { teamDir } = setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
     assert.ok(existsSync(projectsPath), 'projects.yaml should exist');
@@ -141,8 +144,8 @@ describe('onboard', () => {
     setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
@@ -153,8 +156,8 @@ describe('onboard', () => {
     setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
-    await assert.doesNotReject(() => onboard({ path: repoPath }));
+    await onboard({ path: repoPath, _select: sharedSelect });
+    await assert.doesNotReject(() => onboard({ path: repoPath, _select: sharedSelect }));
   });
 
   // --- Error Cases ---
@@ -173,19 +176,19 @@ describe('onboard', () => {
     );
   });
 
-  test('error: team directory missing (no config)', async () => {
+  test('error: shared team directory missing (no setup)', async () => {
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
     await assert.rejects(
-      () => onboard({ path: repoPath }),
+      () => onboard({ path: repoPath, _select: sharedSelect }),
       (err) => {
-        assert.ok(err.message.includes('No team directory found'));
+        assert.ok(err.message.includes('Shared team directory not found'));
         return true;
       }
     );
   });
 
-  test('error: team directory does not exist on disk', async () => {
+  test('error: shared team directory does not exist on disk', async () => {
     const rallyHome = process.env.RALLY_HOME;
     mkdirSync(rallyHome, { recursive: true });
     const config = {
@@ -197,9 +200,9 @@ describe('onboard', () => {
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
     await assert.rejects(
-      () => onboard({ path: repoPath }),
+      () => onboard({ path: repoPath, _select: sharedSelect }),
       (err) => {
-        assert.ok(err.message.includes('Team directory missing'));
+        assert.ok(err.message.includes('Shared team directory not found'));
         return true;
       }
     );
@@ -214,7 +217,7 @@ describe('onboard', () => {
     const originalCwd = process.cwd();
     process.chdir(repoPath);
     try {
-      await onboard({});
+      await onboard({ _select: sharedSelect });
 
       const squadLink = join(repoPath, '.squad');
       assert.ok(existsSync(squadLink), '.squad symlink should exist');
@@ -229,7 +232,7 @@ describe('onboard', () => {
     const { teamDir } = setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
-    await onboard({ path: repoPath });
+    await onboard({ path: repoPath, _select: sharedSelect });
 
     const templatesLink = join(repoPath, '.squad-templates');
     assert.ok(existsSync(templatesLink), '.squad-templates should exist');
@@ -247,7 +250,7 @@ describe('onboard', () => {
     // Write an empty projects.yaml (js-yaml.load returns undefined)
     writeFileSync(join(rallyHome, 'projects.yaml'), '', 'utf8');
 
-    await assert.doesNotReject(() => onboard({ path: repoPath }));
+    await assert.doesNotReject(() => onboard({ path: repoPath, _select: sharedSelect }));
 
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
@@ -268,7 +271,7 @@ describe('onboard', () => {
     };
     writeFileSync(join(rallyHome, 'projects.yaml'), yaml.dump(staleProjects), 'utf8');
 
-    await assert.doesNotReject(() => onboard({ path: repoPath }));
+    await assert.doesNotReject(() => onboard({ path: repoPath, _select: sharedSelect }));
 
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
@@ -288,7 +291,7 @@ describe('onboard', () => {
     const origWarn = console.warn;
     console.warn = (msg) => warnings.push(msg);
     try {
-      await onboard({ path: repoPath });
+      await onboard({ path: repoPath, _select: sharedSelect });
     } finally {
       console.warn = origWarn;
     }
@@ -312,7 +315,7 @@ describe('onboard', () => {
     const origWarn = console.warn;
     console.warn = (msg) => warnings.push(msg);
     try {
-      await onboard({ path: repoPath });
+      await onboard({ path: repoPath, _select: sharedSelect });
     } finally {
       console.warn = origWarn;
     }
@@ -321,5 +324,24 @@ describe('onboard', () => {
       warnings.some((w) => w.includes('expected') && w.includes(join(teamDir, '.squad'))),
       'should warn about wrong symlink target'
     );
+  });
+
+  // --- Interactive prompt reachability (review issue PR#34) ---
+
+  test('onboard without --team calls selectTeam interactive prompt', async () => {
+    const { teamDir } = setupTeam();
+    const repoPath = createRepo(join(tempDir, 'my-repo'));
+
+    let selectCalled = false;
+    await onboard({
+      path: repoPath,
+      _select: async () => { selectCalled = true; return 'shared'; },
+    });
+
+    assert.ok(selectCalled, 'selectTeam should invoke the interactive prompt when no --team flag');
+    const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    assert.strictEqual(projects.projects[0].team, 'shared');
+    assert.strictEqual(projects.projects[0].teamDir, teamDir);
   });
 });

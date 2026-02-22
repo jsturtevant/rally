@@ -2,10 +2,11 @@ import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync, rmSync, existsSync, readFileSync,
-  mkdirSync, writeFileSync, lstatSync, readlinkSync,
+  mkdirSync, writeFileSync, lstatSync, readlinkSync, symlinkSync,
 } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { onboard } from '../lib/onboard.js';
 
@@ -35,6 +36,7 @@ describe('onboard', () => {
     const rallyHome = process.env.RALLY_HOME;
     const teamDir = join(rallyHome, 'team');
     mkdirSync(join(teamDir, '.squad'), { recursive: true });
+    mkdirSync(join(teamDir, '.squad-templates'), { recursive: true });
     mkdirSync(join(teamDir, '.github', 'agents'), { recursive: true });
     writeFileSync(join(teamDir, '.github', 'agents', 'squad.agent.md'), '# Agent');
 
@@ -47,10 +49,11 @@ describe('onboard', () => {
   }
 
   /**
-   * Helper: create a fake git repo at the given path
+   * Helper: create a real git repo at the given path (needed for git rev-parse)
    */
   function createRepo(repoPath) {
-    mkdirSync(join(repoPath, '.git', 'info'), { recursive: true });
+    mkdirSync(repoPath, { recursive: true });
+    execFileSync('git', ['init', repoPath], { stdio: 'ignore' });
     return repoPath;
   }
 
@@ -218,5 +221,105 @@ describe('onboard', () => {
     } finally {
       process.chdir(originalCwd);
     }
+  });
+
+  // --- .squad-templates/ symlink (review issue #1/#5) ---
+
+  test('creates .squad-templates symlink pointing to team dir', async () => {
+    const { teamDir } = setupTeam();
+    const repoPath = createRepo(join(tempDir, 'my-repo'));
+
+    await onboard({ path: repoPath });
+
+    const templatesLink = join(repoPath, '.squad-templates');
+    assert.ok(existsSync(templatesLink), '.squad-templates should exist');
+    const stats = lstatSync(templatesLink);
+    assert.ok(stats.isSymbolicLink(), '.squad-templates should be a symlink');
+    assert.strictEqual(readlinkSync(templatesLink), join(teamDir, '.squad-templates'));
+  });
+
+  // --- Empty projects.yaml (review issue #3) ---
+
+  test('handles empty projects.yaml without crashing', async () => {
+    const { rallyHome } = setupTeam();
+    const repoPath = createRepo(join(tempDir, 'my-repo'));
+
+    // Write an empty projects.yaml (js-yaml.load returns undefined)
+    writeFileSync(join(rallyHome, 'projects.yaml'), '', 'utf8');
+
+    await assert.doesNotReject(() => onboard({ path: repoPath }));
+
+    const projectsPath = join(rallyHome, 'projects.yaml');
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    assert.strictEqual(projects.projects.length, 1);
+  });
+
+  // --- Stale project paths (review issue #4) ---
+
+  test('handles stale project paths in projects.yaml without crashing', async () => {
+    const { rallyHome, teamDir } = setupTeam();
+    const repoPath = createRepo(join(tempDir, 'my-repo'));
+
+    // Pre-register a project with a path that no longer exists
+    const staleProjects = {
+      projects: [
+        { name: 'gone-repo', path: '/tmp/nonexistent-rally-path-12345', team: 'shared', teamDir },
+      ],
+    };
+    writeFileSync(join(rallyHome, 'projects.yaml'), yaml.dump(staleProjects), 'utf8');
+
+    await assert.doesNotReject(() => onboard({ path: repoPath }));
+
+    const projectsPath = join(rallyHome, 'projects.yaml');
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    assert.strictEqual(projects.projects.length, 2, 'should add new project alongside stale one');
+  });
+
+  // --- Existing path validation (review issue #7) ---
+
+  test('warns when existing path is not a symlink', async () => {
+    setupTeam();
+    const repoPath = createRepo(join(tempDir, 'my-repo'));
+
+    // Create a real directory where .squad symlink should go
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    const warnings = [];
+    const origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      await onboard({ path: repoPath });
+    } finally {
+      console.warn = origWarn;
+    }
+
+    assert.ok(
+      warnings.some((w) => w.includes('exists but is not a symlink')),
+      'should warn about non-symlink .squad'
+    );
+  });
+
+  test('warns when symlink points to wrong target', async () => {
+    const { teamDir } = setupTeam();
+    const repoPath = createRepo(join(tempDir, 'my-repo'));
+
+    // Create a symlink pointing to wrong target
+    const wrongTarget = join(tempDir, 'wrong-target');
+    mkdirSync(wrongTarget, { recursive: true });
+    symlinkSync(wrongTarget, join(repoPath, '.squad'));
+
+    const warnings = [];
+    const origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      await onboard({ path: repoPath });
+    } finally {
+      console.warn = origWarn;
+    }
+
+    assert.ok(
+      warnings.some((w) => w.includes('expected') && w.includes(join(teamDir, '.squad'))),
+      'should warn about wrong symlink target'
+    );
   });
 });

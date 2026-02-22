@@ -1,11 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { getStatus, formatStatus } from '../lib/status.js';
 import { writeConfig, writeProjects, writeActive } from '../lib/config.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function withTempHome(fn) {
   const originalEnv = process.env.RALLY_HOME;
@@ -127,7 +130,7 @@ test('status: shows active dispatches (populated)', () => {
 test('status: --json flag outputs valid JSON via CLI', () => {
   withTempHome((tempDir) => {
     writeConfig({ teamDir: '/tmp/team', version: '0.1.0' });
-    const binPath = join(import.meta.dirname, '..', 'bin', 'rally.js');
+    const binPath = join(__dirname, '..', 'bin', 'rally.js');
     const output = execFileSync('node', [binPath, 'status', '--json'], {
       env: { ...process.env, RALLY_HOME: tempDir },
       encoding: 'utf8',
@@ -142,7 +145,7 @@ test('status: --json flag outputs valid JSON via CLI', () => {
 
 test('status: CLI text output includes key sections', () => {
   withTempHome((tempDir) => {
-    const binPath = join(import.meta.dirname, '..', 'bin', 'rally.js');
+    const binPath = join(__dirname, '..', 'bin', 'rally.js');
     const output = execFileSync('node', [binPath, 'status'], {
       env: { ...process.env, RALLY_HOME: tempDir },
       encoding: 'utf8',

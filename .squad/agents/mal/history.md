@@ -121,6 +121,31 @@ Fixed all stale "zero-dependency" references across team documentation post-depe
 
 **Record:** Created `.squad/decisions/inbox/mal-zero-dep-cleanup.md` with cleanup details.
 
+### 2026-02-22 — Retrospective: PRD Design Phase
+
+**Ceremony facilitated.** Full retro written. Key findings:
+
+**What Went Well:**
+- PRD is internally consistent, no contradictions
+- Dependency pivot was decisive, cleared analysis paralysis
+- Stale docs caught and fixed (zero-dep references)
+- Full team review cycle completed, all 4 agents reviewed
+- Target user clarified (solo dev on shared repos)
+
+**What Didn't Go Well:**
+- 5 critical blockers remain in PRD §9 (gh fields, Windows symlinks, Squad invocation, status lifecycle, dispatch-context format)
+- 12 error-handling gaps identified
+- Test framework strategy not specified (no `docs/TESTING.md`)
+- Some design decisions were iterative (JSON→YAML, flags→subcommands, onboard expansion)
+
+**Action Items:**
+1. Mal to schedule 30-min blocker resolution sync today (Wash, Kaylee, Jayne)
+2. After sync, Mal updates PRD §9 resolutions in `docs/PRD.md`
+3. Jayne owns `docs/TESTING.md` + error catalog post-blockers
+4. Kaylee/Wash proceed with implementation after blocker resolution
+
+**Retro artifact:** `.squad/decisions/inbox/mal-retro-design-phase.md`
+
 ## Orchestration Notes (2026-02-21T22:51)
 
 - Scribe merged both Mal decisions into `.squad/decisions.md`

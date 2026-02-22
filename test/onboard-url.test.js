@@ -73,6 +73,20 @@ describe('parseGithubUrl', () => {
   test('returns null for non-GitHub URL', () => {
     assert.strictEqual(parseGithubUrl('https://gitlab.com/owner/repo'), null);
   });
+
+  test('returns null for path-traversal repo name with ..', () => {
+    assert.strictEqual(parseGithubUrl('owner/..'), null);
+    assert.strictEqual(parseGithubUrl('https://github.com/owner/..'), null);
+  });
+
+  test('parses full URL with trailing slash', () => {
+    const result = parseGithubUrl('https://github.com/octocat/Hello-World/');
+    assert.deepStrictEqual(result, {
+      owner: 'octocat',
+      repo: 'Hello-World',
+      cloneUrl: 'https://github.com/octocat/Hello-World.git',
+    });
+  });
 });
 
 // ─── onboard with URL integration tests ──────────────────────────────────────

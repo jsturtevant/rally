@@ -47,6 +47,10 @@ function setupRallyHome() {
   const rallyHome = process.env.RALLY_HOME;
   mkdirSync(rallyHome, { recursive: true });
   writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
+  // Register test repo as onboarded
+  writeFileSync(join(rallyHome, 'projects.yaml'), yaml.dump({
+    projects: [{ name: 'repo', path: repoPath, team: 'shared', onboarded: new Date().toISOString() }],
+  }), 'utf8');
   return rallyHome;
 }
 
@@ -214,6 +218,22 @@ describe('dispatchIssue error paths', () => {
       }
     );
   });
+
+  test('throws when repo is not onboarded', async () => {
+    const rallyHome = process.env.RALLY_HOME;
+    mkdirSync(rallyHome, { recursive: true });
+    writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
+    // No projects.yaml — repo is not onboarded
+
+    const exec = createExecWithIssue(makeIssue());
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 1, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      (err) => {
+        assert.ok(err.message.includes('not onboarded'));
+        return true;
+      }
+    );
+  });
 });
 
 // =====================================================
@@ -354,6 +374,11 @@ describe('dispatchIssue happy path', () => {
     });
 
     assert.strictEqual(result.sessionId, '98765');
+
+    // Verify session_id is persisted to active.yaml
+    const activePath = join(process.env.RALLY_HOME, 'active.yaml');
+    const active = yaml.load(readFileSync(activePath, 'utf8'));
+    assert.strictEqual(active.dispatches[0].session_id, '98765');
   });
 
   test('gracefully handles Copilot CLI not available', async () => {

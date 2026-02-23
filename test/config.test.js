@@ -198,6 +198,44 @@ test('readActive returns default when file missing', () => {
   }
 });
 
+test('readProjects returns default when file is empty', () => {
+  const originalEnv = process.env.RALLY_HOME;
+  const tempDir = mkdtempSync(join(tmpdir(), 'rally-test-'));
+  
+  try {
+    process.env.RALLY_HOME = tempDir;
+    writeFileSync(join(tempDir, 'projects.yaml'), '', 'utf8');
+    const projects = readProjects();
+    assert.deepEqual(projects, { projects: [] });
+  } finally {
+    if (originalEnv) {
+      process.env.RALLY_HOME = originalEnv;
+    } else {
+      delete process.env.RALLY_HOME;
+    }
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('readActive returns default when file is empty', () => {
+  const originalEnv = process.env.RALLY_HOME;
+  const tempDir = mkdtempSync(join(tmpdir(), 'rally-test-'));
+  
+  try {
+    process.env.RALLY_HOME = tempDir;
+    writeFileSync(join(tempDir, 'active.yaml'), '', 'utf8');
+    const active = readActive();
+    assert.deepEqual(active, { dispatches: [] });
+  } finally {
+    if (originalEnv) {
+      process.env.RALLY_HOME = originalEnv;
+    } else {
+      delete process.env.RALLY_HOME;
+    }
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('writeActive and readActive roundtrip', () => {
   const originalEnv = process.env.RALLY_HOME;
   const tempDir = mkdtempSync(join(tmpdir(), 'rally-test-'));

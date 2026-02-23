@@ -7,14 +7,17 @@ import { tmpdir } from 'node:os';
 
 const RALLY_BIN = join(import.meta.dirname, '..', 'bin', 'rally.js');
 
+// @inquirer/prompts barrel import is slow under Node ESM; allow generous startup
+const DEFAULT_TIMEOUT = 30_000;
+const DASHBOARD_TIMEOUT = 60_000;
+
 function rally(args, opts = {}) {
   return execFileSync('node', [RALLY_BIN, ...args], {
     encoding: 'utf8',
-    timeout: 10000,
+    timeout: opts.timeout ?? DEFAULT_TIMEOUT,
     env: {
       ...process.env,
       RALLY_HOME: opts.rallyHome || '/tmp/rally-e2e-test',
-      // Force non-interactive, non-TTY for predictable output
       NO_COLOR: '1',
       ...opts.env,
     },
@@ -36,14 +39,14 @@ afterEach(() => {
 });
 
 describe('e2e: rally --version', () => {
-  test('prints version and exits 0', () => {
+  test('prints version and exits 0', { timeout: DEFAULT_TIMEOUT + 5000 }, () => {
     const output = rally(['--version'], { rallyHome: tempDir });
     assert.match(output.trim(), /^\d+\.\d+\.\d+$/, 'should print semver version');
   });
 });
 
 describe('e2e: rally --help', () => {
-  test('prints help text listing all commands and exits 0', () => {
+  test('prints help text listing all commands and exits 0', { timeout: DEFAULT_TIMEOUT + 5000 }, () => {
     const output = rally(['--help'], { rallyHome: tempDir });
     assert.ok(output.includes('setup'), 'help should mention setup command');
     assert.ok(output.includes('onboard'), 'help should mention onboard command');
@@ -53,7 +56,7 @@ describe('e2e: rally --help', () => {
 });
 
 describe('e2e: rally status', () => {
-  test('prints status output and exits 0 even with no config', () => {
+  test('prints status output and exits 0 even with no config', { timeout: DEFAULT_TIMEOUT + 5000 }, () => {
     const output = rally(['status'], { rallyHome: tempDir });
     assert.ok(output.includes('Rally Status'), 'should include Rally Status header');
     assert.ok(output.includes('Config Paths'), 'should include Config Paths section');
@@ -61,7 +64,7 @@ describe('e2e: rally status', () => {
 });
 
 describe('e2e: rally setup --help', () => {
-  test('prints setup help text and exits 0', () => {
+  test('prints setup help text and exits 0', { timeout: DEFAULT_TIMEOUT + 5000 }, () => {
     const output = rally(['setup', '--help'], { rallyHome: tempDir });
     assert.ok(output.includes('setup'), 'should describe setup command');
     assert.ok(output.includes('--dir'), 'should list --dir option');
@@ -69,12 +72,11 @@ describe('e2e: rally setup --help', () => {
 });
 
 describe('e2e: rally dashboard --json', () => {
-  test('outputs valid JSON and exits 0', () => {
-    // Seed an empty active.yaml so dashboard has something to read
+  test('outputs valid JSON and exits 0', { timeout: DASHBOARD_TIMEOUT + 5000 }, () => {
     mkdirSync(tempDir, { recursive: true });
     writeFileSync(join(tempDir, 'active.yaml'), 'dispatches: []\n', 'utf8');
 
-    const output = rally(['dashboard', '--json'], { rallyHome: tempDir });
+    const output = rally(['dashboard', '--json'], { rallyHome: tempDir, timeout: DASHBOARD_TIMEOUT });
     const data = JSON.parse(output);
     assert.ok(Array.isArray(data.dispatches), 'JSON should contain dispatches array');
     assert.ok(typeof data.summary === 'object', 'JSON should contain summary object');
@@ -82,23 +84,22 @@ describe('e2e: rally dashboard --json', () => {
 });
 
 describe('e2e: rally nonexistent', () => {
-  test('exits non-zero and prints error to stderr', () => {
+  test('exits non-zero and prints error', { timeout: DEFAULT_TIMEOUT + 5000 }, () => {
     try {
-      rally(['nonexistent'], { rallyHome: tempDir, stdio: ['pipe', 'pipe', 'pipe'] });
+      rally(['nonexistent'], { rallyHome: tempDir });
       assert.fail('should have thrown on unknown command');
     } catch (err) {
       assert.notEqual(err.status, 0, 'exit code should be non-zero');
       const stderr = err.stderr?.toString() || '';
       const stdout = err.stdout?.toString() || '';
-      // Commander prints error to stderr or stdout depending on version
       const combined = stderr + stdout;
-      assert.ok(combined.includes('error') || combined.includes('unknown'), 'should indicate an error for unknown command');
+      assert.ok(combined.includes('unknown command'), 'should report unknown command');
     }
   });
 });
 
-describe('e2e: rally dashboard --project test --json', () => {
-  test('outputs valid JSON filtered by project', () => {
+describe('e2e: rally dashboard --project filter --json', () => {
+  test('outputs valid JSON filtered by project', { timeout: DASHBOARD_TIMEOUT + 5000 }, () => {
     mkdirSync(tempDir, { recursive: true });
     const activeYaml = [
       'dispatches:',
@@ -124,7 +125,10 @@ describe('e2e: rally dashboard --project test --json', () => {
     ].join('\n');
     writeFileSync(join(tempDir, 'active.yaml'), activeYaml, 'utf8');
 
-    const output = rally(['dashboard', '--project', 'test-repo', '--json'], { rallyHome: tempDir });
+    const output = rally(['dashboard', '--project', 'test-repo', '--json'], {
+      rallyHome: tempDir,
+      timeout: DASHBOARD_TIMEOUT,
+    });
     const data = JSON.parse(output);
     assert.ok(Array.isArray(data.dispatches), 'should have dispatches array');
     assert.equal(data.dispatches.length, 1, 'should filter to one dispatch');

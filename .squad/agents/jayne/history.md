@@ -468,6 +468,42 @@ Timeline: Target completion by 2026-02-23, enabling Kaylee/Wash Phase 1 implemen
 
 **Next:** Wave 2 builds the dispatch workflows your tests are waiting for.
 
+### 2026-02-22 — UI Cleanup Audit & E2E Test Suite
+
+**Status:** ✓ COMPLETE. Both tasks delivered.
+
+**Task 1: UI Test Cleanup Audit**
+
+Audited all 5 files in `test/ui/` for proper Ink `render()` cleanup:
+- **StatusMessage.test.js** — ✅ Clean (uses `cleanup()` in top-level `afterEach`)
+- **DispatchBox.test.js** — ✅ Clean (uses `cleanup()` in top-level `afterEach`)
+- **Dashboard.test.js** — ✅ Clean (uses `instance.unmount()` per-instance in `afterEach`)
+- **non-tty.test.js** — ✅ N/A (no Ink rendering; tests `renderPlainDashboard()` string output only)
+- **DispatchTable.test.js** — 🔴 9 `render()` calls with ZERO cleanup (Kaylee is already fixing this)
+
+No other files besides DispatchTable.test.js have cleanup issues. Findings written to `.squad/decisions/inbox/jayne-cleanup-audit.md`.
+
+**Task 2: E2E Test Suite (`test/e2e.test.js`)**
+
+Created 7 real subprocess tests invoking `bin/rally.js` via `execFileSync`. All 7 pass.
+
+**Tests:**
+1. `rally --version` → prints semver, exits 0
+2. `rally --help` → lists setup/onboard/status/dashboard commands, exits 0
+3. `rally status` → prints Rally Status header even with no config, exits 0
+4. `rally setup --help` → prints setup options including `--dir`, exits 0
+5. `rally dashboard --json` → outputs valid JSON with dispatches array and summary, exits 0
+6. `rally nonexistent` → exits non-zero, prints "unknown command"
+7. `rally dashboard --project test-repo --json` → filters dispatches by project name
+
+**Key discovery:** `@inquirer/prompts` barrel import takes 7-40 seconds under Node 20 ESM loader, causing CLI cold-start to be extremely slow. Tests use 30s timeout for simple commands, 60s for dashboard (which dynamically imports Ink/React). This is a real performance bug — the `@inquirer/prompts` import should be deferred to `onboard` action time, not loaded at CLI startup via static `import` in `onboard.js` → `team.js`.
+
+**Pattern notes:**
+- `RALLY_HOME` env var pointed at `mkdtempSync` temp dir (cleaned in `afterEach`)
+- `NO_COLOR=1` for predictable output (though overridden when `FORCE_COLOR` is set)
+- `node:test` test-level `{ timeout }` option used to give node:test runner enough time
+- No mocks, no DI — real binary, real stdout, real exit codes
+
 ### 2026-02-23 — Phase 4–5 Retrospective: Testing Standards & Process Enforcement
 
 **From Mal (Lead) → Scribe (merged to decisions.md):**

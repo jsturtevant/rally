@@ -214,8 +214,14 @@ describe('onboard URL cloning', () => {
   test('clone failure throws descriptive error', async () => {
     setupTeam();
 
+    const _clone = () => {
+      const err = new Error('fatal: repository not found');
+      err.stderr = Buffer.from('fatal: repository \'https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz.git\' not found');
+      throw err;
+    };
+
     await assert.rejects(
-      () => onboard({ path: 'https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz' }),
+      () => onboard({ path: 'https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz', _clone }),
       (err) => {
         assert.ok(err.message.includes('Clone failed'), `Expected "Clone failed" but got: ${err.message}`);
         return true;

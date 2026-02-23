@@ -129,6 +129,38 @@ describe('dispatch-context', () => {
       );
     });
 
+    test('throws when PR data is missing title', () => {
+      assert.throws(
+        () => writePrContext(worktreePath, { number: 1, baseRefName: 'main', headRefName: 'feat', files: [], body: '' }),
+        /number and title/
+      );
+    });
+
+    test('throws when PR data is missing baseRefName', () => {
+      assert.throws(
+        () => writePrContext(worktreePath, { number: 1, title: 'T', headRefName: 'feat', files: [], body: '' }),
+        /baseRefName and headRefName/
+      );
+    });
+
+    test('throws when PR data is missing headRefName', () => {
+      assert.throws(
+        () => writePrContext(worktreePath, { number: 1, title: 'T', baseRefName: 'main', files: [], body: '' }),
+        /baseRefName and headRefName/
+      );
+    });
+
+    test('handles file objects with missing properties', () => {
+      writePrContext(worktreePath, {
+        number: 1, title: 'T', baseRefName: 'main', headRefName: 'fix',
+        files: [{ }, { path: 'a.js' }],
+        body: '',
+      });
+      const content = readFileSync(join(worktreePath, '.squad', 'dispatch-context.md'), 'utf8');
+      assert.ok(content.includes('+0 -0'));
+      assert.ok(content.includes('a.js'));
+    });
+
     test('creates .squad dir if missing and writes dispatch-context.md', () => {
       writePrContext(worktreePath, {
         number: 99, title: 'Add feature', baseRefName: 'main', headRefName: 'feat', files: [], body: '',

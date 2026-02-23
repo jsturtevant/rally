@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
-import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.jsx';
+import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.js';
 
 let TEST_DIR;
 let WORKTREE_DIR;
@@ -154,49 +154,52 @@ describe('getDashboardData', () => {
 });
 
 describe('Dashboard component', () => {
+  let instance;
+
   beforeEach(() => {
     setupWithDispatches();
   });
 
   afterEach(() => {
+    if (instance) instance.unmount();
     teardownTestEnv();
   });
 
   it('renders the dashboard title', () => {
-    const { lastFrame } = render(React.createElement(Dashboard));
-    const output = lastFrame();
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
     assert.ok(output.includes('Rally Dashboard'), 'should show dashboard title');
   });
 
   it('renders dispatch table with data', () => {
-    const { lastFrame } = render(React.createElement(Dashboard));
-    const output = lastFrame();
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
     assert.ok(output.includes('owner/repo-a'), 'should show repo name');
     assert.ok(output.includes('Issue #42'), 'should show issue ref');
     assert.ok(output.includes('PR #7'), 'should show PR ref');
   });
 
   it('renders summary line', () => {
-    const { lastFrame } = render(React.createElement(Dashboard));
-    const output = lastFrame();
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
     assert.ok(output.includes('1 active'), 'should show active count');
     assert.ok(output.includes('1 done'), 'should show done count');
     assert.ok(output.includes('1 blocked'), 'should show blocked count');
   });
 
   it('filters by project prop', () => {
-    const { lastFrame } = render(
-      React.createElement(Dashboard, { project: 'repo-b' })
+    instance = render(
+      React.createElement(Dashboard, { project: 'repo-b', refreshInterval: 0 })
     );
-    const output = lastFrame();
+    const output = instance.lastFrame();
     assert.ok(output.includes('owner/repo-b'), 'should show filtered repo');
     assert.ok(!output.includes('owner/repo-a'), 'should not show other repos');
   });
 
   it('renders empty state when no dispatches', () => {
     setupTestEnv([]);
-    const { lastFrame } = render(React.createElement(Dashboard));
-    const output = lastFrame();
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
     assert.ok(output.includes('No active dispatches'), 'should show empty state');
     assert.ok(output.includes('0 active'), 'should show zero active');
   });

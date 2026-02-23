@@ -169,8 +169,9 @@ describe('dispatchIssue error paths', () => {
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
 
-    // Pre-create the worktree directory
-    mkdirSync(join(repoPath, '.worktrees', 'rally-42'), { recursive: true });
+    // Create an actual git worktree so worktreeExists() returns true
+    const wtPath = join(repoPath, '.worktrees', 'rally-42');
+    execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-existing'], { cwd: repoPath, stdio: 'ignore' });
 
     const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn });
     assert.strictEqual(result.existing, true);

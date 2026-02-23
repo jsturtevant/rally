@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { spawn as defaultSpawn } from 'node:child_process';
 import DispatchTable from './components/DispatchTable.jsx';
+import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
+import { dispatchLog as defaultDispatchLog } from '../dispatch-log.js';
 
 export { computeSummary, getDashboardData, renderPlainDashboard };
 
@@ -25,13 +27,15 @@ function SummaryLine({ summary }) {
 
 /**
  * Main Dashboard component — full-screen Ink app.
- * Supports keyboard navigation: ↑/↓ to select, Enter to select/open, r to refresh, q to quit.
+ * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn }) {
+export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchLog = defaultDispatchLog }) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0); // eslint-disable-line -- state setter triggers re-render to refresh data
+  const [actionDispatch, setActionDispatch] = useState(null);
+  const [actionIndex, setActionIndex] = useState(0);
 
   let data;
   let error;
@@ -44,14 +48,19 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
 
   const count = data ? data.dispatches.length : 0;
 
-  // Auto-refresh at the configured interval
+  // Count of actions for the currently selected dispatch
+  const actionCount = actionDispatch
+    ? (actionDispatch.logPath ? 3 : 2)
+    : 0;
+
+  // Auto-refresh at the configured interval (pause during action menu)
   useEffect(() => {
-    if (!refreshInterval) return;
+    if (!refreshInterval || actionDispatch) return;
     const timer = setInterval(() => {
       setRefreshKey(k => k + 1);
     }, refreshInterval);
     return () => clearInterval(timer);
-  }, [refreshInterval]);
+  }, [refreshInterval, actionDispatch]);
 
   // Clamp selectedIndex when dispatch count changes
   useEffect(() => {
@@ -60,24 +69,66 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     }
   }, [count, selectedIndex]);
 
+  function openInVSCode(dispatch) {
+    const worktreePath = dispatch.worktreePath ?? '';
+    if (onSelect) {
+      onSelect(worktreePath);
+    } else if (worktreePath) {
+      const child = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
+      child.unref();
+      child.on('error', (err) => {
+        console.error(`Failed to launch VS Code: ${err.message}`);
+      });
+    }
+    exit();
+  }
+
+  function viewLogs(dispatch) {
+    exit();
+    _dispatchLog(dispatch.number, { repo: dispatch.repo }).catch(() => {});
+  }
+
+  function handleActionSelect(direction) {
+    if (direction === 'up') {
+      setActionIndex(i => (i > 0 ? i - 1 : 0));
+    } else if (direction === 'down') {
+      setActionIndex(i => (i < actionCount - 1 ? i + 1 : i));
+    } else if (direction === 'confirm') {
+      // Build the action list matching what ActionMenu renders
+      const actions = [
+        ACTIONS.OPEN_VSCODE,
+        ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
+        ACTIONS.BACK,
+      ];
+      const selectedAction = actions[actionIndex];
+      if (selectedAction === ACTIONS.OPEN_VSCODE) {
+        openInVSCode(actionDispatch);
+      } else if (selectedAction === ACTIONS.VIEW_LOGS) {
+        viewLogs(actionDispatch);
+      } else {
+        setActionDispatch(null);
+        setActionIndex(0);
+      }
+    }
+  }
+
+  function handleActionBack() {
+    setActionDispatch(null);
+    setActionIndex(0);
+  }
+
   useInput((input, key) => {
+    // When action menu is open, it handles its own input
+    if (actionDispatch) return;
+
     if (key.upArrow) {
       setSelectedIndex(i => (i > 0 ? i - 1 : 0));
     } else if (key.downArrow) {
       setSelectedIndex(i => (i < count - 1 ? i + 1 : i));
     } else if (key.return && count > 0) {
       const selected = data.dispatches[selectedIndex];
-      const worktreePath = selected.worktreePath ?? '';
-      if (onSelect) {
-        onSelect(worktreePath);
-      } else if (worktreePath) {
-        const child = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
-        child.unref();
-        child.on('error', (err) => {
-          console.error(`Failed to launch VS Code: ${err.message}`);
-        });
-      }
-      exit();
+      setActionDispatch(selected);
+      setActionIndex(0);
     } else if (input === 'r') {
       setRefreshKey(k => k + 1);
     } else if (input === 'q') {
@@ -90,6 +141,17 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <Box flexDirection="column">
         <Text color="red">✗ {error}</Text>
       </Box>
+    );
+  }
+
+  if (actionDispatch) {
+    return (
+      <ActionMenu
+        dispatch={actionDispatch}
+        selectedAction={actionIndex}
+        onSelect={handleActionSelect}
+        onBack={handleActionBack}
+      />
     );
   }
 

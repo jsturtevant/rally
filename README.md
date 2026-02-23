@@ -11,7 +11,7 @@ CLI tool for dispatching AI coding agents (Squad teams) to GitHub issues via git
 ## Installation
 
 ```bash
-npm install -g rally-cli
+npm install -g rally
 ```
 
 Or run directly with npx:
@@ -25,6 +25,8 @@ npx rally
 ```bash
 rally setup              # Configure team directory
 rally onboard <url>      # Clone and set up a repository
+rally dispatch issue 42  # Dispatch Squad to an issue
+rally dispatch pr 10     # Dispatch Squad to a PR review
 rally dashboard          # View active dispatches
 rally dashboard clean    # Remove completed dispatches
 ```
@@ -96,6 +98,46 @@ Options:
 ```
 
 **Keyboard shortcuts (interactive mode):** ↑/↓ navigate, Enter select, r refresh, q quit.
+
+### `rally dispatch issue`
+
+Dispatch Squad to a GitHub issue. Creates a worktree, symlinks Squad, writes context, and launches Copilot CLI.
+
+```
+$ rally dispatch issue --help
+Usage: rally dispatch issue [options] <number>
+
+Dispatch Squad to a GitHub issue
+
+Arguments:
+  number                 GitHub issue number
+
+Options:
+  --repo <owner/repo>    Target repository (owner/repo)
+  --repo-path <path>     Path to local repo clone
+  --team-dir <path>      Path to custom squad directory
+  -h, --help             display help for command
+```
+
+### `rally dispatch pr`
+
+Dispatch Squad to a GitHub PR review. Creates a worktree checked out to the PR head, symlinks Squad, and launches Copilot CLI.
+
+```
+$ rally dispatch pr --help
+Usage: rally dispatch pr [options] <number>
+
+Dispatch Squad to a GitHub PR review
+
+Arguments:
+  number                 GitHub PR number
+
+Options:
+  --repo <owner/repo>    Target repository (owner/repo)
+  --repo-path <path>     Path to local repo clone
+  --team-dir <path>      Path to custom squad directory
+  -h, --help             display help for command
+```
 
 ## License
 

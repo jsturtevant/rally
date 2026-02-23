@@ -1027,3 +1027,61 @@ Other config files (`config.yaml`, `projects.yaml`) in `lib/config.js` still use
 
 - `lib/active.js` owns all dispatch CRUD — don't bypass with raw `writeActive()` from config.js
 - The `.active.yaml.tmp` file should be in `.gitignore` if it ever appears in a repo context
+
+---
+
+## Decision: Retrospective Findings — Phase 4–5 Sprint (Dashboard + Polish)
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-23  
+**Status:** Accepted
+
+### Decision
+
+Retrospective ceremony analyzed Phase 4–5 sprint outcomes, identified 4 root causes driving quality degradation, and produced 8 action items to restore process discipline:
+
+**Root Causes Identified:**
+
+1. **RC-1: No Review Gate Is Actually Enforced**
+   - Review policy (dual Copilot + human gate) exists on paper but isn't enforced in GitHub
+   - PR #49 merged with 3 unresolved Copilot review comments (never read, never addressed)
+   - Branch protection not configured; Mal review not requested
+   - "Address or explain" hard policy violated with no mechanism to block violation
+
+2. **RC-2: No Test Isolation Standards**
+   - CI hung for 55 minutes; root causes: missing cleanup in `DispatchTable.test.js`, uncontrolled `git clone` in `onboard-url.test.js`, `renderPlainDashboard()` missing from compiled output
+   - Some tests clean up Ink renders (`DispatchBox.test.js`, `StatusMessage.test.js`), others don't (`DispatchTable.test.js`)
+   - No enforced standard for cleanup, network isolation, or CI-safe patterns in `docs/TESTING.md`
+   - Band-aid fix (`--test-force-exit`) masked root cause and broke Node 18 support
+
+3. **RC-3: "E2E" Tests Are Not End-to-End**
+   - `test/e2e.test.js` contains 13 tests; all use mocked `_exec` via dependency injection
+   - None invoke `bin/rally.js` as a subprocess; don't test CLI arg parsing, real `gh`/`git` interactions, or stdout/stderr
+   - This is integration testing, not E2E; creates false confidence in CLI correctness
+   - Zero true end-to-end tests that exercise the binary from stdin/stdout
+
+4. **RC-4: Speed Prioritized Over Documented Process**
+   - Coordinator merged PRs without reading review feedback
+   - Bulk-resolved review threads instead of addressing individually
+   - Agent code committed without inspection
+   - No accountability mechanism; coordinator both opens and merges PRs
+
+### Recommended Actions
+
+| # | Action | Owner | Priority |
+|---|--------|-------|----------|
+| 1 | Enable GitHub branch protection on `main`: require approval + Copilot review to complete (no unresolved) + CI pass | James | P0 |
+| 2 | Fix `DispatchTable.test.js` — add `afterEach(() => cleanup())` | Next agent on tests | P0 |
+| 3 | Fix 3 documentation errors (README commands, TESTING.md step count) | Next agent on docs | P1 |
+| 4 | Rename `test/e2e.test.js` → `test/integration.test.js`; create real E2E tests | Next agent on tests | P1 |
+| 5 | Create 3–5 real E2E tests that invoke `bin/rally.js` via `execFileSync` | Next agent on tests | P1 |
+| 6 | Update `docs/TESTING.md` with cleanup requirements and CI-safe patterns | Jayne | P1 |
+| 7 | Add merge checklist to PR review skill (require zero unresolved comments) | Mal | P2 |
+| 8 | Audit all `test/ui/*.test.js` for missing cleanup | Next agent on tests | P1 |
+
+### Impact
+
+- **Branch protection is the highest-leverage fix.** Makes review gate structural (impossible to bypass), not behavioral
+- All agents should reference this decision when proposing test changes or PR workflows
+- Refactoring E2E tests will improve confidence in CLI correctness and catch argument parsing bugs earlier
+- Documentation accuracy is table-stakes; no PRs merge with known errors in docs

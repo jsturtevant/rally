@@ -1,562 +1,133 @@
-import { test, describe, beforeEach, afterEach } from 'node:test';
+import { describe, test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync, rmSync, existsSync, readFileSync,
-  mkdirSync, writeFileSync,
-} from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
-import yaml from 'js-yaml';
 
-import { dispatchIssue } from '../lib/dispatch-issue.js';
-import { dispatchPr } from '../lib/dispatch-pr.js';
-import { getActiveDispatches, removeDispatch } from '../lib/active.js';
-import { getDashboardData, computeSummary, renderPlainDashboard } from '../lib/ui/Dashboard.js';
+const RALLY_BIN = join(import.meta.dirname, '..', 'bin', 'rally.js');
 
-// =====================================================
-// Helpers
-// =====================================================
+function rally(args, opts = {}) {
+  return execFileSync('node', [RALLY_BIN, ...args], {
+    encoding: 'utf8',
+    timeout: 10000,
+    env: {
+      ...process.env,
+      RALLY_HOME: opts.rallyHome || '/tmp/rally-e2e-test',
+      // Force non-interactive, non-TTY for predictable output
+      NO_COLOR: '1',
+      ...opts.env,
+    },
+    ...opts,
+  });
+}
 
 let tempDir;
-let repoPath;
-let originalEnv;
 
-function createTestRepo() {
+beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), 'rally-e2e-'));
-  repoPath = join(tempDir, 'repo');
-  originalEnv = process.env.RALLY_HOME;
-  process.env.RALLY_HOME = join(tempDir, 'rally-home');
+});
 
-  mkdirSync(repoPath, { recursive: true });
-  execFileSync('git', ['init'], { cwd: repoPath, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.email', 'test@test.com'], { cwd: repoPath, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoPath, stdio: 'ignore' });
-  writeFileSync(join(repoPath, 'README.md'), '# Test');
-  execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'ignore' });
-  execFileSync('git', ['commit', '-m', 'Initial commit'], { cwd: repoPath, stdio: 'ignore' });
-
-  // Create .squad dir so symlink succeeds
-  mkdirSync(join(repoPath, '.squad'), { recursive: true });
-  writeFileSync(join(repoPath, '.squad', 'agents.yaml'), 'agents: []');
-}
-
-function setupRallyHome() {
-  const rallyHome = process.env.RALLY_HOME;
-  mkdirSync(rallyHome, { recursive: true });
-  writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
-  writeFileSync(join(rallyHome, 'projects.yaml'), yaml.dump({
-    projects: [{ name: 'repo', path: repoPath, team: 'shared', onboarded: new Date().toISOString() }],
-  }), 'utf8');
-  return rallyHome;
-}
-
-function cleanup() {
-  if (originalEnv !== undefined) {
-    process.env.RALLY_HOME = originalEnv;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
+afterEach(() => {
   if (tempDir) {
     rmSync(tempDir, { recursive: true, force: true });
+    tempDir = null;
   }
-}
+});
 
-function makeIssue(overrides = {}) {
-  return {
-    title: 'Add login form',
-    body: 'Implement a login form with email and password.',
-    labels: [{ name: 'enhancement' }],
-    assignees: [{ login: 'alice' }],
-    ...overrides,
-  };
-}
+describe('e2e: rally --version', () => {
+  test('prints version and exits 0', () => {
+    const output = rally(['--version'], { rallyHome: tempDir });
+    assert.match(output.trim(), /^\d+\.\d+\.\d+$/, 'should print semver version');
+  });
+});
 
-function makePr(overrides = {}) {
-  return {
-    title: 'Fix login validation',
-    body: 'Fixes the login validation bug.',
-    headRefName: 'fix/login',
-    baseRefName: 'main',
-    state: 'OPEN',
-    files: [
-      { path: 'src/login.js', additions: 10, deletions: 3 },
-    ],
-    ...overrides,
-  };
-}
+describe('e2e: rally --help', () => {
+  test('prints help text listing all commands and exits 0', () => {
+    const output = rally(['--help'], { rallyHome: tempDir });
+    assert.ok(output.includes('setup'), 'help should mention setup command');
+    assert.ok(output.includes('onboard'), 'help should mention onboard command');
+    assert.ok(output.includes('status'), 'help should mention status command');
+    assert.ok(output.includes('dashboard'), 'help should mention dashboard command');
+  });
+});
 
-function createExecWithIssue(issueData) {
-  return (cmd, args, opts) => {
-    if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
-      if (!issueData) {
-        throw new Error('Could not resolve to an Issue with the number of 999');
-      }
-      return JSON.stringify(issueData);
+describe('e2e: rally status', () => {
+  test('prints status output and exits 0 even with no config', () => {
+    const output = rally(['status'], { rallyHome: tempDir });
+    assert.ok(output.includes('Rally Status'), 'should include Rally Status header');
+    assert.ok(output.includes('Config Paths'), 'should include Config Paths section');
+  });
+});
+
+describe('e2e: rally setup --help', () => {
+  test('prints setup help text and exits 0', () => {
+    const output = rally(['setup', '--help'], { rallyHome: tempDir });
+    assert.ok(output.includes('setup'), 'should describe setup command');
+    assert.ok(output.includes('--dir'), 'should list --dir option');
+  });
+});
+
+describe('e2e: rally dashboard --json', () => {
+  test('outputs valid JSON and exits 0', () => {
+    // Seed an empty active.yaml so dashboard has something to read
+    mkdirSync(tempDir, { recursive: true });
+    writeFileSync(join(tempDir, 'active.yaml'), 'dispatches: []\n', 'utf8');
+
+    const output = rally(['dashboard', '--json'], { rallyHome: tempDir });
+    const data = JSON.parse(output);
+    assert.ok(Array.isArray(data.dispatches), 'JSON should contain dispatches array');
+    assert.ok(typeof data.summary === 'object', 'JSON should contain summary object');
+  });
+});
+
+describe('e2e: rally nonexistent', () => {
+  test('exits non-zero and prints error to stderr', () => {
+    try {
+      rally(['nonexistent'], { rallyHome: tempDir, stdio: ['pipe', 'pipe', 'pipe'] });
+      assert.fail('should have thrown on unknown command');
+    } catch (err) {
+      assert.notEqual(err.status, 0, 'exit code should be non-zero');
+      const stderr = err.stderr?.toString() || '';
+      const stdout = err.stdout?.toString() || '';
+      // Commander prints error to stderr or stdout depending on version
+      const combined = stderr + stdout;
+      assert.ok(combined.includes('error') || combined.includes('unknown'), 'should indicate an error for unknown command');
     }
-    return execFileSync(cmd, args, opts);
-  };
-}
-
-function createExecWithPr(prData) {
-  return (cmd, args, opts) => {
-    if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
-      if (!prData) {
-        throw new Error('Could not resolve to a PullRequest with the number of 999');
-      }
-      return JSON.stringify(prData);
-    }
-    return execFileSync(cmd, args, opts);
-  };
-}
-
-function noopSpawn() {
-  return { pid: 12345, unref() {} };
-}
-
-// =====================================================
-// E2E: Issue dispatch workflow
-// =====================================================
-
-describe('E2E: issue dispatch → dashboard → clean', () => {
-  beforeEach(() => {
-    createTestRepo();
-    setupRallyHome();
-  });
-  afterEach(cleanup);
-
-  test('full workflow: dispatch issue, verify dashboard, then clean', async () => {
-    const issue = makeIssue();
-    const exec = createExecWithIssue(issue);
-
-    // 1. Dispatch the issue
-    const result = await dispatchIssue({
-      issueNumber: 42,
-      repo: 'owner/repo',
-      repoPath,
-      _exec: exec,
-      _spawn: noopSpawn,
-    });
-
-    // Verify dispatch result
-    assert.strictEqual(result.branch, 'rally/42-add-login-form');
-    assert.ok(existsSync(result.worktreePath), 'worktree should exist');
-    assert.strictEqual(result.dispatchId, 'repo-issue-42');
-
-    // Verify dispatch-context.md written
-    const contextPath = join(result.worktreePath, '.squad', 'dispatch-context.md');
-    assert.ok(existsSync(contextPath), 'dispatch-context.md should exist');
-    const ctx = readFileSync(contextPath, 'utf8');
-    assert.ok(ctx.includes('#42'));
-    assert.ok(ctx.includes('Add login form'));
-
-    // Verify active.yaml updated
-    const dispatches = getActiveDispatches();
-    assert.strictEqual(dispatches.length, 1);
-    assert.strictEqual(dispatches[0].id, 'repo-issue-42');
-    assert.strictEqual(dispatches[0].status, 'planning');
-
-    // 2. Verify dashboard sees the dispatch
-    const dashData = getDashboardData();
-    assert.strictEqual(dashData.dispatches.length, 1);
-    assert.strictEqual(dashData.dispatches[0].id, 'repo-issue-42');
-    assert.strictEqual(dashData.dispatches[0].healthy, true);
-    assert.strictEqual(dashData.summary.active, 1);
-    assert.strictEqual(dashData.summary.done, 0);
-
-    // 3. Verify plain dashboard output
-    const plain = renderPlainDashboard();
-    assert.ok(plain.includes('Rally Dashboard'));
-    assert.ok(plain.includes('owner/repo'));
-    assert.ok(plain.includes('Issue #42'));
-    assert.ok(plain.includes('1 active'));
-
-    // 4. Clean: remove dispatch
-    const removed = removeDispatch('repo-issue-42');
-    assert.strictEqual(removed.id, 'repo-issue-42');
-
-    // Verify dashboard is now empty
-    const afterClean = getDashboardData();
-    assert.strictEqual(afterClean.dispatches.length, 0);
-    assert.strictEqual(afterClean.summary.active, 0);
   });
 });
 
-// =====================================================
-// E2E: PR dispatch workflow
-// =====================================================
+describe('e2e: rally dashboard --project test --json', () => {
+  test('outputs valid JSON filtered by project', () => {
+    mkdirSync(tempDir, { recursive: true });
+    const activeYaml = [
+      'dispatches:',
+      '  - id: d1',
+      '    repo: owner/test-repo',
+      '    type: issue',
+      '    number: 1',
+      '    branch: rally/1-feat',
+      '    status: implementing',
+      '    worktreePath: /nonexistent',
+      '    session_id: s1',
+      '    created: "2025-01-01T00:00:00.000Z"',
+      '  - id: d2',
+      '    repo: owner/other-repo',
+      '    type: pr',
+      '    number: 2',
+      '    branch: rally/2-fix',
+      '    status: done',
+      '    worktreePath: /nonexistent',
+      '    session_id: s2',
+      '    created: "2025-01-01T00:00:00.000Z"',
+      '',
+    ].join('\n');
+    writeFileSync(join(tempDir, 'active.yaml'), activeYaml, 'utf8');
 
-describe('E2E: PR dispatch workflow', () => {
-  beforeEach(() => {
-    createTestRepo();
-    setupRallyHome();
-
-    // Create a PR head ref branch for fetch/checkout
-    execFileSync('git', ['checkout', '-b', 'fix/login'], { cwd: repoPath, stdio: 'ignore' });
-    writeFileSync(join(repoPath, 'pr-change.txt'), 'PR content');
-    execFileSync('git', ['add', '.'], { cwd: repoPath, stdio: 'ignore' });
-    execFileSync('git', ['commit', '-m', 'PR commit'], { cwd: repoPath, stdio: 'ignore' });
-    execFileSync('git', ['checkout', '-'], { cwd: repoPath, stdio: 'ignore' });
-    execFileSync('git', ['remote', 'add', 'origin', repoPath], { cwd: repoPath, stdio: 'ignore' });
-  });
-  afterEach(cleanup);
-
-  test('dispatch PR, verify in dashboard, then clean', async () => {
-    const pr = makePr();
-    const exec = createExecWithPr(pr);
-
-    const result = await dispatchPr({
-      prNumber: 10,
-      repo: 'owner/repo',
-      repoPath,
-      _exec: exec,
-      _spawn: noopSpawn,
-    });
-
-    assert.strictEqual(result.branch, 'rally/pr-10-fix-login-validation');
-    assert.ok(existsSync(result.worktreePath));
-    assert.strictEqual(result.dispatchId, 'repo-pr-10');
-
-    // Verify PR content in worktree
-    assert.ok(existsSync(join(result.worktreePath, 'pr-change.txt')));
-
-    // Verify dispatch-context.md has PR details
-    const ctx = readFileSync(join(result.worktreePath, '.squad', 'dispatch-context.md'), 'utf8');
-    assert.ok(ctx.includes('PR #10'));
-    assert.ok(ctx.includes('Fix login validation'));
-
-    // Verify dashboard
-    const dashData = getDashboardData();
-    assert.strictEqual(dashData.dispatches.length, 1);
-    assert.strictEqual(dashData.dispatches[0].type, 'pr');
-    assert.strictEqual(dashData.dispatches[0].status, 'reviewing');
-
-    // Clean
-    removeDispatch('repo-pr-10');
-    assert.strictEqual(getActiveDispatches().length, 0);
-  });
-});
-
-// =====================================================
-// E2E: Error cases
-// =====================================================
-
-describe('E2E: error cases', () => {
-  beforeEach(() => {
-    createTestRepo();
-  });
-  afterEach(cleanup);
-
-  test('dispatchIssue fails when not onboarded (no projects.yaml)', async () => {
-    // Set up rally home WITHOUT projects.yaml
-    const rallyHome = process.env.RALLY_HOME;
-    mkdirSync(rallyHome, { recursive: true });
-    writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
-
-    const exec = createExecWithIssue(makeIssue());
-    await assert.rejects(
-      () => dispatchIssue({
-        issueNumber: 1,
-        repo: 'owner/repo',
-        repoPath,
-        _exec: exec,
-        _spawn: noopSpawn,
-      }),
-      (err) => {
-        assert.ok(err.message.includes('not onboarded'));
-        return true;
-      }
-    );
-  });
-
-  test('dispatchIssue fails when issue not found', async () => {
-    setupRallyHome();
-    const exec = createExecWithIssue(null);
-    await assert.rejects(
-      () => dispatchIssue({
-        issueNumber: 999,
-        repo: 'owner/repo',
-        repoPath,
-        _exec: exec,
-        _spawn: noopSpawn,
-      }),
-      (err) => {
-        assert.ok(err.message.includes('not found') || err.message.includes('999'));
-        return true;
-      }
-    );
-  });
-
-  test('dispatchIssue returns idempotently when worktree already exists', async () => {
-    setupRallyHome();
-    const issue = makeIssue();
-    const exec = createExecWithIssue(issue);
-
-    // Pre-create the worktree directory
-    mkdirSync(join(repoPath, '.worktrees', 'rally-42'), { recursive: true });
-
-    const result = await dispatchIssue({
-      issueNumber: 42,
-      repo: 'owner/repo',
-      repoPath,
-      _exec: exec,
-      _spawn: noopSpawn,
-    });
-
-    assert.strictEqual(result.existing, true);
-    assert.ok(result.worktreePath.includes('rally-42'));
-    assert.strictEqual(result.sessionId, null);
-  });
-
-  test('dispatchPr fails when not onboarded', async () => {
-    const rallyHome = process.env.RALLY_HOME;
-    mkdirSync(rallyHome, { recursive: true });
-    writeFileSync(join(rallyHome, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
-
-    const exec = createExecWithPr(makePr());
-    await assert.rejects(
-      () => dispatchPr({
-        prNumber: 1,
-        repo: 'owner/repo',
-        repoPath,
-        _exec: exec,
-        _spawn: noopSpawn,
-      }),
-      (err) => {
-        assert.ok(err.message.includes('not onboarded'));
-        return true;
-      }
-    );
-  });
-
-  test('dispatchPr fails when worktree already exists', async () => {
-    setupRallyHome();
-    const exec = createExecWithPr(makePr());
-
-    mkdirSync(join(repoPath, '.worktrees', 'rally-pr-42'), { recursive: true });
-
-    await assert.rejects(
-      () => dispatchPr({
-        prNumber: 42,
-        repo: 'owner/repo',
-        repoPath,
-        _exec: exec,
-        _spawn: noopSpawn,
-      }),
-      (err) => {
-        assert.ok(err.message.includes('already exists'));
-        return true;
-      }
-    );
-  });
-});
-
-// =====================================================
-// E2E: Dashboard rendering
-// =====================================================
-
-describe('E2E: dashboard data and rendering', () => {
-  beforeEach(() => {
-    createTestRepo();
-    setupRallyHome();
-  });
-  afterEach(cleanup);
-
-  test('getDashboardData returns correct structure with multiple dispatches', () => {
-    const rallyHome = process.env.RALLY_HOME;
-    const worktreeDir = join(tempDir, 'existing-worktree');
-    mkdirSync(worktreeDir, { recursive: true });
-
-    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
-      dispatches: [
-        {
-          id: 'repo-issue-1',
-          repo: 'owner/repo',
-          number: 1,
-          type: 'issue',
-          branch: 'rally/1-feat',
-          worktreePath: worktreeDir,
-          status: 'implementing',
-          session_id: 's1',
-          created: new Date().toISOString(),
-        },
-        {
-          id: 'repo-pr-2',
-          repo: 'owner/repo',
-          number: 2,
-          type: 'pr',
-          branch: 'rally/pr-2-fix',
-          worktreePath: '/nonexistent/path',
-          status: 'reviewing',
-          session_id: 's2',
-          created: new Date().toISOString(),
-        },
-        {
-          id: 'repo-issue-3',
-          repo: 'owner/repo',
-          number: 3,
-          type: 'issue',
-          branch: 'rally/3-done',
-          worktreePath: '/also/nonexistent',
-          status: 'done',
-          session_id: 's3',
-          created: new Date().toISOString(),
-        },
-      ],
-    }), 'utf8');
-
-    const data = getDashboardData();
-    assert.strictEqual(data.dispatches.length, 3);
-
-    // Health checks
-    assert.strictEqual(data.dispatches[0].healthy, true);
-    assert.strictEqual(data.dispatches[1].healthy, false);
-    assert.strictEqual(data.dispatches[2].healthy, false);
-
-    // Summary: d1 = active (healthy+implementing), d2 = blocked (unhealthy+reviewing), d3 = done
-    assert.strictEqual(data.summary.active, 1);
-    assert.strictEqual(data.summary.blocked, 1);
-    assert.strictEqual(data.summary.done, 1);
-  });
-
-  test('computeSummary counts statuses correctly', () => {
-    const dispatches = [
-      { status: 'planning', healthy: true },
-      { status: 'implementing', healthy: true },
-      { status: 'done', healthy: true },
-      { status: 'cleaned', healthy: false },
-      { status: 'reviewing', healthy: false },
-    ];
-    const summary = computeSummary(dispatches);
-    assert.strictEqual(summary.active, 2);
-    assert.strictEqual(summary.done, 2);
-    assert.strictEqual(summary.blocked, 1);
-  });
-
-  test('renderPlainDashboard outputs formatted text', () => {
-    const rallyHome = process.env.RALLY_HOME;
-    const worktreeDir = join(tempDir, 'wt-plain');
-    mkdirSync(worktreeDir, { recursive: true });
-
-    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
-      dispatches: [
-        {
-          id: 'repo-issue-5',
-          repo: 'owner/repo',
-          number: 5,
-          type: 'issue',
-          branch: 'rally/5-feature',
-          worktreePath: worktreeDir,
-          status: 'planning',
-          session_id: 's5',
-          created: new Date().toISOString(),
-        },
-      ],
-    }), 'utf8');
-
-    const output = renderPlainDashboard();
-
-    // Check structure
-    assert.ok(output.includes('Rally Dashboard'), 'should include title');
-    assert.ok(output.includes('Project'), 'should include headers');
-    assert.ok(output.includes('Issue/PR'), 'should include headers');
-    assert.ok(output.includes('owner/repo'), 'should include repo');
-    assert.ok(output.includes('Issue #5'), 'should include issue ref');
-    assert.ok(output.includes('rally/5-feature'), 'should include branch');
-    assert.ok(output.includes('planning'), 'should include status');
-    assert.ok(output.includes('1 active'), 'should include summary');
-
-    // No ANSI codes
-    assert.ok(!output.includes('\x1B['), 'should not contain ANSI codes');
-  });
-
-  test('renderPlainDashboard filters by project', () => {
-    const rallyHome = process.env.RALLY_HOME;
-    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
-      dispatches: [
-        {
-          id: 'alpha-issue-1',
-          repo: 'owner/alpha',
-          number: 1,
-          type: 'issue',
-          branch: 'rally/1-a',
-          worktreePath: '/nope',
-          status: 'planning',
-          session_id: 's1',
-          created: new Date().toISOString(),
-        },
-        {
-          id: 'beta-issue-2',
-          repo: 'owner/beta',
-          number: 2,
-          type: 'issue',
-          branch: 'rally/2-b',
-          worktreePath: '/nope2',
-          status: 'planning',
-          session_id: 's2',
-          created: new Date().toISOString(),
-        },
-      ],
-    }), 'utf8');
-
-    const output = renderPlainDashboard({ project: 'alpha' });
-    assert.ok(output.includes('owner/alpha'));
-    assert.ok(!output.includes('owner/beta'));
-  });
-
-  test('getDashboardData returns empty when no dispatches', () => {
-    const data = getDashboardData();
-    assert.strictEqual(data.dispatches.length, 0);
-    assert.deepStrictEqual(data.summary, { active: 0, done: 0, blocked: 0 });
-  });
-});
-
-// =====================================================
-// E2E: Multiple dispatches coexist
-// =====================================================
-
-describe('E2E: multiple dispatches', () => {
-  beforeEach(() => {
-    createTestRepo();
-    setupRallyHome();
-  });
-  afterEach(cleanup);
-
-  test('two issue dispatches show in dashboard together', async () => {
-    const exec1 = createExecWithIssue(makeIssue({ title: 'First issue' }));
-    const exec2 = createExecWithIssue(makeIssue({ title: 'Second issue' }));
-
-    await dispatchIssue({
-      issueNumber: 1,
-      repo: 'owner/repo',
-      repoPath,
-      _exec: exec1,
-      _spawn: noopSpawn,
-    });
-
-    await dispatchIssue({
-      issueNumber: 2,
-      repo: 'owner/repo',
-      repoPath,
-      _exec: exec2,
-      _spawn: noopSpawn,
-    });
-
-    const dispatches = getActiveDispatches();
-    assert.strictEqual(dispatches.length, 2);
-
-    const data = getDashboardData();
-    assert.strictEqual(data.dispatches.length, 2);
-    assert.strictEqual(data.summary.active, 2);
-
-    const plain = renderPlainDashboard();
-    assert.ok(plain.includes('Issue #1'));
-    assert.ok(plain.includes('Issue #2'));
-
-    // Remove first, verify second remains
-    removeDispatch('repo-issue-1');
-    const afterRemove = getDashboardData();
-    assert.strictEqual(afterRemove.dispatches.length, 1);
-    assert.strictEqual(afterRemove.dispatches[0].id, 'repo-issue-2');
+    const output = rally(['dashboard', '--project', 'test-repo', '--json'], { rallyHome: tempDir });
+    const data = JSON.parse(output);
+    assert.ok(Array.isArray(data.dispatches), 'should have dispatches array');
+    assert.equal(data.dispatches.length, 1, 'should filter to one dispatch');
+    assert.ok(data.dispatches[0].repo.includes('test-repo'), 'filtered dispatch should match project');
   });
 });

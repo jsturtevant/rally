@@ -467,3 +467,30 @@ Timeline: Target completion by 2026-02-23, enabling Kaylee/Wash Phase 1 implemen
 **Your anticipatory tests status:** 35 stubs ready. Once PRs #35 and #36 merge and Wave 2 implements Issues #15 and #17, your tests will go green.
 
 **Next:** Wave 2 builds the dispatch workflows your tests are waiting for.
+
+### 2026-02-23 — Phase 4–5 Retrospective: Testing Standards & Process Enforcement
+
+**From Mal (Lead) → Scribe (merged to decisions.md):**
+
+**Retrospective findings:** Phase 4–5 shipped features but quality degraded. CI hung for 55 minutes. PR #49 merged with 3 unresolved Copilot review comments never read. E2E tests are fake (mocked `_exec`, don't invoke CLI binary). Team speed-optimized process away.
+
+**4 Root Causes Identified:**
+1. **RC-1: No Review Gate Enforced** — Branch protection not configured. PR #49 merged despite unresolved comments. Review policy is advisory, not mandatory.
+2. **RC-2: No Test Isolation Standards** — CI hang root causes: missing cleanup in `DispatchTable.test.js`, uncontrolled `git clone` in `onboard-url.test.js`, missing `renderPlainDashboard()`. Band-aid `--test-force-exit` masked problems and broke Node 18.
+3. **RC-3: Fake E2E Tests** — `test/e2e.test.js` uses mocked `_exec` via DI. None invoke `bin/rally.js`. This is integration testing, creates false confidence in CLI correctness.
+4. **RC-4: Speed Over Process** — Velocity prioritized; review gates bypassed. Agents' code committed without inspection. No separation of duties (coordinator both opens and merges PRs).
+
+**Your Action Items:**
+1. **P1:** Update `docs/TESTING.md` with cleanup requirements and CI-safe patterns — Jayne (you)
+2. **P0:** Audit all `test/ui/*.test.js` for missing cleanup — Next agent on tests
+3. **P1:** Fix `DispatchTable.test.js` — add `afterEach(() => cleanup())` — Next agent on tests
+
+**Recommended Policy Changes (for Mal/team):**
+- Add to `docs/TESTING.md` §2: "Every Ink `render()` call MUST have a corresponding `unmount()` or `cleanup()` in `afterEach()`. Tests that don't clean up will hang in CI."
+- Rename `test/e2e.test.js` → `test/integration.test.js` (it's integration testing, not E2E)
+- Create real `test/e2e.test.js` that invokes `bin/rally.js` via `execFileSync` — smoke-level tests for arg parsing and basic CLI flow
+
+**For You:** Your TESTING.md was comprehensive. These gaps existed because it wasn't enforced. Next phase, it will be: Mal's code review will check that tests follow TESTING.md patterns. Branch protection will block PRs with unresolved review comments. This is structural enforcement, not advisory.
+
+**See:** `.squad/decisions.md` → "Decision: Retrospective Findings — Phase 4–5 Sprint (Dashboard + Polish)"
+

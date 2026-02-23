@@ -66,7 +66,7 @@ import { setup } from '../lib/setup.js';
 npm test
 ```
 
-This runs two passes:
+This runs three steps:
 
 1. **JSX pre-build** — `node test/build-jsx.mjs` compiles `.jsx` UI components to `.js` via esbuild so tests can import them without a custom loader.
 2. **Non-UI tests** — `node --test ./test/*.test.js` runs all unit/integration tests.

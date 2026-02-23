@@ -141,3 +141,23 @@ test('checkSymlinkSupport runs without error on supported platforms', () => {
     checkSymlinkSupport();
   });
 });
+
+test('createSymlink replaces symlink pointing to different target', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'rally-test-'));
+  
+  try {
+    const target1 = join(tempDir, 'target1');
+    const target2 = join(tempDir, 'target2');
+    const linkPath = join(tempDir, 'link');
+    
+    mkdirSync(target1);
+    mkdirSync(target2);
+    createSymlink(target1, linkPath);
+    assert.strictEqual(readlinkSync(linkPath), target1);
+    
+    createSymlink(target2, linkPath);
+    assert.strictEqual(readlinkSync(linkPath), target2);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});

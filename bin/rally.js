@@ -128,7 +128,7 @@ dispatch
         repoPath: opts.repoPath || resolved.project.path,
         teamDir: opts.teamDir,
       });
-      console.log(`Dispatched issue #${number} → ${result.worktreePath}`);
+      console.log(`Dispatched issue #${number}: ${result.issue.title} → ${result.worktreePath}`);
     } catch (err) {
       handleError(err);
     }
@@ -156,7 +156,7 @@ dispatch
         repoPath: opts.repoPath || resolved.project.path,
         teamDir: opts.teamDir,
       });
-      console.log(`Dispatched PR #${number} → ${result.worktreePath}`);
+      console.log(`Dispatched PR #${number}: ${result.pr.title} → ${result.worktreePath}`);
     } catch (err) {
       handleError(err);
     }

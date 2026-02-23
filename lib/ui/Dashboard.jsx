@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
+import { spawn as defaultSpawn } from 'node:child_process';
 import DispatchTable from './components/DispatchTable.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 
@@ -27,7 +28,7 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to print path, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, refreshInterval = 5000 }) {
+export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn }) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0); // eslint-disable-line -- state setter triggers re-render to refresh data
@@ -70,7 +71,8 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000 })
       if (onSelect) {
         onSelect(worktreePath);
       } else if (worktreePath) {
-        console.log(worktreePath);
+        const child = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
+        child.unref();
       }
       exit();
     } else if (input === 'r') {

@@ -24,6 +24,7 @@ const COLUMNS = [
   { key: 'project', label: 'Project', width: 20 },
   { key: 'issueRef', label: 'Issue/PR', width: 12 },
   { key: 'branch', label: 'Branch', width: 28 },
+  { key: 'folder', label: 'Folder', width: 30 },
   { key: 'status', label: 'Status', width: 16 },
   { key: 'age', label: 'Age', width: 6 },
 ];
@@ -47,6 +48,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
     project: d.repo ?? '',
     issueRef: formatIssueRef(d),
     branch: d.branch ?? '',
+    folder: d.worktreePath ?? '',
     status: formatStatus(d.status),
     age: formatAge(d.created ?? d.created_at),
   }));

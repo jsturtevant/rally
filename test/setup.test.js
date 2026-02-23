@@ -145,34 +145,32 @@ describe('setup', () => {
 
   // --- Error Cases ---
 
-  test('error: npx not found (ENOENT) throws descriptive error', async () => {
+  test('squad init failure is non-fatal (npx ENOENT)', async () => {
     const fakeExec = () => {
       const err = new Error('spawn npx ENOENT');
       err.code = 'ENOENT';
       throw err;
     };
 
-    await assert.rejects(
-      () => setup({ _exec: fakeExec }),
-      (err) => {
-        assert.ok(err.message.includes('npx not found'), `Expected npx not found, got: ${err.message}`);
-        return true;
-      }
-    );
+    // Should NOT reject — squad failure is a warning, not an error
+    await assert.doesNotReject(() => setup({ _exec: fakeExec }));
+
+    // Config should still be written
+    const configPath = join(tempDir, 'config.yaml');
+    assert.ok(existsSync(configPath), 'config.yaml should still be written when squad init fails');
   });
 
-  test('error: Squad init fails throws descriptive error', async () => {
+  test('squad init failure is non-fatal (exit code 128)', async () => {
     const fakeExec = () => {
-      throw new Error('Command failed with exit code 1');
+      throw new Error('Command failed with exit code 128');
     };
 
-    await assert.rejects(
-      () => setup({ _exec: fakeExec }),
-      (err) => {
-        assert.ok(err.message.includes('Squad init failed'), `Expected Squad init failed, got: ${err.message}`);
-        return true;
-      }
-    );
+    // Should NOT reject — squad failure is a warning, not an error
+    await assert.doesNotReject(() => setup({ _exec: fakeExec }));
+
+    // Config should still be written
+    const configPath = join(tempDir, 'config.yaml');
+    assert.ok(existsSync(configPath), 'config.yaml should still be written when squad init fails');
   });
 
   test('error: permission denied on directory creation', async () => {

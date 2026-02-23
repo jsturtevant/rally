@@ -267,21 +267,17 @@ describe('team selection', () => {
       assert.ok(existsSync(join(partialDir, '.squad')), '.squad should now exist');
     });
 
-    test('failed squad init cleans up team directory', async () => {
+    test('squad init failure is non-fatal and keeps team directory', async () => {
       setupRallyHome();
 
       const failingExec = () => { throw new Error('squad init exploded'); };
 
-      await assert.rejects(
-        () => selectTeam({ team: 'doomed-team', _exec: failingExec }),
-        (err) => {
-          assert.ok(err.message.includes('Squad init failed'));
-          return true;
-        }
-      );
+      // Should NOT reject — squad failure is a warning, not an error
+      const result = await selectTeam({ team: 'doomed-team', _exec: failingExec });
 
       const teamDir = join(process.env.RALLY_HOME, 'teams', 'doomed-team');
-      assert.ok(!existsSync(teamDir), 'team dir should be cleaned up after failed init');
+      assert.ok(existsSync(teamDir), 'team dir should still exist after squad init warning');
+      assert.strictEqual(result.teamDir, teamDir);
     });
   });
 });

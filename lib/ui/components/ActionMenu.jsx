@@ -21,7 +21,11 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
   ];
 
   useInput((input, key) => {
-    if (key.upArrow) {
+    if (input === 'v') {
+      onSelect(ACTIONS.OPEN_VSCODE);
+    } else if (input === 'l' && hasLog) {
+      onSelect(ACTIONS.VIEW_LOGS);
+    } else if (key.upArrow) {
       onSelect('up');
     } else if (key.downArrow) {
       onSelect('down');
@@ -48,7 +52,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter confirm · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter confirm · v/l shortcut · Esc back</Text>
       </Box>
     </Box>
   );

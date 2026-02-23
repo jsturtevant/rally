@@ -100,6 +100,10 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       setActionIndex(i => (i > 0 ? i - 1 : 0));
     } else if (direction === 'down') {
       setActionIndex(i => (i < actionCount - 1 ? i + 1 : i));
+    } else if (direction === ACTIONS.OPEN_VSCODE) {
+      openInVSCode(actionDispatch);
+    } else if (direction === ACTIONS.VIEW_LOGS) {
+      viewLogs(actionDispatch);
     } else if (direction === 'confirm') {
       const selectedAction = actions[actionIndex];
       if (selectedAction === ACTIONS.OPEN_VSCODE) {

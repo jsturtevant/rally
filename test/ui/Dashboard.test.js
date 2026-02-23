@@ -328,8 +328,7 @@ describe('Dashboard component', () => {
 
     const dispatches = makeSampleDispatches();
     dispatches[0].logPath = '/tmp/test-log.txt';
-    setupTestEnv(dispatches);
-    mkdirSync(WORKTREE_DIR, { recursive: true });
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
     instance = render(
       React.createElement(Dashboard, {
@@ -371,8 +370,7 @@ describe('Dashboard component', () => {
 
     const dispatches = makeSampleDispatches();
     dispatches[0].logPath = '/tmp/test-log.txt';
-    setupTestEnv(dispatches);
-    mkdirSync(WORKTREE_DIR, { recursive: true });
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
     instance = render(
       React.createElement(Dashboard, {

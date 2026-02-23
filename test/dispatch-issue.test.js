@@ -112,6 +112,12 @@ describe('slugify', () => {
     const long = 'a'.repeat(100);
     assert.ok(slugify(long).length <= 50);
   });
+
+  test('returns untitled for non-Latin titles', () => {
+    assert.strictEqual(slugify('你好世界'), 'untitled');
+    assert.strictEqual(slugify('!!!'), 'untitled');
+    assert.strictEqual(slugify('🚀🔥'), 'untitled');
+  });
 });
 
 // =====================================================

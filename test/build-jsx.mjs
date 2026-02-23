@@ -11,6 +11,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const jsxFiles = [
   'lib/ui/Dashboard.jsx',
+  'lib/ui/components/ActionMenu.jsx',
   'lib/ui/components/StatusMessage.jsx',
   'lib/ui/components/DispatchBox.jsx',
   'lib/ui/components/DispatchTable.jsx',

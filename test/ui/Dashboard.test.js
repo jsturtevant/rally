@@ -155,6 +155,7 @@ describe('getDashboardData', () => {
 
 describe('Dashboard component', () => {
   let instance;
+  const delay = () => new Promise(r => setImmediate(r));
 
   beforeEach(() => {
     setupWithDispatches();
@@ -217,7 +218,112 @@ describe('Dashboard component', () => {
     );
     
     const output = instance.lastFrame();
-    assert.ok(output.includes('Enter select'), 'should show Enter select hint');
+    assert.ok(output.includes('Enter actions'), 'should show Enter actions hint');
     assert.ok(output.includes('owner/repo-a'), 'should render dispatches');
+  });
+
+  it('shows action menu on Enter instead of opening VS Code', async () => {
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Actions for'), 'should show action menu title');
+    assert.ok(output.includes('Issue #42'), 'should show dispatch issue ref');
+    assert.ok(output.includes('Open in VS Code'), 'should show VS Code option');
+    assert.ok(output.includes('Back'), 'should show Back option');
+  });
+
+  it('action menu shows View dispatch logs when logPath exists', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].logPath = '/tmp/test-log.txt';
+    setupTestEnv(dispatches);
+    mkdirSync(WORKTREE_DIR, { recursive: true });
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('View dispatch logs'), 'should show View logs option when logPath exists');
+  });
+
+  it('action menu hides View dispatch logs when no logPath', async () => {
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(!output.includes('View dispatch logs'), 'should not show View logs when no logPath');
+  });
+
+  it('action menu Back returns to dispatch list', async () => {
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    assert.ok(instance.lastFrame().includes('Actions for'), 'should show action menu');
+    instance.stdin.write('\x1B');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Rally Dashboard'), 'should return to dashboard');
+  });
+
+  it('action menu Open in VS Code spawns code', async () => {
+    let spawnCalled = false;
+    const spawnMock = (cmd, args) => {
+      spawnCalled = true;
+      assert.equal(cmd, 'code');
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    assert.ok(instance.lastFrame().includes('Open in VS Code'), 'should show VS Code option');
+    instance.stdin.write('\r');
+    await delay();
+    assert.ok(spawnCalled, 'should have called spawn');
+  });
+
+  it('action menu View logs calls dispatchLog', async () => {
+    let logCalled = false;
+    let logNumber;
+    const mockDispatchLog = async (number, opts) => {
+      logCalled = true;
+      logNumber = number;
+    };
+
+    const dispatches = makeSampleDispatches();
+    dispatches[0].logPath = '/tmp/test-log.txt';
+    setupTestEnv(dispatches);
+    mkdirSync(WORKTREE_DIR, { recursive: true });
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _dispatchLog: mockDispatchLog,
+      })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    instance.stdin.write('\x1B[B');
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    assert.ok(logCalled, 'should have called dispatchLog');
+    assert.equal(logNumber, 42, 'should pass dispatch number');
   });
 });

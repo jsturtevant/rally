@@ -15,13 +15,17 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
   const hasLog = Boolean(dispatch.logPath);
 
   const actions = [
-    { id: ACTIONS.OPEN_VSCODE, label: 'Open in VS Code' },
-    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: 'View dispatch logs' }] : []),
+    { id: ACTIONS.OPEN_VSCODE, label: '(v) Open in VS Code' },
+    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: '(l) View dispatch logs' }] : []),
     { id: ACTIONS.BACK, label: 'Back' },
   ];
 
   useInput((input, key) => {
-    if (key.upArrow) {
+    if (input === 'v') {
+      onSelect(ACTIONS.OPEN_VSCODE);
+    } else if (input === 'l' && hasLog) {
+      onSelect(ACTIONS.VIEW_LOGS);
+    } else if (key.upArrow) {
       onSelect('up');
     } else if (key.downArrow) {
       onSelect('down');
@@ -48,7 +52,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter confirm · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter confirm · v/l shortcut · Esc back</Text>
       </Box>
     </Box>
   );

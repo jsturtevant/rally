@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { dispatchIssue, slugify, writeDispatchContext } from '../lib/dispatch-issue.js';
+import { dispatchIssue, slugify } from '../lib/dispatch-issue.js';
 
 // =====================================================
 // Helpers
@@ -111,44 +111,6 @@ describe('slugify', () => {
   test('caps at 50 characters', () => {
     const long = 'a'.repeat(100);
     assert.ok(slugify(long).length <= 50);
-  });
-});
-
-// =====================================================
-// writeDispatchContext
-// =====================================================
-
-describe('writeDispatchContext', () => {
-  test('writes context file with issue details', () => {
-    const dir = join(tempDir, 'squad-ctx');
-    mkdirSync(dir, { recursive: true });
-    const issue = makeIssue();
-    writeDispatchContext(dir, { repo: 'owner/repo', number: 42, issue });
-
-    const content = readFileSync(join(dir, 'dispatch-context.md'), 'utf8');
-    assert.ok(content.includes('#42'));
-    assert.ok(content.includes('Add login form'));
-    assert.ok(content.includes('owner/repo'));
-    assert.ok(content.includes('enhancement'));
-    assert.ok(content.includes('alice'));
-    assert.ok(content.includes('Implement a login form'));
-  });
-
-  test('creates squad directory if missing', () => {
-    const dir = join(tempDir, 'nonexistent-squad');
-    const issue = makeIssue();
-    writeDispatchContext(dir, { repo: 'o/r', number: 1, issue });
-    assert.ok(existsSync(join(dir, 'dispatch-context.md')));
-  });
-
-  test('handles issue with no labels or assignees', () => {
-    const dir = join(tempDir, 'squad-empty');
-    mkdirSync(dir, { recursive: true });
-    const issue = makeIssue({ labels: [], assignees: [], body: '' });
-    writeDispatchContext(dir, { repo: 'o/r', number: 5, issue });
-
-    const content = readFileSync(join(dir, 'dispatch-context.md'), 'utf8');
-    assert.ok(content.includes('none'));
   });
 });
 

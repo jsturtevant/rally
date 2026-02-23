@@ -91,6 +91,9 @@ function createExecWithPr(prData) {
       }
       return JSON.stringify(prData);
     }
+    if (cmd === 'gh' && args[0] === 'copilot') {
+      return ''; // Copilot is "available" in tests
+    }
     // Simulate refs/pull/N/head fetch — in tests, fetch the PR branch directly
     if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
       const cFlag = args.indexOf('-C');

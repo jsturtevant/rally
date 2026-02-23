@@ -58,17 +58,61 @@ describe('launchCopilot', () => {
     assert.strictEqual(captured.opts.detached, true);
   });
 
-  test('returns sessionId from child PID', () => {
+  test('redirects stdout/stderr to log file when logPath is provided', () => {
+    let captured;
+    let openCalls = [];
+    let closeCalls = [];
+
+    const mockSpawn = (cmd, args, opts) => {
+      captured = { cmd, args, opts };
+      return { pid: 42, unref() {} };
+    };
+
+    const mockFs = {
+      openSync: (path, flags) => {
+        openCalls.push({ path, flags });
+        return 99;
+      },
+      closeSync: (fd) => {
+        closeCalls.push(fd);
+      },
+    };
+
+    const result = launchCopilot('/path/to/worktree', 'my prompt', {
+      _spawn: mockSpawn,
+      _fs: mockFs,
+      logPath: '/path/to/worktree/.copilot-output.log',
+    });
+
+    assert.strictEqual(openCalls.length, 1);
+    assert.strictEqual(openCalls[0].path, '/path/to/worktree/.copilot-output.log');
+    assert.strictEqual(openCalls[0].flags, 'w');
+    assert.deepStrictEqual(captured.opts.stdio, ['ignore', 99, 99]);
+    assert.strictEqual(closeCalls.length, 1);
+    assert.strictEqual(closeCalls[0], 99);
+    assert.strictEqual(result.logPath, '/path/to/worktree/.copilot-output.log');
+  });
+
+  test('returns sessionId, process, and logPath', () => {
     const mockSpawn = () => ({ pid: 98765, unref() {} });
-    const result = launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
+    const result = launchCopilot('/wt', 'prompt', {
+      _spawn: mockSpawn,
+      logPath: '/wt/.copilot-output.log',
+      _fs: {
+        openSync: () => 10,
+        closeSync: () => {},
+      },
+    });
     assert.strictEqual(result.sessionId, '98765');
     assert.ok(result.process);
+    assert.strictEqual(result.logPath, '/wt/.copilot-output.log');
   });
 
   test('returns null sessionId when PID is falsy', () => {
     const mockSpawn = () => ({ pid: 0, unref() {} });
     const result = launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
     assert.strictEqual(result.sessionId, null);
+    assert.strictEqual(result.logPath, null);
   });
 
   test('returns nulls when spawn throws ENOENT (code)', () => {
@@ -78,6 +122,7 @@ describe('launchCopilot', () => {
     const result = launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
     assert.strictEqual(result.sessionId, null);
     assert.strictEqual(result.process, null);
+    assert.strictEqual(result.logPath, null);
   });
 
   test('returns nulls when spawn throws ENOENT (message)', () => {
@@ -87,6 +132,7 @@ describe('launchCopilot', () => {
     const result = launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
     assert.strictEqual(result.sessionId, null);
     assert.strictEqual(result.process, null);
+    assert.strictEqual(result.logPath, null);
   });
 
   test('re-throws non-ENOENT errors', () => {

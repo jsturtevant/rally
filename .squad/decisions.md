@@ -1027,3 +1027,176 @@ Other config files (`config.yaml`, `projects.yaml`) in `lib/config.js` still use
 
 - `lib/active.js` owns all dispatch CRUD — don't bypass with raw `writeActive()` from config.js
 - The `.active.yaml.tmp` file should be in `.gitignore` if it ever appears in a repo context
+
+---
+
+## Decision: Retrospective Findings — Phase 4–5 Sprint (Dashboard + Polish)
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-23  
+**Status:** Accepted
+
+### Decision
+
+Retrospective ceremony analyzed Phase 4–5 sprint outcomes, identified 4 root causes driving quality degradation, and produced 8 action items to restore process discipline:
+
+**Root Causes Identified:**
+
+1. **RC-1: No Review Gate Is Actually Enforced**
+   - Review policy (dual Copilot + human gate) exists on paper but isn't enforced in GitHub
+   - PR #49 merged with 3 unresolved Copilot review comments (never read, never addressed)
+   - Branch protection not configured; Mal review not requested
+   - "Address or explain" hard policy violated with no mechanism to block violation
+
+2. **RC-2: No Test Isolation Standards**
+   - CI hung for 55 minutes; root causes: missing cleanup in `DispatchTable.test.js`, uncontrolled `git clone` in `onboard-url.test.js`, `renderPlainDashboard()` missing from compiled output
+   - Some tests clean up Ink renders (`DispatchBox.test.js`, `StatusMessage.test.js`), others don't (`DispatchTable.test.js`)
+   - No enforced standard for cleanup, network isolation, or CI-safe patterns in `docs/TESTING.md`
+   - Band-aid fix (`--test-force-exit`) masked root cause and broke Node 18 support
+
+3. **RC-3: "E2E" Tests Are Not End-to-End**
+   - `test/e2e.test.js` contains 13 tests; all use mocked `_exec` via dependency injection
+   - None invoke `bin/rally.js` as a subprocess; don't test CLI arg parsing, real `gh`/`git` interactions, or stdout/stderr
+   - This is integration testing, not E2E; creates false confidence in CLI correctness
+   - Zero true end-to-end tests that exercise the binary from stdin/stdout
+
+4. **RC-4: Speed Prioritized Over Documented Process**
+   - Coordinator merged PRs without reading review feedback
+   - Bulk-resolved review threads instead of addressing individually
+   - Agent code committed without inspection
+   - No accountability mechanism; coordinator both opens and merges PRs
+
+### Recommended Actions
+
+| # | Action | Owner | Priority |
+|---|--------|-------|----------|
+| 1 | Enable GitHub branch protection on `main`: require approval + Copilot review to complete (no unresolved) + CI pass | James | P0 |
+| 2 | Fix `DispatchTable.test.js` — add `afterEach(() => cleanup())` | Next agent on tests | P0 |
+| 3 | Fix 3 documentation errors (README commands, TESTING.md step count) | Next agent on docs | P1 |
+| 4 | Rename `test/e2e.test.js` → `test/integration.test.js`; create real E2E tests | Next agent on tests | P1 |
+| 5 | Create 3–5 real E2E tests that invoke `bin/rally.js` via `execFileSync` | Next agent on tests | P1 |
+| 6 | Update `docs/TESTING.md` with cleanup requirements and CI-safe patterns | Jayne | P1 |
+| 7 | Add merge checklist to PR review skill (require zero unresolved comments) | Mal | P2 |
+| 8 | Audit all `test/ui/*.test.js` for missing cleanup | Next agent on tests | P1 |
+
+### Impact
+
+- **Branch protection is the highest-leverage fix.** Makes review gate structural (impossible to bypass), not behavioral
+- All agents should reference this decision when proposing test changes or PR workflows
+- Refactoring E2E tests will improve confidence in CLI correctness and catch argument parsing bugs earlier
+- Documentation accuracy is table-stakes; no PRs merge with known errors in docs
+
+---
+
+## Decision: Code Quality Baseline — Critical & Important Issues Identified
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-23  
+**Status:** Accepted (audit complete; issues catalogued for prioritization)
+
+### Summary
+
+Full codebase audit of bin/, lib/, and test/ directories completed. Identified 19 issues across 3 severity levels + comprehensive security analysis.
+
+### Critical Issues (fix now)
+
+1. **`lib/config.js`:19,40,60** — `yaml.load()` without explicit schema. While js-yaml v4 defaults to `DEFAULT_SCHEMA` (safe), explicitly passing schema documents intent and prevents regressions if version changes. Not a live vulnerability but defense-in-depth gap.
+
+2. **`bin/rally.js`:88-89** — `dashboard clean` error handler uses `console.error + process.exit(1)` instead of `handleError(err)`. Bypasses `RallyError` exit-code system, always exits with code 1 regardless of error type. Every other command uses `handleError`. Breaks exit-code contract.
+
+3. **`lib/dispatch-issue.js`:69** — TODO comment: orphaned worktree on failure (steps 4-6). If worktree creation succeeds but symlink or context write fails, worktree remains orphaned. Re-dispatching same issue returns `existing: true` early and never works. Real data-loss vector.
+
+4. **`lib/tools.js`:20** — `which` tool not available on Windows. Completely breaks `checkTools`/`assertTools` on Windows, stated target platform. Should use `where` on Windows or cross-platform approach (try running tool with `--version`).
+
+### Important Issues (fix soon)
+
+1. **`lib/dispatch-issue.js`:34-53** — `writeDispatchContext()` is dead function. Superseded by `lib/dispatch-context.js` (writeIssueContext), but still exported and called in dispatch-issue flow. Newer function never called during issue dispatch — only tests use it. PR dispatch correctly uses `writePrContext()`. Issue dispatches write different markdown format than PR dispatches.
+
+2. **`lib/dispatch-issue.js` vs `lib/dispatch-pr.js`** — Inconsistent worktree collision handling. Issue dispatch returns early with `{ existing: true }` without writing active.yaml. PR dispatch throws error. Pick one behavior and apply consistently.
+
+3. **`lib/config.js`:57-78** — `readActive()` and `writeActive()` exported and used in tests, but production uses `writeActiveAtomic()` from `lib/active.js`. Test validation skips atomicity guarantees that production relies on.
+
+4. **`lib/github.js`** — `checkGhInstalled()` and `checkGhAuth()` exported but never called from production code paths. If validation gates, wire them in. If dead code, remove.
+
+5. **`lib/dispatch-issue.js`:100-107 and `lib/dispatch-pr.js`:98-104** — Duplicated onboarding validation logic across two files. Extract to shared function (e.g., in `dispatch.js` which has `resolveRepo()`).
+
+6. **`lib/ui/Dashboard.js` + `.jsx`** — Compiled .js file checked in alongside source .jsx. Same for all component files. If .jsx edited but .js not rebuilt, production breaks silently. Either gitignore .js files and build at install, or remove .jsx files and work directly with compiled output.
+
+7. **`bin/rally.js`** — `dispatch issue` and `dispatch pr` subcommands defined in PRD but not registered in Commander program. No CLI entry point to invoke core dispatch functionality. Dispatch is library-only.
+
+### Nice-to-Have Issues (cleanup)
+
+1. `lib/symlink.js`:70-89 — `checkSymlinkSupport()` confusing temp directory logic
+2. `test/github.test.js` — Tests don't actually test github.js module; test utility functions instead
+3. Test files — Inconsistent test function imports (flat `test` vs BDD `describe`/`it`)
+4. `lib/onboard.js`:157 — Use `dirname(linkPath)` instead of `join(..., '..')`
+5. `test/config.test.js` — Heavy env restoration boilerplate; standardize with other files
+6. `lib/dispatch-issue.js`:163-167, `lib/dispatch-pr.js`:129-134 — Missing user warning if squad symlink source unavailable
+7. `lib/active.js`:6-8 — `REQUIRED_FIELDS` not exported (reuse in other modules)
+8. `lib/copilot.js`:32 — Prompt length/special-char edge cases when building workspace prompt
+
+### Security Analysis
+
+- **✅ No hardcoded secrets, tokens, or credentials** found in source or test files
+- **✅ No `execSync` with string templates** in production code — all subprocess calls use `execFileSync` with argument arrays (correct pattern)
+- **✅ YAML parsing safe** — js-yaml v4 with `DEFAULT_SCHEMA` is appropriate for user-controlled config files
+- **✅ Git clone URL safe** — `execFileSync` with argument array, no shell injection risk
+
+### Prioritization Note
+
+Critical issues are security/data-loss concerns or contract breakage. Important issues are dead code/inconsistency that erode maintainability. Nice-to-have are cleanup/style improvements.
+
+### Impact
+
+- Agents should reference this audit when planning implementation work
+- Critical issues should be prioritized before new features
+- Use this list as a source of low-hanging fruit for future sprint planning
+
+---
+
+## Decision: E2E Tests Built & Test Cleanup Audit Complete
+
+**By:** Jayne (Tester)  
+**Date:** 2026-02-23  
+**Status:** Accepted (audit complete; action items addressed)
+
+### Summary
+
+Built real E2E tests invoking `bin/rally.js` CLI binary and audited all test/ui/ files for Ink render cleanup. All cleanup issues identified and resolved.
+
+### E2E Test Suite
+
+**7 real end-to-end tests** added to `test/integration.test.js`:
+- All tests invoke the actual `bin/rally.js` CLI binary via subprocess
+- Comprehensive coverage of dispatch and dashboard flows
+- Tests exercise real `gh`, `git`, and argument parsing (not mocked)
+
+**Commit:** `4f71601` — "test: add real E2E tests invoking bin/rally.js"
+
+### UI Test Cleanup Audit Results
+
+| File | render() calls | Cleanup method | Status |
+|---|---|---|---|
+| StatusMessage.test.js | 5 | `afterEach(() => { cleanup(); })` | ✅ Clean |
+| DispatchBox.test.js | 3 | `afterEach(() => { cleanup(); })` | ✅ Clean |
+| Dashboard.test.js | 5 | `instance.unmount()` in afterEach | ✅ Clean |
+| non-tty.test.js | 0 | N/A — no Ink rendering | ✅ N/A |
+| DispatchTable.test.js | 9 | **NONE (FIXED)** | ✅ Fixed |
+
+**DispatchTable.test.js Status:**
+- 9 render() calls across 7 tests with zero cleanup
+- Kaylee added `afterEach(() => cleanup())` hook (addressed in parallel commit 48eb12c)
+- Now clean
+
+### Actions Taken
+
+- ✅ Built 7 real E2E tests invoking CLI binary
+- ✅ Audited all test/ui/*.test.js files for cleanup patterns
+- ✅ Identified DispatchTable.test.js as missing cleanup (coordinated with Kaylee for fix)
+- ✅ Confirmed all other UI tests have proper cleanup
+
+### Impact
+
+- Test suite now has true end-to-end coverage of CLI behavior
+- All Ink render resources properly cleaned up; CI no longer hangs
+- Test cleanup patterns are now consistent across all UI test files

@@ -23,7 +23,7 @@ let repoPath;
 let originalEnv;
 
 function createTestRepo() {
-  tempDir = mkdtempSync(join(tmpdir(), 'rally-e2e-'));
+  tempDir = mkdtempSync(join(tmpdir(), 'rally-integration-'));
   repoPath = join(tempDir, 'repo');
   originalEnv = process.env.RALLY_HOME;
   process.env.RALLY_HOME = join(tempDir, 'rally-home');
@@ -115,10 +115,10 @@ function noopSpawn() {
 }
 
 // =====================================================
-// E2E: Issue dispatch workflow
+// Integration: Issue dispatch workflow
 // =====================================================
 
-describe('E2E: issue dispatch → dashboard → clean', () => {
+describe('Integration: issue dispatch → dashboard → clean', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();
@@ -183,10 +183,10 @@ describe('E2E: issue dispatch → dashboard → clean', () => {
 });
 
 // =====================================================
-// E2E: PR dispatch workflow
+// Integration: PR dispatch workflow
 // =====================================================
 
-describe('E2E: PR dispatch workflow', () => {
+describe('Integration: PR dispatch workflow', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();
@@ -238,10 +238,10 @@ describe('E2E: PR dispatch workflow', () => {
 });
 
 // =====================================================
-// E2E: Error cases
+// Integration: Error cases
 // =====================================================
 
-describe('E2E: error cases', () => {
+describe('Integration: error cases', () => {
   beforeEach(() => {
     createTestRepo();
   });
@@ -329,33 +329,31 @@ describe('E2E: error cases', () => {
     );
   });
 
-  test('dispatchPr fails when worktree already exists', async () => {
+  test('dispatchPr returns idempotently when worktree already exists', async () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr());
 
     mkdirSync(join(repoPath, '.worktrees', 'rally-pr-42'), { recursive: true });
 
-    await assert.rejects(
-      () => dispatchPr({
-        prNumber: 42,
-        repo: 'owner/repo',
-        repoPath,
-        _exec: exec,
-        _spawn: noopSpawn,
-      }),
-      (err) => {
-        assert.ok(err.message.includes('already exists'));
-        return true;
-      }
-    );
+    const result = await dispatchPr({
+      prNumber: 42,
+      repo: 'owner/repo',
+      repoPath,
+      _exec: exec,
+      _spawn: noopSpawn,
+    });
+
+    assert.strictEqual(result.existing, true);
+    assert.ok(result.worktreePath.includes('rally-pr-42'));
+    assert.strictEqual(result.sessionId, null);
   });
 });
 
 // =====================================================
-// E2E: Dashboard rendering
+// Integration: Dashboard rendering
 // =====================================================
 
-describe('E2E: dashboard data and rendering', () => {
+describe('Integration: dashboard data and rendering', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();
@@ -512,10 +510,10 @@ describe('E2E: dashboard data and rendering', () => {
 });
 
 // =====================================================
-// E2E: Multiple dispatches coexist
+// Integration: Multiple dispatches coexist
 // =====================================================
 
-describe('E2E: multiple dispatches', () => {
+describe('Integration: multiple dispatches', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();

@@ -486,3 +486,57 @@ Designed comprehensive "PR Review Process" skill for the team based on Phase 2 a
 - `resolveRepo` matches --repo flag by project `name` only (ignores owner for lookup). Conscious design choice — owner comes from the flag, project comes from projects.yaml by name match.
 - `findProjectByCwd` hardcodes `process.cwd()` (not injectable). Tests use `process.chdir()` as workaround. Acceptable but worth noting if cwd injection becomes needed later.
 - Copilot review was clean — only flagged a placeholder timestamp in SKILL.md.
+
+### 2026-02-23 — Retrospective: Phase 4–5 Sprint (Dashboard + Polish) — Process Failure #2
+
+Facilitated critical retro on Phase 4–5 sprint (issues #23, #25, #26, #27, #28, #29, #41; PRs #44–#49).
+
+**What Went Wrong:**
+1. **CI hung 55 minutes** — three independent causes: Dashboard tests missing `unmount()` cleanup, `onboard-url.test.js` triggering credential prompts in CI, `renderPlainDashboard()` exported but undefined in compiled output.
+2. **Node 18 dropped** — `--test-force-exit` flag doesn't exist in Node 18, broke CI. Band-aid for the real problem (tests not cleaning up).
+3. **PR #49 merged with 3 unresolved Copilot comments** — README has wrong commands (`rally dispatch <issue#>` should be `rally dispatch issue <number>`, `rally clean` should be `rally dashboard clean`), TESTING.md says "two passes" but lists three steps. Comments were never read.
+4. **E2E tests are fake** — all 13 tests in `e2e.test.js` use mocked `_exec`. None invoke `bin/rally.js`. This is integration testing, not E2E.
+5. **Speed over quality** — coordinator merged without reading reviews, bulk-resolved threads, committed agent output without inspection.
+
+**Root Causes:**
+- RC-1: Review gates are advisory, not enforced (no branch protection)
+- RC-2: No test cleanup/isolation standards (some tests clean up, some don't)
+- RC-3: "E2E" label is wrong (DI mocks ≠ end-to-end)
+- RC-4: No accountability mechanism for merge quality (coordinator self-merges)
+
+**Key Action Items:**
+1. Enable GitHub branch protection on `main` (require approval + CI) — P0
+2. Fix `DispatchTable.test.js` missing cleanup — P0
+3. Fix 3 documentation errors from PR #49 comments — P1
+4. Rename `e2e.test.js` → `integration.test.js`, create real CLI E2E tests — P1
+5. Update `docs/TESTING.md` with cleanup requirements — P1
+6. Add merge checklist to PR review skill — P2
+
+**Key Learning:** This is the second process failure retro (first was Phase 1 direct-to-main commits). The pattern is clear: documented process without enforcement gets bypassed under velocity pressure. Branch protection is structural enforcement. Behavioral rules alone don't work. The "address or explain" policy must be backed by GitHub's "require conversation resolution" setting.
+
+**Retro artifact:** `.squad/decisions/inbox/mal-retro-findings.md`
+
+### 2026-02-23 — Comprehensive Code Quality Audit
+
+**Full codebase review completed.** Reviewed all files in bin/, lib/, lib/ui/, test/, test/ui/.
+
+**Critical findings (4):**
+1. `dashboard clean` error handler bypasses `handleError()` and the exit-code system — inconsistency with every other command
+2. `lib/dispatch-issue.js` has a TODO for worktree cleanup on failure — orphaned worktrees are a real data-loss vector
+3. `lib/tools.js` uses `which` — breaks on Windows (stated target platform)
+4. `yaml.load()` without explicit schema — safe with js-yaml v4 but undocumented intent
+
+**Important findings (7):**
+1. `writeDispatchContext()` in dispatch-issue.js is superseded by dispatch-context.js but still used — issue dispatches get a different, older markdown format than PR dispatches
+2. Inconsistent worktree collision handling: issues return early, PRs throw
+3. `writeActive()` in config.js bypasses atomic writes from active.js
+4. `checkGhInstalled()` and `checkGhAuth()` in github.js are dead code — never called
+5. Duplicated onboarding validation in dispatch-issue.js and dispatch-pr.js
+6. Compiled .js and source .jsx both checked in — sync risk
+7. `dispatch issue` and `dispatch pr` CLI subcommands not registered in Commander — core functionality has no CLI entry point
+
+**Security: Clean.** No hardcoded secrets. All subprocess calls use `execFileSync` with argument arrays (no shell injection). `parseGithubUrl` correctly blocks path traversal.
+
+**Key architectural observation:** The codebase has good DI patterns (injectable `_exec`, `_spawn`, `_select`) and solid test coverage. The main debt is around the dispatch commands where issue and PR paths diverged during implementation — they need to be reconciled.
+
+**Artifact:** `.squad/decisions/inbox/mal-code-review.md`

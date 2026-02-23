@@ -25,9 +25,8 @@ npx rally
 ```bash
 rally setup              # Configure team directory
 rally onboard <url>      # Clone and set up a repository
-rally dispatch <issue#>  # Create worktree + launch Copilot CLI
 rally dashboard          # View active dispatches
-rally clean              # Remove completed dispatches
+rally dashboard clean    # Remove completed dispatches
 ```
 
 ## Commands

@@ -85,8 +85,7 @@ dashboard
       const { dashboardClean } = await import('../lib/dashboard-clean.js');
       await dashboardClean({ all: opts.all, yes: opts.yes });
     } catch (err) {
-      console.error(`✗ ${err.message}`);
-      process.exit(1);
+      handleError(err);
     }
   });
 

@@ -298,3 +298,48 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Other clone tests unaffected:** Tests at lines 156, 176, 191 use local bare repos (`createBareRepo()`) — no network calls, no changes needed.
 
 
+
+### 2026-02-23 — Phase 4–5 Retrospective: Quality Discipline & Process Enforcement
+
+**From Mal (Lead) → Scribe (merged to decisions.md):**
+
+**Retrospective findings:** Phase 4–5 shipped features (7 issues closed, 6 PRs merged, Dashboard + Polish complete) but quality degraded. CI hung for 55 minutes. PR #49 merged with 3 unresolved Copilot review comments. E2E tests are fake (use mocks, don't invoke CLI binary).
+
+**4 Root Causes Identified:**
+1. **RC-1: No Review Gate Enforced** — Branch protection not configured. PR #49 merged despite unresolved comments. Review policy is paper only.
+2. **RC-2: No Test Isolation Standards** — Some tests clean up Ink renders, others don't. No enforce pattern. Band-aid (`--test-force-exit`) masked root causes.
+3. **RC-3: Fake E2E Tests** — `test/e2e.test.js` uses mocked `_exec`, doesn't invoke `bin/rally.js`. This is integration testing, gives false confidence in CLI.
+4. **RC-4: Speed Over Process** — Velocity prioritized; review gates bypassed. Agents' code committed without inspection. No accountability mechanism.
+
+**8 Action Items (in order of priority):**
+1. **P0:** Enable GitHub branch protection on `main` (require approval + Copilot review complete + CI pass) — James
+2. **P0:** Fix `DispatchTable.test.js` — add `afterEach(() => cleanup())` — Next agent on tests
+3. **P1:** Fix 3 documentation errors (README commands, TESTING.md step count) — Next agent on docs
+4. **P1:** Rename `test/e2e.test.js` → `test/integration.test.js` — Next agent on tests
+5. **P1:** Create 3–5 real E2E tests that invoke `bin/rally.js` via `execFileSync` — Next agent on tests
+6. **P1:** Update `docs/TESTING.md` with cleanup requirements and CI-safe patterns — Jayne
+7. **P2:** Add merge checklist to PR review skill (require zero unresolved comments) — Mal
+8. **P1:** Audit all `test/ui/*.test.js` for missing cleanup — Next agent on tests
+
+**Key Learning:** Branch protection is the highest-leverage fix. Makes review gate structural (impossible to bypass), not behavioral. Everything else is hygiene.
+
+**For You (Kaylee):** When you open Phase 6 PRs, expect stricter review gates. Copilot comments are mandatory to address. Unresolved comments block merge. This is structural now, not advisory.
+
+**See:** `.squad/decisions.md` → "Decision: Retrospective Findings — Phase 4–5 Sprint (Dashboard + Polish)"
+
+### 2026-02-23 — Code Review Fixes (rally/retro-actions)
+
+**From Mal's code review — 9 findings fixed:**
+
+1. **bin/rally.js** — `dashboard clean` catch block now uses `handleError(err)` like every other command (was `console.error` + `process.exit(1)`)
+2. **lib/tools.js** — Replaced `which` (Unix-only) with `tool --version` for cross-platform tool detection
+3. **lib/config.js** — Added `{ schema: yaml.DEFAULT_SCHEMA }` to all three `yaml.load()` calls to document safe-parsing intent
+4. **lib/dispatch-pr.js** — Worktree collision now returns `{ existing: true }` instead of throwing, matching `dispatch-issue.js` behavior
+5. **lib/onboard.js** — Replaced `join(linkPath, '..')` with `dirname(linkPath)` — clearer intent
+6. **test/github.test.js** — Deleted entirely (placeholder tests that tested JSON.parse, not the github module)
+7. **test/smoke.test.js** — Changed `execSync` to `execFileSync` for consistency with codebase
+8. **lib/ui/ compiled files** — Already properly gitignored and untracked; no changes needed
+9. **Tests updated** — `dispatch-pr.test.js` and `edge-cases.test.js` updated to match new behavior (72/72 pass)
+
+**Key learning:** When changing behavior (e.g., throw → return early), always grep for tests that assert the old behavior. Three tests broke here — all expected.
+

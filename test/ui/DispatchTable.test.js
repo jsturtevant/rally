@@ -1,8 +1,11 @@
-import { describe, it } from 'node:test';
+import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import { DispatchTable, STATUS_ICONS, formatAge } from '../../lib/ui/index.js';
+
+let lastCleanup;
+afterEach(() => { if (lastCleanup) lastCleanup(); });
 
 const SAMPLE_DISPATCHES = [
   {
@@ -27,9 +30,10 @@ const SAMPLE_DISPATCHES = [
 
 describe('DispatchTable', () => {
   it('renders header columns', () => {
-    const { lastFrame } = render(
+    const { lastFrame, cleanup } = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );
+    lastCleanup = cleanup;
     const output = lastFrame();
     assert.ok(output.includes('Project'), 'should include Project column');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR column');
@@ -39,9 +43,10 @@ describe('DispatchTable', () => {
   });
 
   it('renders dispatch data rows', () => {
-    const { lastFrame } = render(
+    const { lastFrame, cleanup } = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );
+    lastCleanup = cleanup;
     const output = lastFrame();
     assert.ok(output.includes('owner/repo-a'), 'should include repo name');
     assert.ok(output.includes('Issue #42'), 'should include issue ref');
@@ -61,9 +66,10 @@ describe('DispatchTable', () => {
       session_id: `s${i}`,
       created: new Date().toISOString(),
     }));
-    const { lastFrame } = render(
+    const { lastFrame, cleanup } = render(
       React.createElement(DispatchTable, { dispatches })
     );
+    lastCleanup = cleanup;
     const output = lastFrame();
     for (const status of statuses) {
       assert.ok(
@@ -74,12 +80,16 @@ describe('DispatchTable', () => {
   });
 
   it('highlights selected row with inverse styling', () => {
-    const selected = render(
+    const r1 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: 0 })
-    ).lastFrame();
-    const unselected = render(
+    );
+    const selected = r1.lastFrame();
+    r1.cleanup();
+    const r2 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: -1 })
-    ).lastFrame();
+    );
+    const unselected = r2.lastFrame();
+    lastCleanup = r2.cleanup;
     assert.ok(selected.includes('owner/repo-a'), 'selected row data should render');
     // When FORCE_COLOR is set, inverse styling produces different ANSI output;
     // without it, Ink strips styles in non-TTY. Either way, the component is correct.
@@ -89,27 +99,33 @@ describe('DispatchTable', () => {
   });
 
   it('does not highlight when selectedIndex is -1', () => {
-    const noSelection = render(
+    const r1 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: -1 })
-    ).lastFrame();
-    const defaultRender = render(
+    );
+    const noSelection = r1.lastFrame();
+    r1.cleanup();
+    const r2 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
-    ).lastFrame();
+    );
+    const defaultRender = r2.lastFrame();
+    lastCleanup = r2.cleanup;
     assert.equal(noSelection, defaultRender, 'selectedIndex -1 should match default render');
   });
 
   it('renders empty state when no dispatches', () => {
-    const { lastFrame } = render(
+    const { lastFrame, cleanup } = render(
       React.createElement(DispatchTable, { dispatches: [] })
     );
+    lastCleanup = cleanup;
     const output = lastFrame();
     assert.ok(output.includes('No active dispatches'), 'should show empty message');
   });
 
   it('renders empty state with default props', () => {
-    const { lastFrame } = render(
+    const { lastFrame, cleanup } = render(
       React.createElement(DispatchTable)
     );
+    lastCleanup = cleanup;
     const output = lastFrame();
     assert.ok(output.includes('No active dispatches'), 'should show empty message');
   });

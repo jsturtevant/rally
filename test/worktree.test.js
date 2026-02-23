@@ -130,4 +130,32 @@ describe('worktree', () => {
     assert.ok(result.startsWith('/') || result.match(/^[A-Z]:\\/));
     assert.ok(worktreeExists(repoPath, relativePath));
   });
+
+  it('removeWorktree with force:false throws on uncommitted changes', () => {
+    const wtPath = join(testDir, 'wt-dirty');
+    createWorktree(repoPath, wtPath, 'dirty-branch');
+    writeFileSync(join(wtPath, 'dirty.txt'), 'uncommitted', 'utf8');
+
+    assert.throws(
+      () => removeWorktree(repoPath, wtPath, { force: false }),
+      /uncommitted changes/
+    );
+  });
+
+  it('removeWorktree with force:false succeeds on clean worktree', () => {
+    const wtPath = join(testDir, 'wt-clean');
+    createWorktree(repoPath, wtPath, 'clean-branch');
+
+    assert.doesNotThrow(() => removeWorktree(repoPath, wtPath, { force: false }));
+    assert.ok(!worktreeExists(repoPath, wtPath));
+  });
+
+  it('removeWorktree with force:true (default) removes regardless', () => {
+    const wtPath = join(testDir, 'wt-force');
+    createWorktree(repoPath, wtPath, 'force-branch');
+    writeFileSync(join(wtPath, 'dirty.txt'), 'uncommitted', 'utf8');
+
+    assert.doesNotThrow(() => removeWorktree(repoPath, wtPath));
+    assert.ok(!worktreeExists(repoPath, wtPath));
+  });
 });

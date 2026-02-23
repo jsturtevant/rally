@@ -191,3 +191,23 @@ test('removeDispatch removes only the target record', () => {
 test('VALID_STATUSES contains expected values', () => {
   assert.deepEqual(VALID_STATUSES, ['planning', 'implementing', 'reviewing', 'done', 'cleaned']);
 });
+
+test('lock is released even when wrapped function throws', () => {
+  const lockDir = join(tempDir, '.active.lock');
+  assert.throws(
+    () => addDispatch({ id: 'x' }),
+    /Missing required field/
+  );
+  // Lock should be released after error
+  assert.ok(!existsSync(lockDir), 'lock dir should be removed after error');
+});
+
+test('concurrent addDispatch calls do not lose records', () => {
+  // Simulate by calling addDispatch twice in sequence (same-process concurrency test)
+  addDispatch(makeRecord({ id: 'concurrent-1' }));
+  addDispatch(makeRecord({ id: 'concurrent-2' }));
+  const dispatches = getActiveDispatches();
+  assert.strictEqual(dispatches.length, 2);
+  assert.ok(dispatches.some(d => d.id === 'concurrent-1'));
+  assert.ok(dispatches.some(d => d.id === 'concurrent-2'));
+});

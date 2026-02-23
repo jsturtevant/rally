@@ -89,4 +89,56 @@ dashboard
     }
   });
 
+const dispatch = program
+  .command('dispatch')
+  .description('Dispatch Squad to a GitHub issue or PR');
+
+dispatch
+  .command('issue')
+  .description('Dispatch Squad to a GitHub issue')
+  .argument('<number>', 'GitHub issue number')
+  .option('--repo <owner/repo>', 'Target repository (owner/repo)')
+  .option('--repo-path <path>', 'Path to local repo clone')
+  .option('--team-dir <path>', 'Path to custom squad directory')
+  .action(async (number, opts) => {
+    try {
+      const { resolveRepo } = await import('../lib/dispatch.js');
+      const { dispatchIssue } = await import('../lib/dispatch-issue.js');
+      const resolved = resolveRepo({ repo: opts.repo });
+      const result = await dispatchIssue({
+        issueNumber: number,
+        repo: resolved.fullName,
+        repoPath: opts.repoPath || resolved.project.path,
+        teamDir: opts.teamDir,
+      });
+      console.log(`Dispatched issue #${number} → ${result.worktreePath}`);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+dispatch
+  .command('pr')
+  .description('Dispatch Squad to a GitHub PR review')
+  .argument('<number>', 'GitHub PR number')
+  .option('--repo <owner/repo>', 'Target repository (owner/repo)')
+  .option('--repo-path <path>', 'Path to local repo clone')
+  .option('--team-dir <path>', 'Path to custom squad directory')
+  .action(async (number, opts) => {
+    try {
+      const { resolveRepo } = await import('../lib/dispatch.js');
+      const { dispatchPr } = await import('../lib/dispatch-pr.js');
+      const resolved = resolveRepo({ repo: opts.repo });
+      const result = await dispatchPr({
+        prNumber: number,
+        repo: resolved.fullName,
+        repoPath: opts.repoPath || resolved.project.path,
+        teamDir: opts.teamDir,
+      });
+      console.log(`Dispatched PR #${number} → ${result.worktreePath}`);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
 program.parse();

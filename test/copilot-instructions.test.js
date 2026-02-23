@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { getCopilotInstructions, writeCopilotInstructions } from '../lib/copilot-instructions.js';
@@ -86,7 +86,7 @@ describe('writeCopilotInstructions', () => {
     assert.ok(content.includes('git push'));
   });
 
-  test('does not overwrite or fail when .github/ already exists', () => {
+  test('handles pre-existing .github directory', () => {
     mkdirSync(join(tempDir, '.github'), { recursive: true });
     writeCopilotInstructions(tempDir);
     const filePath = join(tempDir, '.github', 'copilot-instructions.md');
@@ -104,10 +104,26 @@ describe('writeCopilotInstructions', () => {
     );
   });
 
+  test('throws when worktreePath does not exist on disk', () => {
+    assert.throws(
+      () => writeCopilotInstructions('/nonexistent/path/that/does/not/exist'),
+      { message: /worktreePath does not exist/ }
+    );
+  });
+
+  test('throws when .github exists but is not a directory', () => {
+    writeFileSync(join(tempDir, '.github'), 'not a directory');
+    assert.throws(
+      () => writeCopilotInstructions(tempDir),
+      { message: /\.github exists but is not a directory/ }
+    );
+  });
+
   test('uses injectable _fs', () => {
-    const calls = { mkdir: [], write: [], exists: [] };
+    const calls = { mkdir: [], write: [], exists: [], stat: [] };
     const mockFs = {
-      existsSync: (p) => { calls.exists.push(p); return false; },
+      existsSync: (p) => { calls.exists.push(p); return p.includes('.github') ? false : true; },
+      statSync: (p) => { calls.stat.push(p); return { isDirectory: () => true }; },
       mkdirSync: (p, opts) => { calls.mkdir.push({ p, opts }); },
       writeFileSync: (p, content, enc) => { calls.write.push({ p, content, enc }); },
     };

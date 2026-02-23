@@ -273,6 +273,12 @@ describe('dispatchIssue happy path', () => {
     assert.ok(contextContent.includes('#42'));
     assert.ok(contextContent.includes('Add login form'));
 
+    // Verify copilot-instructions.md was written into .github/
+    const instructionsPath = join(result.worktreePath, '.github', 'copilot-instructions.md');
+    assert.ok(existsSync(instructionsPath), 'copilot-instructions.md should exist in .github/');
+    const instructionsContent = readFileSync(instructionsPath, 'utf8');
+    assert.ok(instructionsContent.includes('Read-Only Policy'), 'copilot-instructions.md should contain read-only policy');
+
     // Verify active.yaml was updated
     const activePath = join(rallyHome, 'active.yaml');
     assert.ok(existsSync(activePath), 'active.yaml should exist');

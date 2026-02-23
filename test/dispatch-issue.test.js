@@ -202,7 +202,7 @@ describe('dispatchIssue error paths', () => {
     );
   });
 
-  test('throws when worktree directory already exists', async () => {
+  test('returns early when worktree directory already exists', async () => {
     setupRallyHome();
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
@@ -210,13 +210,9 @@ describe('dispatchIssue error paths', () => {
     // Pre-create the worktree directory
     mkdirSync(join(repoPath, '.worktrees', 'rally-42'), { recursive: true });
 
-    await assert.rejects(
-      () => dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
-      (err) => {
-        assert.ok(err.message.includes('already exists'));
-        return true;
-      }
-    );
+    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn });
+    assert.strictEqual(result.existing, true);
+    assert.ok(result.worktreePath.includes('rally-42'));
   });
 
   test('throws when repo is not onboarded', async () => {

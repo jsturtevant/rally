@@ -10,7 +10,7 @@ The `--loader ./test/jsx-loader.mjs` approach caused `node --test` to re-initial
 
 ## Decision
 
-Replaced `--loader` with a pre-build step (`test/build-jsx.mjs`) that compiles all `.jsx` → `.js` files once before tests run. All imports now reference the compiled `.js` files. The `--loader` flag and `jsx-loader.mjs` hooks are no longer used by tests.
+Replaced `--loader` with a pre-build step (`test/build-jsx.mjs`) that compiles all `.jsx` → `.js` files once before tests run. All runtime imports reference the compiled `.js` files. Source `.jsx` files retain `.jsx` imports; the pre-build step rewrites them to `.js` in compiled output. The `--loader` flag and `jsx-loader.mjs` hooks are no longer used by tests.
 
 ## Impact
 

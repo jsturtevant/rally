@@ -290,4 +290,11 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **`--test-force-exit` added** for UI tests to prevent Ink event loop handles from keeping Node alive after tests complete.
 - **Ink import overhead:** `ink` module takes ~27s to import on WSL2 due to ESM dependency graph resolution over 9P filesystem. On native Linux (CI), this is < 1 second. Not a code issue — WSL2 filesystem performance limitation.
 
+### 2026-02-23 — Injectable `_clone` in onboard() (rally/25-non-tty)
+
+- **Problem:** `test/onboard-url.test.js` "clone failure" test called real `git clone` against GitHub. In CI (no credentials, non-TTY), git hangs on credential prompt even with `GIT_TERMINAL_PROMPT=0` (still a network call).
+- **Fix:** Added `_clone` injectable parameter to `onboard()` in `lib/onboard.js`, following the established `_exec`/`_select`/`_input` pattern. Default behavior unchanged (calls `execFileSync('git', ['clone', ...])`). Test now passes a mock `_clone` that throws, eliminating all network access.
+- **Pattern reinforced:** Every external side effect in onboard/setup/dispatch should be injectable for testing. The underscore-prefix convention (`_clone`, `_exec`, `_select`, `_input`) is the project standard for test hooks.
+- **Other clone tests unaffected:** Tests at lines 156, 176, 191 use local bare repos (`createBareRepo()`) — no network calls, no changes needed.
+
 

@@ -58,11 +58,11 @@ const dashboard = program
   .action(async (opts) => {
     try {
       if (opts.json) {
-        const { getDashboardData } = await import('../lib/ui/Dashboard.js');
+        const { getDashboardData } = await import('../lib/ui/dashboard-data.js');
         const data = getDashboardData({ project: opts.project });
         console.log(JSON.stringify(data, null, 2));
       } else if (!process.stdout.isTTY) {
-        const { renderPlainDashboard } = await import('../lib/ui/Dashboard.js');
+        const { renderPlainDashboard } = await import('../lib/ui/dashboard-data.js');
         console.log(renderPlainDashboard({ project: opts.project }));
       } else {
         const React = await import('react');

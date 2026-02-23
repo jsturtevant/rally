@@ -398,3 +398,30 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 3. Empty YAML files are a blind spot — always null-coalesce after yaml.load()
 
 **Status:** Five-round code review complete. All critical and important findings fixed. Codebase clean.
+
+### 2026-02-23 — Dashboard Folder Column + VS Code Launch (Issue #129, PR #130)
+
+**Role:** Core Developer
+
+**Outcome:** Shipped folder column and VS Code integration to dashboard.
+
+**Changes:**
+- Added **Folder** column to `DispatchTable.jsx` showing `worktreePath` field (was already in data, just not displayed)
+- Changed Enter key handler in `Dashboard.jsx` to spawn VS Code at worktree path instead of `console.log()`
+- Updated plain text dashboard (`renderPlainDashboard()`) to include folder column
+- VS Code launches detached (`detached: true`, `stdio: 'ignore'`, `child.unref()`) to avoid blocking CLI
+- Added `_spawn` prop for dependency injection (follows project's DI pattern with `_exec`, etc.)
+
+**Key Technical Details:**
+- Used `spawn` from `node:child_process` (not `exec` or `execSync`) — allows detach + unref
+- `onSelect` callback override preserved — if provided, calls that instead of spawning VS Code
+- All `.jsx` files compiled to `.js` via `test/build-jsx.mjs` (esbuild) before tests run
+
+**Testing:** All 33 tests pass. No new tests needed (behavior change only, no new code paths).
+
+**Key Learning:** The dispatch data already had `worktreePath` all along — just needed to wire it through the table columns and change the action handler. Clean separation between data model and presentation made this a 10-minute change.
+
+**Files Changed:**
+- `lib/ui/components/DispatchTable.jsx` — added Folder column definition + row mapping
+- `lib/ui/Dashboard.jsx` — imported spawn, added `_spawn` prop, changed Enter handler
+- `lib/ui/dashboard-data.js` — added folder column to plain text output

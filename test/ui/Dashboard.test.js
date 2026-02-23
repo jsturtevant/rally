@@ -203,4 +203,21 @@ describe('Dashboard component', () => {
     assert.ok(output.includes('No active dispatches'), 'should show empty state');
     assert.ok(output.includes('0 active'), 'should show zero active');
   });
+
+  it('accepts _spawn prop for testability', () => {
+    const spawnMock = (cmd, args, options) => {
+      return {
+        unref: () => {},
+        on: () => {},
+      };
+    };
+    
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Enter select'), 'should show Enter select hint');
+    assert.ok(output.includes('owner/repo-a'), 'should render dispatches');
+  });
 });

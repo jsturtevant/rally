@@ -80,6 +80,7 @@ describe('renderPlainDashboard (non-TTY)', () => {
     assert.ok(output.includes('Project'), 'should include Project header');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR header');
     assert.ok(output.includes('Branch'), 'should include Branch header');
+    assert.ok(output.includes('Folder'), 'should include Folder header');
     assert.ok(output.includes('Status'), 'should include Status header');
     assert.ok(output.includes('Age'), 'should include Age header');
   });
@@ -90,6 +91,7 @@ describe('renderPlainDashboard (non-TTY)', () => {
     assert.ok(output.includes('Issue #42'), 'should include issue ref');
     assert.ok(output.includes('PR #7'), 'should include PR ref');
     assert.ok(output.includes('rally/42-fix-bug'), 'should include branch');
+    assert.ok(output.includes('worktree-check'), 'should include worktree path (possibly truncated)');
   });
 
   it('includes summary line with counts', () => {

@@ -15,6 +15,7 @@ const SAMPLE_DISPATCHES = [
     number: 42,
     branch: 'rally/42-fix-bug',
     status: 'planning',
+    worktreePath: '/home/user/projects/repo-a',
     session_id: 'abc123',
     created: new Date(Date.now() - 3600000).toISOString(), // 1h ago
   },
@@ -24,6 +25,7 @@ const SAMPLE_DISPATCHES = [
     number: 7,
     branch: 'rally/7-review',
     status: 'implementing',
+    worktreePath: '/home/user/projects/repo-b',
     session_id: 'def456',
     created: new Date(Date.now() - 86400000 * 2).toISOString(), // 2d ago
   },
@@ -39,6 +41,7 @@ describe('DispatchTable', () => {
     assert.ok(output.includes('Project'), 'should include Project column');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR column');
     assert.ok(output.includes('Branch'), 'should include Branch column');
+    assert.ok(output.includes('Folder'), 'should include Folder column');
     assert.ok(output.includes('Status'), 'should include Status column');
     assert.ok(output.includes('Age'), 'should include Age column');
   });
@@ -54,6 +57,7 @@ describe('DispatchTable', () => {
     assert.ok(output.includes('PR #7'), 'should include PR ref');
     assert.ok(output.includes('rally/42-fix-bug'), 'should include branch');
     assert.ok(output.includes('rally/7-review'), 'should include branch');
+    assert.ok(output.includes('/home/user/projects'), 'should include folder path');
   });
 
   it('renders status icons for each status', () => {

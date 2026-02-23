@@ -50,11 +50,15 @@ program
   .description('Show Rally configuration and active dispatches for debugging')
   .option('--json', 'Output as JSON')
   .action((opts) => {
-    const status = getStatus();
-    if (opts.json) {
-      console.log(JSON.stringify(status, null, 2));
-    } else {
-      console.log(formatStatus(status));
+    try {
+      const status = getStatus();
+      if (opts.json) {
+        console.log(JSON.stringify(status, null, 2));
+      } else {
+        console.log(formatStatus(status));
+      }
+    } catch (err) {
+      handleError(err);
     }
   });
 

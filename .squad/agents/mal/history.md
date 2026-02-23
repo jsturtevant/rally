@@ -576,3 +576,44 @@ Facilitated critical retro on Phase 4–5 sprint (issues #23, #25, #26, #27, #28
 **Key Learning:** Structured code review → incremental fix PRs → expanded test coverage is high-leverage. All 26 findings cleared in 5 rounds. Codebase is now clean with no technical debt blockers.
 
 **Team Status:** Kaylee shipped 7 PRs, Jayne added edge-case tests, Wash integrated CI/CD. Lead review cycle complete. Focus shifts to feature development.
+
+### 2026-02-23 — Full Project Retrospective: Rally Phases 1-5
+
+**Role:** Retro Facilitator (manual retro requested by James)
+
+**Scope:** Full project — PRD through Phases 1-5, code review cycle, six fix batches
+
+**Key Findings:**
+
+**What Worked:**
+1. **PRD design phase was high-leverage** — 2 days upfront design prevented weeks of mid-implementation rework. Zero architecture pivots. Design checklist (30 questions) is now institutional knowledge.
+2. **Feature branch workflow + worktrees enabled parallelism** — 5 agents on 5 features simultaneously, zero conflicts. 21 PRs merged cleanly.
+3. **Five-round code review systematically cleared debt** — 26 findings → 5 PR rounds → clean codebase. Test coverage 280→321 tests.
+4. **Retrospectives after every phase caught failures early** — Phase 1 direct-commit failure → Phase 2+ used feature branches. Phase 4-5 CI hang caught before more debt accumulated.
+
+**What Failed:**
+1. **Two process failures** (Phase 1 direct commits, Phase 4-5 unresolved comments merge) — pattern: documented process without enforcement gets bypassed under velocity pressure.
+2. **Branch protection is the missing structural enforcement** — behavioral rules ("use feature branches") fail without GitHub-enforced gates.
+3. **Interactive behavior validation gap** — prompts, TTY components hard to test without real terminal; caught by luck, not checklists.
+4. **E2E testing confusion** — "E2E tests" used mocks, not real CLI binary invocation. Real E2E tests came post-Phase 5.
+
+**Key Learnings:**
+- Branch protection (require approval + Copilot resolved + CI) is structural enforcement, not advisory
+- Real E2E must invoke `bin/<cli>.js` binary; DI mocks are integration tests
+- Test cleanup standards matter: every Ink `render()` needs paired `cleanup()` in `afterEach()`
+- Retrospectives are project memory — session logs in `.squad/log/` should be agent onboarding material
+- PRD design checklist is reusable template for future CLI projects
+
+**Process Changes for Future Work:**
+1. Enable branch protection (P0) — require approval + Copilot + CI
+2. Formalize test cleanup standards in TESTING.md (P1)
+3. Make Copilot review mandatory on all PRs (P1)
+4. Create interactive testing checklist skill (P2)
+5. Add edge case enumeration to issue templates (P2)
+6. Design checklist as gate for "start coding" (P1)
+
+**Team Recognition:** Kaylee shipped 7 PRs in review cycle. Jayne built real E2E suite and expanded tests to 321. Wash owned onboarding + GitHub integration. Scribe maintained project memory. Copilot caught 20+ issues across PRs.
+
+**Artifact:** `.squad/decisions/inbox/mal-full-project-retro.md`
+
+**Status:** Rally is production-ready. 29 issues closed, 321 tests, zero technical debt blockers. Clean main branch.

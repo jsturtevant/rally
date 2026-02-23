@@ -15,8 +15,8 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
   const hasLog = Boolean(dispatch.logPath);
 
   const actions = [
-    { id: ACTIONS.OPEN_VSCODE, label: 'Open in VS Code' },
-    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: 'View dispatch logs' }] : []),
+    { id: ACTIONS.OPEN_VSCODE, label: '(v) Open in VS Code' },
+    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: '(l) View dispatch logs' }] : []),
     { id: ACTIONS.BACK, label: 'Back' },
   ];
 

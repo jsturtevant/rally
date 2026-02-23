@@ -130,6 +130,13 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       const selected = data.dispatches[selectedIndex];
       setActionDispatch(selected);
       setActionIndex(0);
+    } else if (input === 'v' && count > 0) {
+      openInVSCode(data.dispatches[selectedIndex]);
+    } else if (input === 'l' && count > 0) {
+      const selected = data.dispatches[selectedIndex];
+      if (selected.logPath) {
+        viewLogs(selected);
+      }
     } else if (input === 'r') {
       setRefreshKey(k => k + 1);
     } else if (input === 'q') {
@@ -164,7 +171,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · v open · l logs · r refresh · q quit</Text>
       </Box>
     </Box>
   );

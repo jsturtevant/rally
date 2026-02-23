@@ -219,6 +219,8 @@ describe('Dashboard component', () => {
     
     const output = instance.lastFrame();
     assert.ok(output.includes('Enter actions'), 'should show Enter actions hint');
+    assert.ok(output.includes('v open'), 'should show v shortcut hint');
+    assert.ok(output.includes('l logs'), 'should show l shortcut hint');
     assert.ok(output.includes('owner/repo-a'), 'should render dispatches');
   });
 
@@ -232,7 +234,7 @@ describe('Dashboard component', () => {
     const output = instance.lastFrame();
     assert.ok(output.includes('Actions for'), 'should show action menu title');
     assert.ok(output.includes('Issue #42'), 'should show dispatch issue ref');
-    assert.ok(output.includes('Open in VS Code'), 'should show VS Code option');
+    assert.ok(output.includes('(v) Open in VS Code'), 'should show VS Code option with shortcut hint');
     assert.ok(output.includes('Back'), 'should show Back option');
   });
 
@@ -249,7 +251,7 @@ describe('Dashboard component', () => {
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
-    assert.ok(output.includes('View dispatch logs'), 'should show View logs option when logPath exists');
+    assert.ok(output.includes('(l) View dispatch logs'), 'should show View logs option with shortcut hint when logPath exists');
   });
 
   it('action menu hides View dispatch logs when no logPath', async () => {
@@ -260,7 +262,7 @@ describe('Dashboard component', () => {
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
-    assert.ok(!output.includes('View dispatch logs'), 'should not show View logs when no logPath');
+    assert.ok(!output.includes('(l) View dispatch logs'), 'should not show View logs when no logPath');
   });
 
   it('action menu Back returns to dispatch list', async () => {
@@ -291,10 +293,72 @@ describe('Dashboard component', () => {
     await delay();
     instance.stdin.write('\r');
     await delay();
-    assert.ok(instance.lastFrame().includes('Open in VS Code'), 'should show VS Code option');
+    assert.ok(instance.lastFrame().includes('(v) Open in VS Code'), 'should show VS Code option');
     instance.stdin.write('\r');
     await delay();
     assert.ok(spawnCalled, 'should have called spawn');
+  });
+
+  it('v shortcut opens VS Code for selected dispatch', async () => {
+    let spawnCalled = false;
+    let spawnArgs;
+    const spawnMock = (cmd, args) => {
+      spawnCalled = true;
+      spawnArgs = { cmd, args };
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('v');
+    await delay();
+    assert.ok(spawnCalled, 'v shortcut should spawn VS Code');
+    assert.equal(spawnArgs.cmd, 'code');
+  });
+
+  it('l shortcut views logs for selected dispatch with logPath', async () => {
+    let logCalled = false;
+    let logNumber;
+    const mockDispatchLog = async (number, opts) => {
+      logCalled = true;
+      logNumber = number;
+    };
+
+    const dispatches = makeSampleDispatches();
+    dispatches[0].logPath = '/tmp/test-log.txt';
+    setupTestEnv(dispatches);
+    mkdirSync(WORKTREE_DIR, { recursive: true });
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _dispatchLog: mockDispatchLog,
+      })
+    );
+    await delay();
+    instance.stdin.write('l');
+    await delay();
+    assert.ok(logCalled, 'l shortcut should call dispatchLog');
+    assert.equal(logNumber, 42, 'should pass dispatch number');
+  });
+
+  it('l shortcut does nothing when no logPath', async () => {
+    let logCalled = false;
+    const mockDispatchLog = async () => { logCalled = true; };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _dispatchLog: mockDispatchLog,
+      })
+    );
+    await delay();
+    instance.stdin.write('l');
+    await delay();
+    assert.ok(!logCalled, 'l shortcut should not call dispatchLog without logPath');
+    assert.ok(instance.lastFrame().includes('Rally Dashboard'), 'should stay on dashboard');
   });
 
   it('action menu View logs calls dispatchLog', async () => {

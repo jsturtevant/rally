@@ -32,9 +32,12 @@ const COLUMNS = [
 function TableRow({ cells, selected }) {
   return (
     <Box>
+      <Box width={2}>
+        <Text color="cyan">{selected ? '❯' : ' '}</Text>
+      </Box>
       {COLUMNS.map((col) => (
         <Box key={col.key} width={col.width} paddingRight={1}>
-          <Text bold={selected} inverse={selected}>
+          <Text bold={selected}>
             {cells[col.key] ?? ''}
           </Text>
         </Box>
@@ -61,6 +64,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
     <Box flexDirection="column">
       {/* Header */}
       <Box>
+        <Box width={2}><Text> </Text></Box>
         {COLUMNS.map((col) => (
           <Box key={col.key} width={col.width} paddingRight={1}>
             <Text bold underline>{col.label}</Text>

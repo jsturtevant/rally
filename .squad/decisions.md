@@ -1200,3 +1200,69 @@ Built real E2E tests invoking `bin/rally.js` CLI binary and audited all test/ui/
 - Test suite now has true end-to-end coverage of CLI behavior
 - All Ink render resources properly cleaned up; CI no longer hangs
 - Test cleanup patterns are now consistent across all UI test files
+
+---
+
+## Decision: E2E Test Patterns for Rally CLI
+
+**By:** Jayne (Tester)  
+**Date:** 2026-02-23  
+**Status:** Adopted
+
+### Decision
+
+E2E tests bypass `rally setup` and `rally onboard` interactive prompts by seeding config files (config.yaml, projects.yaml, active.yaml) directly into a temp `RALLY_HOME`. This is the canonical pattern for testing any downstream command that depends on setup/onboard state.
+
+Since `dispatch` is not wired as a CLI subcommand, E2E tests import `dispatchIssue` from `lib/dispatch-issue.js` directly. When dispatch becomes a CLI command, tests should switch to `execFileSync` invocation.
+
+### Key Findings
+
+1. `.squad` is tracked in git — worktrees already contain `.squad/` after checkout. The `createSymlink` function will EEXIST if `teamDir` points to an existing directory. Tests pass a nonexistent `teamDir` to skip the symlink step.
+2. Worktree cleanup **must** use `git worktree remove --force` before any `rmSync` call, otherwise EIO errors occur.
+3. `dashboardClean` is testable via dependency injection (`_ora`, `_chalk`, `_removeWorktree`).
+
+### Impact
+
+All agents writing tests should:
+- Seed config via YAML files, not through `rally setup`/`rally onboard` CLI
+- Clean up worktrees with `git worktree remove` + `git branch -D`
+- Use 30-60s timeouts for any ESM-based CLI invocation
+
+---
+
+## Decision: Code Review Round 1 — 26 Findings Across 4 Severities
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-23  
+**Status:** All findings addressed through PRs #67–#96
+
+### Findings Summary
+
+| Severity | Count | Examples |
+|----------|-------|----------|
+| Critical | 2 | Dispatch commands not wired (C-1); readActive() crash on empty file (C-2) |
+| Important | 7 | Dead code (I-1, I-2); partial failure cleanup (I-4, I-5); repo validation inconsistency (I-7) |
+| Moderate | 9 | Unused validation functions (M-1, M-2); symlink target gaps (M-3); version hardcoding (M-6) |
+| Minor | 6 | Test pattern inconsistency (m-1); shell commands in tests (m-2); env cleanup duplication (m-4) |
+
+### Resolution Path
+
+- **PRs #67–#70 (Round 1):** Wire dispatch, null guards, delete dead code, assert tools on startup
+- **PRs #80–#82 (Round 2):** NaN validation, CORE_SCHEMA, symlink EEXIST, fork PR fetch errors
+- **PR #89 (Round 3):** Status query fix, atomic writes refactor, dispatch failure cleanup
+- **PR #95 (Round 4):** Symlink edge cases, extract atomicWrite utility, fetch error consolidation
+- **PR #96 (Round 5):** React key collision, edge-case tests
+
+### Deferred (Low Priority)
+
+- **M-5:** Concurrency locking for `active.yaml` (acceptable for single-user tool; document limitation)
+- **M-6:** Version centralization (hardcoded in 3 places; can centralize on next major refactor)
+- **m-1:** Test pattern standardization (mixing describe/it and test; preferably standardize to describe/test)
+
+### Acceptance Criteria Met
+
+ All critical and important issues fixed  
+ Dead code removed  
+ Error handling improved  
+ Test coverage expanded  
+ CLI fully functional

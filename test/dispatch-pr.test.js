@@ -213,6 +213,30 @@ describe('dispatchPr error paths', () => {
     );
   });
 
+  test('throws when PR number is zero', async () => {
+    setupRallyHome();
+    const exec = createExecWithPr(makePr());
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 0, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      (err) => {
+        assert.ok(err.message.includes('PR number is required') || err.message.includes('positive integer'));
+        return true;
+      }
+    );
+  });
+
+  test('throws when PR number is a non-numeric string', async () => {
+    setupRallyHome();
+    const exec = createExecWithPr(makePr());
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 'abc', repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      (err) => {
+        assert.ok(err.message.includes('positive integer'));
+        return true;
+      }
+    );
+  });
+
   test('throws when PR not found', async () => {
     setupRallyHome();
     const exec = createExecWithPr(null);

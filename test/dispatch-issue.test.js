@@ -118,6 +118,10 @@ describe('slugify', () => {
     assert.strictEqual(slugify('!!!'), 'untitled');
     assert.strictEqual(slugify('🚀🔥'), 'untitled');
   });
+
+  test('returns untitled for empty string', () => {
+    assert.strictEqual(slugify(''), 'untitled');
+  });
 });
 
 // =====================================================
@@ -195,6 +199,30 @@ describe('dispatchIssue error paths', () => {
       () => dispatchIssue({ issueNumber: 1, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
       (err) => {
         assert.ok(err.message.includes('not onboarded'));
+        return true;
+      }
+    );
+  });
+
+  test('throws when issue number is zero', async () => {
+    setupRallyHome();
+    const exec = createExecWithIssue(makeIssue());
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 0, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      (err) => {
+        assert.ok(err.message.includes('Issue number is required') || err.message.includes('positive integer'));
+        return true;
+      }
+    );
+  });
+
+  test('throws when issue number is a non-numeric string', async () => {
+    setupRallyHome();
+    const exec = createExecWithIssue(makeIssue());
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 'abc', repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      (err) => {
+        assert.ok(err.message.includes('positive integer'));
         return true;
       }
     );

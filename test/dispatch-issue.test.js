@@ -361,4 +361,39 @@ describe('dispatchIssue happy path', () => {
     // Worktree and active.yaml should still be set up
     assert.ok(existsSync(result.worktreePath));
   });
+
+  test('cleans up worktree when post-creation step fails', async () => {
+    setupRallyHome();
+    const issue = makeIssue();
+
+    // _exec that succeeds for gh + git but makes addDispatch fail
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+        return JSON.stringify(issue);
+      }
+      return execFileSync(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    // Make active.yaml a directory so addDispatch throws
+    const activePath = join(process.env.RALLY_HOME, 'active.yaml');
+    mkdirSync(activePath, { recursive: true });
+    writeFileSync(join(activePath, 'blocker'), 'x');
+
+    const worktreePath = join(repoPath, '.worktrees', 'rally-88');
+
+    await assert.rejects(
+      () => dispatchIssue({
+        issueNumber: 88,
+        repo: 'owner/repo',
+        repoPath,
+        _exec: exec,
+        _spawn: noopSpawn,
+      }),
+    );
+
+    // Worktree directory should be cleaned up
+    assert.ok(!existsSync(worktreePath), 'worktree should be removed after failure');
+  });
 });

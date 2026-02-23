@@ -42,7 +42,7 @@ describe('checkCopilotAvailable', () => {
 // =====================================================
 
 describe('launchCopilot', () => {
-  test('spawns gh copilot workspace with prompt', () => {
+  test('spawns gh copilot with -p flag and workspace prompt', () => {
     let captured;
     const mockSpawn = (cmd, args, opts) => {
       captured = { cmd, args, opts };
@@ -52,7 +52,7 @@ describe('launchCopilot', () => {
     launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn });
 
     assert.strictEqual(captured.cmd, 'gh');
-    assert.deepStrictEqual(captured.args, ['copilot', 'workspace', 'my prompt']);
+    assert.deepStrictEqual(captured.args, ['copilot', '-p', 'workspace my prompt']);
     assert.strictEqual(captured.opts.cwd, '/path/to/worktree');
     assert.strictEqual(captured.opts.stdio, 'inherit');
     assert.strictEqual(captured.opts.detached, true);

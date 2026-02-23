@@ -438,3 +438,35 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - `test/dispatch-remove.test.js` — 6 tests: remove by number, unknown number, disambiguate with --repo, ambiguous without --repo, missing worktree, missing project path.
 
 **Key Learning:** The `findProjectPath()` helper is duplicated between `dashboard-clean.js` and `dispatch-remove.js` — both resolve a repo name to a local path via projects.yaml. Could be extracted to a shared utility in the future.
+
+### 2026-02-23 — Copilot Log Redirection (#135)
+
+**Issue:** Copilot CLI stdout/stderr was bleeding into user terminal due to `stdio: 'inherit'`
+
+**Solution implemented:**
+- Modified `lib/copilot.js` → `launchCopilot()` now accepts `logPath` parameter and redirects stdout/stderr to log file using `fs.openSync()` with `stdio: ['ignore', fd, fd]`
+- Updated `lib/dispatch-core.js` → `setupDispatchWorktree()` computes log path as `join(worktreePath, '.copilot-output.log')` and passes to `launchCopilot()`
+- Extended `lib/active.js` → `addDispatch()` now persists optional `logPath` field in dispatch records
+- Created `lib/dispatch-log.js` → new `dispatchLog(number, opts)` command finds dispatch by number, reads log file, outputs to terminal
+- Added `rally dispatch log <number> [--repo] [--follow]` command to `bin/rally.js`
+- `--follow` flag accepted but shows "not yet implemented" message (placeholder for future tail -f feature)
+
+**Testing:**
+- Updated `test/copilot.test.js` with new logPath parameter tests (fs.openSync/closeSync injection)
+- Created `test/dispatch-log.test.js` with 7 test cases (happy path, missing logPath, missing file, disambiguation, --follow stub)
+- All tests pass (69 tests across copilot, dispatch-log, active, dispatch-issue, dispatch-remove)
+
+**Key patterns:**
+- DI pattern: Injectable `_fs` parameter with `openSync` and `closeSync` for testing
+- Log file location: `.copilot-output.log` in worktree root (alongside `.squad` symlink)
+- Return value extension: `launchCopilot()` now returns `{ sessionId, process, logPath }` (was just sessionId/process)
+- File descriptor management: fd opened, passed to spawn, immediately closed (child inherits open fd)
+
+**Files modified:**
+- `lib/copilot.js` — log redirection logic
+- `lib/dispatch-core.js` — log path computation and pass-through
+- `lib/active.js` — logPath field support
+- `bin/rally.js` — new `dispatch log` command
+- `test/copilot.test.js` — updated tests
+- `lib/dispatch-log.js` — new command implementation
+- `test/dispatch-log.test.js` — new test suite

@@ -425,3 +425,16 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - `lib/ui/components/DispatchTable.jsx` — added Folder column definition + row mapping
 - `lib/ui/Dashboard.jsx` — imported spawn, added `_spawn` prop, changed Enter handler
 - `lib/ui/dashboard-data.js` — added folder column to plain text output
+
+### 2026-02-23 — Dispatch Remove Command (Issue #131, PR #132)
+
+**Role:** Core Developer
+
+**Outcome:** Shipped `rally dispatch remove <number>` subcommand.
+
+**Changes:**
+- `lib/dispatch-remove.js` — New module: finds dispatch by number in active.yaml, removes worktree (gracefully), removes dispatch record. Accepts `--repo` for disambiguation. Follows `dashboard-clean.js` patterns (DI, Ora, Chalk).
+- `bin/rally.js` — Wired `dispatch remove` subcommand with `<number>` argument and `--repo` option. Added help text example.
+- `test/dispatch-remove.test.js` — 6 tests: remove by number, unknown number, disambiguate with --repo, ambiguous without --repo, missing worktree, missing project path.
+
+**Key Learning:** The `findProjectPath()` helper is duplicated between `dashboard-clean.js` and `dispatch-remove.js` — both resolve a repo name to a local path via projects.yaml. Could be extracted to a shared utility in the future.

@@ -104,7 +104,15 @@ dashboard
 const dispatch = program
   .command('dispatch')
   .description('Dispatch Squad to a GitHub issue or PR')
-  .hook('preAction', () => assertTools());
+  .hook('preAction', () => assertTools())
+  .action(() => {
+    console.log('Usage: rally dispatch <issue|pr> <number> [options]\n');
+    console.log('Examples:');
+    console.log('  rally dispatch issue 42          Dispatch to GitHub issue #42');
+    console.log('  rally dispatch pr 15             Dispatch to GitHub PR #15');
+    console.log('  rally dispatch issue 42 --repo owner/repo');
+    dispatch.help();
+  });
 
 dispatch
   .command('issue')

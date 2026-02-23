@@ -8,7 +8,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { dispatchIssue, slugify } from '../lib/dispatch-issue.js';
+import { dispatchIssue } from '../lib/dispatch-issue.js';
+import { slugify } from '../lib/utils.js';
 
 // =====================================================
 // Helpers

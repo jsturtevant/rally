@@ -530,3 +530,35 @@ Created 7 real subprocess tests invoking `bin/rally.js` via `execFileSync`. All 
 
 **See:** `.squad/decisions.md` → "Decision: Retrospective Findings — Phase 4–5 Sprint (Dashboard + Polish)"
 
+
+### 2026-02-23 — E2E Test Suite for rally CLI (COMPLETE)
+
+**Status:** 14 tests written, all passing locally. Committed and pushed to `rally/e2e-ci`.
+
+**Tests written (4 groups, 14 tests):**
+
+1. **CLI basics (5 tests):** `--version` semver, `--help` lists commands, `status` output, `dashboard --json` valid JSON, unknown command exits non-zero
+2. **Setup & Onboard (3 tests):** Config seeding (bypasses interactive prompts from `@inquirer/prompts`), projects.yaml registration, `status --json` reflects config
+3. **Dispatch integration (3 tests):** `dispatchIssue()` library function against real issue #54, verifies worktree creation, branch naming (`rally/54-*`), `dispatch-context.md` in `.squad/`, active.yaml entry; then `dashboard --json` and plain text dashboard both show the dispatch
+4. **Dashboard clean (3 tests):** Removes done dispatches with injectable mocks, skips non-done, project filtering via `--project` flag
+
+**Key patterns used:**
+- `RALLY_HOME` env var pointed to temp dir per test for isolation
+- `GIT_TERMINAL_PROMPT=0` and `NO_COLOR=1` for clean non-interactive output
+- `execFileSync('node', [RALLY_BIN, ...])` for CLI invocations
+- Direct library import (`dispatchIssue`, `dashboardClean`) for commands not wired as CLI subcommands
+- Injectable mocks (`_ora`, `_chalk`, `_removeWorktree`) for dashboard clean
+- `before`/`after` hooks with `git worktree remove --force` and `git branch -D` for cleanup
+- 30-60s timeouts for ESM cold start
+
+**What worked:**
+- `dispatchIssue` works against real GitHub issue #54 via `gh issue view`
+- Copilot launch fails gracefully (ENOENT) — dispatch continues without it
+- Config seeding (writing YAML files directly) is the right pattern for testing setup/onboard since both use interactive prompts
+- `writeIssueContext` writes to `.squad/dispatch-context.md` (not worktree root)
+
+**Gotchas discovered:**
+- `.squad` is tracked in git, so worktrees already contain `.squad/` — pass nonexistent `teamDir` to skip symlink step in `dispatchIssue`
+- Worktree cleanup must use `git worktree remove` before `rmSync` to avoid EIO errors
+- `dispatch` is NOT a CLI subcommand — must test via library import
+- `FORCE_COLOR` env overrides `NO_COLOR` (harmless warning)

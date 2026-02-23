@@ -295,3 +295,26 @@ See GitHub issues for full specs. Blockers resolved—proceed with implementatio
 **Your PR #36 status:** Awaiting dual review (Copilot + Mal).
 
 **Your atomic writes decision** has been merged into `.squad/decisions.md`. All agents now know `lib/active.js` owns dispatch CRUD exclusively.
+
+### 2026-02-23 — E2E CI Setup & Test Issue Created
+
+**Task:** Create E2E test issue and update CI workflow for end-to-end tests.
+
+**What Was Done:**
+
+1. **E2E test issue created:** jsturtevant/rally#54 — "[E2E Test] Dummy issue for automated testing"
+   - Label `e2e-test` created (green, #0E8A16) and applied
+   - Issue body instructs not to close manually — it's a permanent CI fixture
+
+2. **CI workflow updated** (`.github/workflows/ci.yml`):
+   - Added git identity config step (`github-actions[bot]`) for worktree operations
+   - Added `npm run test:e2e` step after `npm test`
+   - `GH_TOKEN` set via `${{ secrets.GITHUB_TOKEN }}` for gh CLI auth
+   - Existing unit test step unchanged
+
+3. **Branch:** `rally/e2e-ci` — committed and pushed. No PR yet (Jayne adds test files first).
+
+**Key Details:**
+- E2E test issue number: **#54** — Jayne needs this for test fixtures
+- `test:e2e` script already defined in package.json: runs `test/e2e/*.test.js`
+- Node matrix kept at [20, 22] (unchanged)

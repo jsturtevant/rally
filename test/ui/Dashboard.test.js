@@ -84,7 +84,7 @@ function setupWithDispatches() {
 }
 
 describe('computeSummary', () => {
-  it('counts active, done, and blocked dispatches', () => {
+  it('counts active, done, and orphaned dispatches', () => {
     const dispatches = [
       { status: 'implementing', healthy: true },
       { status: 'done', healthy: true },
@@ -94,14 +94,14 @@ describe('computeSummary', () => {
     const summary = computeSummary(dispatches);
     assert.equal(summary.active, 1);
     assert.equal(summary.done, 2);
-    assert.equal(summary.blocked, 1);
+    assert.equal(summary.orphaned, 1);
   });
 
   it('returns zeros for empty array', () => {
     const summary = computeSummary([]);
     assert.equal(summary.active, 0);
     assert.equal(summary.done, 0);
-    assert.equal(summary.blocked, 0);
+    assert.equal(summary.orphaned, 0);
   });
 });
 
@@ -127,11 +127,11 @@ describe('getDashboardData', () => {
     const data = getDashboardData();
     assert.equal(typeof data.summary.active, 'number');
     assert.equal(typeof data.summary.done, 'number');
-    assert.equal(typeof data.summary.blocked, 'number');
-    // d1=implementing+healthy → active, d2=done → done, d3=planning+unhealthy → blocked
+    assert.equal(typeof data.summary.orphaned, 'number');
+    // d1=implementing+healthy → active, d2=done → done, d3=planning+unhealthy → orphaned
     assert.equal(data.summary.active, 1);
     assert.equal(data.summary.done, 1);
-    assert.equal(data.summary.blocked, 1);
+    assert.equal(data.summary.orphaned, 1);
   });
 
   it('filters by project name', () => {
@@ -149,7 +149,7 @@ describe('getDashboardData', () => {
     setupTestEnv([]);
     const data = getDashboardData();
     assert.equal(data.dispatches.length, 0);
-    assert.deepEqual(data.summary, { active: 0, done: 0, blocked: 0 });
+    assert.deepEqual(data.summary, { active: 0, done: 0, orphaned: 0 });
   });
 });
 
@@ -184,7 +184,7 @@ describe('Dashboard component', () => {
     const output = instance.lastFrame();
     assert.ok(output.includes('1 active'), 'should show active count');
     assert.ok(output.includes('1 done'), 'should show done count');
-    assert.ok(output.includes('1 blocked'), 'should show blocked count');
+    assert.ok(output.includes('1 orphaned'), 'should show orphaned count');
   });
 
   it('filters by project prop', () => {

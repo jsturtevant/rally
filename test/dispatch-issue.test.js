@@ -400,6 +400,36 @@ describe('dispatchIssue happy path', () => {
     assert.ok(existsSync(result.worktreePath));
   });
 
+  test('skips Copilot launch when checkCopilotAvailable returns false', async () => {
+    setupRallyHome();
+    const issue = makeIssue();
+    let spawnCalled = false;
+
+    // _exec that fails for copilot check (not installed)
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+        return JSON.stringify(issue);
+      }
+      if (cmd === 'gh' && args[0] === 'copilot') {
+        throw new Error('gh copilot not installed');
+      }
+      return execFileSync(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    const result = await dispatchIssue({
+      issueNumber: 66,
+      repo: 'owner/repo',
+      repoPath,
+      _exec: exec,
+      _spawn: () => { spawnCalled = true; return { pid: 1, unref() {} }; },
+    });
+
+    assert.strictEqual(result.sessionId, null);
+    assert.strictEqual(spawnCalled, false, 'spawn should not be called when copilot is unavailable');
+  });
+
   test('cleans up worktree when post-creation step fails', async () => {
     setupRallyHome();
     const issue = makeIssue();

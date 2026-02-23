@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -21,11 +21,11 @@ describe('worktree', () => {
     repoPath = join(testDir, 'repo');
 
     // Initialize a git repository with an initial commit
-    execFileSync('mkdir', ['-p', repoPath]);
+    mkdirSync(repoPath, { recursive: true });
     execFileSync('git', ['init'], { cwd: repoPath });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoPath });
     execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: repoPath });
-    execFileSync('touch', ['README.md'], { cwd: repoPath });
+    writeFileSync(join(repoPath, 'README.md'), '', 'utf8');
     execFileSync('git', ['add', 'README.md'], { cwd: repoPath });
     execFileSync('git', ['commit', '-m', 'Initial commit'], { cwd: repoPath });
   });
@@ -107,7 +107,7 @@ describe('worktree', () => {
 
   it('should handle non-git-repo gracefully', () => {
     const nonGitDir = join(testDir, 'not-a-repo');
-    execFileSync('mkdir', ['-p', nonGitDir]);
+    mkdirSync(nonGitDir, { recursive: true });
 
     const worktreePath = join(testDir, 'worktree-8');
 

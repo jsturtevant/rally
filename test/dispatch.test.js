@@ -279,4 +279,26 @@ describe('resolveRepo', () => {
     assert.strictEqual(result.owner, 'custom-owner');
     assert.strictEqual(result.repo, 'injected-project');
   });
+
+  test('--repo flag matches full owner/repo before name-only', () => {
+    const repoA = createGitRepo('utils');
+    const repoB = createGitRepo('utils-b');
+    writeProjects([
+      { name: 'utils', repo: 'alice/utils', path: repoA },
+      { name: 'utils', repo: 'bob/utils', path: repoB },
+    ]);
+
+    const result = resolveRepo({ repo: 'bob/utils' });
+    assert.strictEqual(result.project.repo, 'bob/utils');
+    assert.strictEqual(result.project.path, repoB);
+  });
+
+  test('--repo flag falls back to name-only for legacy entries without repo field', () => {
+    const repoPath = createGitRepo('legacy-repo');
+    writeProjects([{ name: 'legacy-repo', path: repoPath }]);
+
+    const result = resolveRepo({ repo: 'any-owner/legacy-repo' });
+    assert.strictEqual(result.project.name, 'legacy-repo');
+    assert.strictEqual(result.project.path, repoPath);
+  });
 });

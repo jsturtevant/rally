@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,6 +11,7 @@ import {
   readProjects,
   writeProjects,
   readActive,
+  validateOnboarded,
 } from '../lib/config.js';
 
 test('getConfigDir returns default path', () => {
@@ -260,4 +261,45 @@ test('readActive reads YAML written directly', () => {
     }
     rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+describe('validateOnboarded', () => {
+  let tempDir;
+  let originalEnv;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'rally-validate-test-'));
+    originalEnv = process.env.RALLY_HOME;
+    process.env.RALLY_HOME = tempDir;
+  });
+
+  afterEach(() => {
+    if (originalEnv) {
+      process.env.RALLY_HOME = originalEnv;
+    } else {
+      delete process.env.RALLY_HOME;
+    }
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  test('matches by full owner/repo field', () => {
+    const data = { projects: [
+      { name: 'utils', repo: 'alice/utils', path: '/a' },
+      { name: 'utils', repo: 'bob/utils', path: '/b' },
+    ]};
+    writeFileSync(join(tempDir, 'projects.yaml'), yaml.dump(data), 'utf8');
+    assert.doesNotThrow(() => validateOnboarded('bob/utils'));
+  });
+
+  test('falls back to name-only for legacy entries', () => {
+    const data = { projects: [{ name: 'rally', path: '/r' }] };
+    writeFileSync(join(tempDir, 'projects.yaml'), yaml.dump(data), 'utf8');
+    assert.doesNotThrow(() => validateOnboarded('any-owner/rally'));
+  });
+
+  test('throws when repo not onboarded', () => {
+    const data = { projects: [] };
+    writeFileSync(join(tempDir, 'projects.yaml'), yaml.dump(data), 'utf8');
+    assert.throws(() => validateOnboarded('owner/missing'), /not onboarded/);
+  });
 });

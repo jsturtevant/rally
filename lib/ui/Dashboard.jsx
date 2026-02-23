@@ -25,7 +25,7 @@ function SummaryLine({ summary }) {
 
 /**
  * Main Dashboard component — full-screen Ink app.
- * Supports keyboard navigation: ↑/↓ to select, Enter to print path, r to refresh, q to quit.
+ * Supports keyboard navigation: ↑/↓ to select, Enter to select/open, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
 export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn }) {
@@ -73,6 +73,9 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       } else if (worktreePath) {
         const child = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
         child.unref();
+        child.on('error', (err) => {
+          console.error(`Failed to launch VS Code: ${err.message}`);
+        });
       }
       exit();
     } else if (input === 'r') {

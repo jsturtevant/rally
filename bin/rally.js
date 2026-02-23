@@ -106,11 +106,12 @@ const dispatch = program
   .description('Dispatch Squad to a GitHub issue or PR')
   .hook('preAction', () => assertTools())
   .action(() => {
-    console.log('Usage: rally dispatch <issue|pr> <number> [options]\n');
+    console.log('Usage: rally dispatch <issue|pr|remove|log> <number> [options]\n');
     console.log('Examples:');
     console.log('  rally dispatch issue 42          Dispatch to GitHub issue #42');
     console.log('  rally dispatch pr 15             Dispatch to GitHub PR #15');
     console.log('  rally dispatch remove 42         Remove dispatch for issue/PR #42');
+    console.log('  rally dispatch log 42            View Copilot output log for #42');
     console.log('  rally dispatch issue 42 --repo owner/repo');
     dispatch.help();
   });
@@ -184,6 +185,25 @@ dispatch
     try {
       const { dispatchRemove } = await import('../lib/dispatch-remove.js');
       await dispatchRemove(number, { repo: opts.repo });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+dispatch
+  .command('log')
+  .description('View Copilot output log for a dispatch')
+  .argument('<number>', 'Issue or PR number', (v) => {
+    const n = parseInt(v, 10);
+    if (isNaN(n) || n <= 0) throw new Error('Must be a positive integer');
+    return n;
+  })
+  .option('--repo <owner/repo>', 'Target repository (owner/repo)')
+  .option('-f, --follow', 'Follow log output (tail -f style)')
+  .action(async (number, opts) => {
+    try {
+      const { dispatchLog } = await import('../lib/dispatch-log.js');
+      await dispatchLog(number, { repo: opts.repo, follow: opts.follow });
     } catch (err) {
       handleError(err);
     }

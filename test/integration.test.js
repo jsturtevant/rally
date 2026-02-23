@@ -292,8 +292,9 @@ describe('Integration: error cases', () => {
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
 
-    // Pre-create the worktree directory
-    mkdirSync(join(repoPath, '.worktrees', 'rally-42'), { recursive: true });
+    // Create an actual git worktree so worktreeExists() returns true
+    const wtPath = join(repoPath, '.worktrees', 'rally-42');
+    execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-test-issue'], { cwd: repoPath, stdio: 'ignore' });
 
     const result = await dispatchIssue({
       issueNumber: 42,
@@ -333,7 +334,9 @@ describe('Integration: error cases', () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr());
 
-    mkdirSync(join(repoPath, '.worktrees', 'rally-pr-42'), { recursive: true });
+    // Create an actual git worktree so worktreeExists() returns true
+    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
+    execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-test-pr'], { cwd: repoPath, stdio: 'ignore' });
 
     const result = await dispatchPr({
       prNumber: 42,

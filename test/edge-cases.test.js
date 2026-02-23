@@ -153,7 +153,8 @@ describe('worktree collision detection', () => {
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
 
-    mkdirSync(join(repoPath, '.worktrees', 'rally-10'), { recursive: true });
+    // Create an actual git worktree so worktreeExists() returns true
+    execFileSync('git', ['worktree', 'add', join(repoPath, '.worktrees', 'rally-10'), '-b', 'rally/10-existing'], { cwd: repoPath, stdio: 'ignore' });
 
     const result = await dispatchIssue({
       issueNumber: 10,
@@ -174,7 +175,8 @@ describe('worktree collision detection', () => {
     const exec = createExecWithIssue(issue);
 
     const wtPath = join(repoPath, '.worktrees', 'rally-11');
-    mkdirSync(wtPath, { recursive: true });
+    // Create an actual git worktree so worktreeExists() returns true
+    execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/11-existing'], { cwd: repoPath, stdio: 'ignore' });
     writeFileSync(join(wtPath, 'marker.txt'), 'existing');
 
     const result = await dispatchIssue({

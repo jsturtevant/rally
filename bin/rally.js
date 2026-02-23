@@ -1,16 +1,23 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { setup } from '../lib/setup.js';
 import { onboard } from '../lib/onboard.js';
 import { getStatus, formatStatus } from '../lib/status.js';
 import { handleError } from '../lib/errors.js';
+import { assertTools } from '../lib/tools.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
 
 const program = new Command();
 
 program
   .name('rally')
   .description('Dispatch Squad teams to GitHub issues and PR reviews via git worktrees')
-  .version('0.1.0');
+  .version(pkg.version);
 
 program
   .command('setup')
@@ -29,6 +36,7 @@ program
   .description('Onboard a repo to Rally (local path, GitHub URL, or owner/repo)')
   .argument('[path]', 'Path, GitHub URL, or owner/repo (defaults to current directory)')
   .option('--team <name>', 'Use a named team (skips interactive prompt)')
+  .hook('preAction', () => assertTools())
   .action(async (pathArg, opts) => {
     try {
       await onboard({ path: pathArg, team: opts.team });
@@ -91,7 +99,8 @@ dashboard
 
 const dispatch = program
   .command('dispatch')
-  .description('Dispatch Squad to a GitHub issue or PR');
+  .description('Dispatch Squad to a GitHub issue or PR')
+  .hook('preAction', () => assertTools());
 
 dispatch
   .command('issue')

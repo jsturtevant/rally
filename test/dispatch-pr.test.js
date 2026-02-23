@@ -248,7 +248,9 @@ describe('dispatchPr error paths', () => {
     const pr = makePr();
     const exec = createExecWithPr(pr);
 
-    mkdirSync(join(repoPath, '.worktrees', 'rally-pr-42'), { recursive: true });
+    // Create an actual git worktree so worktreeExists() returns true
+    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
+    execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-existing'], { cwd: repoPath, stdio: 'ignore' });
 
     const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn });
     assert.strictEqual(result.existing, true);

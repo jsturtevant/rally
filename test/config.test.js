@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import yaml from 'js-yaml';
 import {
   getConfigDir,
   readConfig,
@@ -10,7 +11,6 @@ import {
   readProjects,
   writeProjects,
   readActive,
-  writeActive
 } from '../lib/config.js';
 
 test('getConfigDir returns default path', () => {
@@ -236,7 +236,7 @@ test('readActive returns default when file is empty', () => {
   }
 });
 
-test('writeActive and readActive roundtrip', () => {
+test('readActive reads YAML written directly', () => {
   const originalEnv = process.env.RALLY_HOME;
   const tempDir = mkdtempSync(join(tmpdir(), 'rally-test-'));
   
@@ -248,7 +248,7 @@ test('writeActive and readActive roundtrip', () => {
       ]
     };
     
-    writeActive(data);
+    writeFileSync(join(tempDir, 'active.yaml'), yaml.dump(data), 'utf8');
     const result = readActive();
     
     assert.deepEqual(result, data);

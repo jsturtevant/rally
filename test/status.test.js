@@ -5,8 +5,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import yaml from 'js-yaml';
 import { getStatus, formatStatus } from '../lib/status.js';
-import { writeConfig, writeProjects, writeActive } from '../lib/config.js';
+import { writeConfig, writeProjects } from '../lib/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -109,14 +111,14 @@ test('status: shows active dispatches (empty)', () => {
 });
 
 test('status: shows active dispatches (populated)', () => {
-  withTempHome(() => {
+  withTempHome((tempDir) => {
     const active = {
       dispatches: [
         { id: 42, project: 'app-one', status: 'implementing' },
         { id: 51, project: 'app-one', status: 'planning' },
       ]
     };
-    writeActive(active);
+    writeFileSync(join(tempDir, 'active.yaml'), yaml.dump(active), 'utf8');
     const status = getStatus();
     assert.strictEqual(status.dispatches.length, 2);
     assert.strictEqual(status.dispatches[0].id, 42);

@@ -23,7 +23,7 @@ let repoPath;
 let originalEnv;
 
 function createTestRepo() {
-  tempDir = mkdtempSync(join(tmpdir(), 'rally-e2e-'));
+  tempDir = mkdtempSync(join(tmpdir(), 'rally-integration-'));
   repoPath = join(tempDir, 'repo');
   originalEnv = process.env.RALLY_HOME;
   process.env.RALLY_HOME = join(tempDir, 'rally-home');
@@ -115,10 +115,10 @@ function noopSpawn() {
 }
 
 // =====================================================
-// E2E: Issue dispatch workflow
+// Integration: Issue dispatch workflow
 // =====================================================
 
-describe('E2E: issue dispatch → dashboard → clean', () => {
+describe('Integration: issue dispatch → dashboard → clean', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();
@@ -183,10 +183,10 @@ describe('E2E: issue dispatch → dashboard → clean', () => {
 });
 
 // =====================================================
-// E2E: PR dispatch workflow
+// Integration: PR dispatch workflow
 // =====================================================
 
-describe('E2E: PR dispatch workflow', () => {
+describe('Integration: PR dispatch workflow', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();
@@ -238,10 +238,10 @@ describe('E2E: PR dispatch workflow', () => {
 });
 
 // =====================================================
-// E2E: Error cases
+// Integration: Error cases
 // =====================================================
 
-describe('E2E: error cases', () => {
+describe('Integration: error cases', () => {
   beforeEach(() => {
     createTestRepo();
   });
@@ -350,10 +350,10 @@ describe('E2E: error cases', () => {
 });
 
 // =====================================================
-// E2E: Dashboard rendering
+// Integration: Dashboard rendering
 // =====================================================
 
-describe('E2E: dashboard data and rendering', () => {
+describe('Integration: dashboard data and rendering', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();
@@ -510,10 +510,10 @@ describe('E2E: dashboard data and rendering', () => {
 });
 
 // =====================================================
-// E2E: Multiple dispatches coexist
+// Integration: Multiple dispatches coexist
 // =====================================================
 
-describe('E2E: multiple dispatches', () => {
+describe('Integration: multiple dispatches', () => {
   beforeEach(() => {
     createTestRepo();
     setupRallyHome();

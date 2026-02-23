@@ -7,8 +7,8 @@
     "rally": "./bin/rally.js"
   },
   "scripts": {
-    "test": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test $(find test -maxdepth 1 -name '*.test.js' ! -name 'e2e.test.js' | sort) && node --test --test-force-exit ./test/ui/*.test.js",
-    "test:e2e": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test test/e2e.test.js",
+    "test": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test ./test/*.test.js && node --test --test-force-exit ./test/ui/*.test.js",
+    "test:e2e": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test ./test/e2e/*.test.js",
     "test:all": "npm test && npm run test:e2e"
   },
   "dependencies": {

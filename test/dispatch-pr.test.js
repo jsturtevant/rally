@@ -243,20 +243,15 @@ describe('dispatchPr error paths', () => {
     );
   });
 
-  test('throws when worktree directory already exists', async () => {
+  test('returns early with existing flag when worktree already exists', async () => {
     setupRallyHome();
     const pr = makePr();
     const exec = createExecWithPr(pr);
 
     mkdirSync(join(repoPath, '.worktrees', 'rally-pr-42'), { recursive: true });
 
-    await assert.rejects(
-      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
-      (err) => {
-        assert.ok(err.message.includes('already exists'));
-        return true;
-      }
-    );
+    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn });
+    assert.strictEqual(result.existing, true);
   });
 });
 

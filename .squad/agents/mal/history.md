@@ -515,3 +515,28 @@ Facilitated critical retro on Phase 4–5 sprint (issues #23, #25, #26, #27, #28
 **Key Learning:** This is the second process failure retro (first was Phase 1 direct-to-main commits). The pattern is clear: documented process without enforcement gets bypassed under velocity pressure. Branch protection is structural enforcement. Behavioral rules alone don't work. The "address or explain" policy must be backed by GitHub's "require conversation resolution" setting.
 
 **Retro artifact:** `.squad/decisions/inbox/mal-retro-findings.md`
+
+### 2026-02-23 — Comprehensive Code Quality Audit
+
+**Full codebase review completed.** Reviewed all files in bin/, lib/, lib/ui/, test/, test/ui/.
+
+**Critical findings (4):**
+1. `dashboard clean` error handler bypasses `handleError()` and the exit-code system — inconsistency with every other command
+2. `lib/dispatch-issue.js` has a TODO for worktree cleanup on failure — orphaned worktrees are a real data-loss vector
+3. `lib/tools.js` uses `which` — breaks on Windows (stated target platform)
+4. `yaml.load()` without explicit schema — safe with js-yaml v4 but undocumented intent
+
+**Important findings (7):**
+1. `writeDispatchContext()` in dispatch-issue.js is superseded by dispatch-context.js but still used — issue dispatches get a different, older markdown format than PR dispatches
+2. Inconsistent worktree collision handling: issues return early, PRs throw
+3. `writeActive()` in config.js bypasses atomic writes from active.js
+4. `checkGhInstalled()` and `checkGhAuth()` in github.js are dead code — never called
+5. Duplicated onboarding validation in dispatch-issue.js and dispatch-pr.js
+6. Compiled .js and source .jsx both checked in — sync risk
+7. `dispatch issue` and `dispatch pr` CLI subcommands not registered in Commander — core functionality has no CLI entry point
+
+**Security: Clean.** No hardcoded secrets. All subprocess calls use `execFileSync` with argument arrays (no shell injection). `parseGithubUrl` correctly blocks path traversal.
+
+**Key architectural observation:** The codebase has good DI patterns (injectable `_exec`, `_spawn`, `_select`) and solid test coverage. The main debt is around the dispatch commands where issue and PR paths diverged during implementation — they need to be reconciled.
+
+**Artifact:** `.squad/decisions/inbox/mal-code-review.md`

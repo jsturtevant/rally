@@ -327,3 +327,19 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 
 **See:** `.squad/decisions.md` → "Decision: Retrospective Findings — Phase 4–5 Sprint (Dashboard + Polish)"
 
+### 2026-02-23 — Code Review Fixes (rally/retro-actions)
+
+**From Mal's code review — 9 findings fixed:**
+
+1. **bin/rally.js** — `dashboard clean` catch block now uses `handleError(err)` like every other command (was `console.error` + `process.exit(1)`)
+2. **lib/tools.js** — Replaced `which` (Unix-only) with `tool --version` for cross-platform tool detection
+3. **lib/config.js** — Added `{ schema: yaml.DEFAULT_SCHEMA }` to all three `yaml.load()` calls to document safe-parsing intent
+4. **lib/dispatch-pr.js** — Worktree collision now returns `{ existing: true }` instead of throwing, matching `dispatch-issue.js` behavior
+5. **lib/onboard.js** — Replaced `join(linkPath, '..')` with `dirname(linkPath)` — clearer intent
+6. **test/github.test.js** — Deleted entirely (placeholder tests that tested JSON.parse, not the github module)
+7. **test/smoke.test.js** — Changed `execSync` to `execFileSync` for consistency with codebase
+8. **lib/ui/ compiled files** — Already properly gitignored and untracked; no changes needed
+9. **Tests updated** — `dispatch-pr.test.js` and `edge-cases.test.js` updated to match new behavior (72/72 pass)
+
+**Key learning:** When changing behavior (e.g., throw → return early), always grep for tests that assert the old behavior. Three tests broke here — all expected.
+

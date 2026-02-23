@@ -249,11 +249,11 @@ describe('checkTools', () => {
     assert.deepEqual(missing, []);
   });
 
-  test('returns missing tools when which fails', () => {
-    const exec = (cmd, args) => {
-      if (args[0] === 'gh') throw new Error('not found');
-      if (args[0] === 'npx') throw new Error('not found');
-      return '/usr/bin/git\n';
+  test('returns missing tools when tool --version fails', () => {
+    const exec = (cmd) => {
+      if (cmd === 'gh') throw new Error('not found');
+      if (cmd === 'npx') throw new Error('not found');
+      return 'git version 2.40.0\n';
     };
     const missing = checkTools({ _exec: exec });
     assert.deepEqual(missing, ['gh', 'npx']);
@@ -288,9 +288,9 @@ describe('assertTools', () => {
   });
 
   test('error message lists only missing tools', () => {
-    const exec = (cmd, args) => {
-      if (args[0] === 'npx') throw new Error('not found');
-      return '/usr/bin/tool\n';
+    const exec = (cmd) => {
+      if (cmd === 'npx') throw new Error('not found');
+      return 'tool version 1.0.0\n';
     };
     assert.throws(
       () => assertTools({ _exec: exec }),

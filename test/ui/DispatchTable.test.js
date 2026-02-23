@@ -153,6 +153,11 @@ describe('formatAge', () => {
     assert.equal(formatAge(undefined), '—');
   });
 
+  it('returns dash for invalid date string', () => {
+    assert.equal(formatAge('not-a-date'), '—');
+    assert.equal(formatAge(''), '—');
+  });
+
   it('returns 0m for future timestamps', () => {
     const future = new Date(Date.now() + 60000).toISOString();
     assert.equal(formatAge(future), '0m');

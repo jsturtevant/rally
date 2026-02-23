@@ -69,7 +69,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
         </Box>
       ) : (
         rows.map((row, i) => (
-          <TableRow key={dispatches[i].session_id ?? i} cells={row} selected={i === selectedIndex} />
+          <TableRow key={dispatches[i].id ?? i} cells={row} selected={i === selectedIndex} />
         ))
       )}
     </Box>

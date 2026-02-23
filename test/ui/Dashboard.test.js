@@ -155,7 +155,7 @@ describe('getDashboardData', () => {
 
 describe('Dashboard component', () => {
   let instance;
-  const delay = () => new Promise(r => setTimeout(r, 100));
+  const delay = () => new Promise(r => setImmediate(r));
 
   beforeEach(() => {
     setupWithDispatches();
@@ -218,7 +218,7 @@ describe('Dashboard component', () => {
     );
     
     const output = instance.lastFrame();
-    assert.ok(output.includes('Enter select'), 'should show Enter select hint');
+    assert.ok(output.includes('Enter actions'), 'should show Enter actions hint');
     assert.ok(output.includes('owner/repo-a'), 'should render dispatches');
   });
 

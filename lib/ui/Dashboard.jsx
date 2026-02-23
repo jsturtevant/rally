@@ -48,10 +48,15 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
 
   const count = data ? data.dispatches.length : 0;
 
-  // Count of actions for the currently selected dispatch
-  const actionCount = actionDispatch
-    ? (actionDispatch.logPath ? 3 : 2)
-    : 0;
+  // Derive the action list once — used for both count and selection
+  const actions = actionDispatch
+    ? [
+        ACTIONS.OPEN_VSCODE,
+        ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
+        ACTIONS.BACK,
+      ]
+    : [];
+  const actionCount = actions.length;
 
   // Auto-refresh at the configured interval (pause during action menu)
   useEffect(() => {
@@ -85,7 +90,9 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
 
   function viewLogs(dispatch) {
     exit();
-    _dispatchLog(dispatch.number, { repo: dispatch.repo }).catch(() => {});
+    _dispatchLog(dispatch.number, { repo: dispatch.repo }).catch((err) => {
+      console.error(`Failed to view logs: ${err.message}`);
+    });
   }
 
   function handleActionSelect(direction) {
@@ -94,12 +101,6 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     } else if (direction === 'down') {
       setActionIndex(i => (i < actionCount - 1 ? i + 1 : i));
     } else if (direction === 'confirm') {
-      // Build the action list matching what ActionMenu renders
-      const actions = [
-        ACTIONS.OPEN_VSCODE,
-        ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
-        ACTIONS.BACK,
-      ];
       const selectedAction = actions[actionIndex];
       if (selectedAction === ACTIONS.OPEN_VSCODE) {
         openInVSCode(actionDispatch);
@@ -163,7 +164,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter select · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · r refresh · q quit</Text>
       </Box>
     </Box>
   );

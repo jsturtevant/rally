@@ -93,7 +93,7 @@ describe('parseGithubUrl', () => {
     assert.deepStrictEqual(result, {
       owner: 'octocat',
       repo: 'Hello-World',
-      cloneUrl: 'https://github.com/octocat/Hello-World.git',
+      cloneUrl: 'git@github.com:octocat/Hello-World.git',
     });
   });
 
@@ -102,7 +102,7 @@ describe('parseGithubUrl', () => {
     assert.deepStrictEqual(result, {
       owner: 'octocat',
       repo: 'Hello-World',
-      cloneUrl: 'https://github.com/octocat/Hello-World.git',
+      cloneUrl: 'git@github.com:octocat/Hello-World.git',
     });
   });
 

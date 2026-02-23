@@ -87,6 +87,28 @@ describe('parseGithubUrl', () => {
       cloneUrl: 'https://github.com/octocat/Hello-World.git',
     });
   });
+
+  test('parses SSH URL git@github.com:owner/repo', () => {
+    const result = parseGithubUrl('git@github.com:octocat/Hello-World');
+    assert.deepStrictEqual(result, {
+      owner: 'octocat',
+      repo: 'Hello-World',
+      cloneUrl: 'https://github.com/octocat/Hello-World.git',
+    });
+  });
+
+  test('parses SSH URL with .git suffix', () => {
+    const result = parseGithubUrl('git@github.com:octocat/Hello-World.git');
+    assert.deepStrictEqual(result, {
+      owner: 'octocat',
+      repo: 'Hello-World',
+      cloneUrl: 'https://github.com/octocat/Hello-World.git',
+    });
+  });
+
+  test('returns null for SSH path-traversal', () => {
+    assert.strictEqual(parseGithubUrl('git@github.com:owner/..'), null);
+  });
 });
 
 // ─── onboard with URL integration tests ──────────────────────────────────────

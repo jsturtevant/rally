@@ -5,7 +5,7 @@ import {
   mkdtempSync, mkdirSync, writeFileSync, readFileSync,
   rmSync, existsSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 
@@ -19,17 +19,18 @@ const DISPATCH_TIMEOUT = 60_000;
 
 /** Run the rally CLI as a subprocess. */
 function rally(args, opts = {}) {
+  const { rallyHome, timeout: t, env: extraEnv, ...rest } = opts;
   return execFileSync('node', [RALLY_BIN, ...args], {
     encoding: 'utf8',
-    timeout: opts.timeout ?? DEFAULT_TIMEOUT,
+    timeout: t ?? DEFAULT_TIMEOUT,
+    ...rest,
     env: {
       ...process.env,
-      RALLY_HOME: opts.rallyHome ?? '/tmp/rally-e2e-fallback',
+      RALLY_HOME: rallyHome || '/tmp/rally-e2e-test',
       NO_COLOR: '1',
       GIT_TERMINAL_PROMPT: '0',
-      ...opts.env,
+      ...extraEnv,
     },
-    ...opts,
   });
 }
 
@@ -131,7 +132,7 @@ describe('e2e: setup & onboard (config seeding)', () => {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test('rally setup --dir creates config with repo registered', { timeout: DEFAULT_TIMEOUT }, () => {
+  test('manual config seeding creates config with repo registered', { timeout: DEFAULT_TIMEOUT }, () => {
     // setup uses npx + interactive prompts; seed config manually instead
     seedConfig(tempDir, REPO_ROOT);
 
@@ -142,7 +143,7 @@ describe('e2e: setup & onboard (config seeding)', () => {
     assert.ok(existsSync(config.projectsDir), 'projectsDir should exist');
   });
 
-  test('rally onboard registers repo visible in status', { timeout: DEFAULT_TIMEOUT }, () => {
+  test('seeded config makes project visible in rally status', { timeout: DEFAULT_TIMEOUT }, () => {
     seedConfig(tempDir, REPO_ROOT);
 
     const output = rally(['status'], { rallyHome: tempDir });
@@ -163,20 +164,51 @@ describe('e2e: setup & onboard (config seeding)', () => {
 // ─── Group 3: Dispatch (real repo integration) ─────────────────────────────
 
 describe('e2e: dispatch issue 54 (library)', () => {
+  const skipReason = (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN)
+    ? 'Skipping: GH_TOKEN not set (dispatch tests require GitHub API access)'
+    : undefined;
+
   let tempDir;
   let worktreePath;
   let branchName;
+  let dispatchResult;
+  let origRallyHome;
 
   before(() => {
+    if (skipReason) return;
+
+    origRallyHome = process.env.RALLY_HOME;
     tempDir = mkdtempSync(join(tmpdir(), 'rally-e2e-dispatch-'));
     seedConfig(tempDir, REPO_ROOT);
-    // Point RALLY_HOME so library reads the seeded config
     process.env.RALLY_HOME = tempDir;
   });
 
+  // Shared before that runs dispatch once for all tests in the suite
+  before(async () => {
+    if (skipReason) return;
+
+    const { dispatchIssue } = await import('../../lib/dispatch-issue.js');
+
+    dispatchResult = await dispatchIssue({
+      issueNumber: 54,
+      repo: 'jsturtevant/rally',
+      repoPath: REPO_ROOT,
+      teamDir: join(tempDir, 'nonexistent-team'),
+    });
+
+    worktreePath = dispatchResult.worktreePath;
+    branchName = dispatchResult.branch;
+  });
+
   after(() => {
+    if (skipReason) return;
+
     // Restore RALLY_HOME
-    delete process.env.RALLY_HOME;
+    if (origRallyHome !== undefined) {
+      process.env.RALLY_HOME = origRallyHome;
+    } else {
+      delete process.env.RALLY_HOME;
+    }
 
     // Clean up worktree via git first (must happen before rmSync)
     if (worktreePath) {
@@ -199,23 +231,9 @@ describe('e2e: dispatch issue 54 (library)', () => {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test('dispatchIssue creates worktree, branch, context, and active entry', { timeout: DISPATCH_TIMEOUT }, async () => {
-    const { dispatchIssue } = await import('../../lib/dispatch-issue.js');
-
-    // Use a nonexistent teamDir so dispatchIssue skips the symlink step.
-    // .squad already exists in the worktree because it's tracked in git.
-    const result = await dispatchIssue({
-      issueNumber: 54,
-      repo: 'jsturtevant/rally',
-      repoPath: REPO_ROOT,
-      teamDir: join(tempDir, 'nonexistent-team'),
-    });
-
-    worktreePath = result.worktreePath;
-    branchName = result.branch;
-
+  test('dispatchIssue creates worktree, branch, context, and active entry', { skip: skipReason, timeout: DISPATCH_TIMEOUT }, () => {
     // Branch name should match pattern
-    assert.match(result.branch, /^rally\/54-/, 'branch should start with rally/54-');
+    assert.match(dispatchResult.branch, /^rally\/54-/, 'branch should start with rally/54-');
 
     // Worktree should exist on disk
     assert.ok(existsSync(worktreePath), 'worktree directory should exist');
@@ -235,7 +253,7 @@ describe('e2e: dispatch issue 54 (library)', () => {
     assert.equal(dispatch.type, 'issue');
   });
 
-  test('rally dashboard --json shows the dispatch after dispatch', { timeout: DISPATCH_TIMEOUT }, () => {
+  test('rally dashboard --json shows the dispatch after dispatch', { skip: skipReason, timeout: DISPATCH_TIMEOUT }, () => {
     const output = rally(['dashboard', '--json'], { rallyHome: tempDir, timeout: DISPATCH_TIMEOUT });
     const data = JSON.parse(output);
     assert.ok(data.dispatches.length >= 1, 'should have dispatches');
@@ -244,7 +262,7 @@ describe('e2e: dispatch issue 54 (library)', () => {
     assert.equal(d.repo, 'jsturtevant/rally');
   });
 
-  test('rally dashboard (non-TTY piped) shows text output', { timeout: DISPATCH_TIMEOUT }, () => {
+  test('rally dashboard (non-TTY piped) shows text output', { skip: skipReason, timeout: DISPATCH_TIMEOUT }, () => {
     // Force non-TTY by piping through cat-like behavior (no isTTY on stdout)
     const output = rally(['dashboard'], { rallyHome: tempDir, timeout: DISPATCH_TIMEOUT });
     assert.ok(output.includes('Rally Dashboard'), 'should include dashboard header');

@@ -110,6 +110,7 @@ const dispatch = program
     console.log('Examples:');
     console.log('  rally dispatch issue 42          Dispatch to GitHub issue #42');
     console.log('  rally dispatch pr 15             Dispatch to GitHub PR #15');
+    console.log('  rally dispatch remove 42         Remove dispatch for issue/PR #42');
     console.log('  rally dispatch issue 42 --repo owner/repo');
     dispatch.help();
   });
@@ -165,6 +166,24 @@ dispatch
         teamDir: opts.teamDir,
       });
       console.log(`Dispatched PR #${number}: ${result.pr.title} → ${result.worktreePath}`);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+dispatch
+  .command('remove')
+  .description('Remove an active dispatch')
+  .argument('<number>', 'Issue or PR number', (v) => {
+    const n = parseInt(v, 10);
+    if (isNaN(n) || n <= 0) throw new Error('Must be a positive integer');
+    return n;
+  })
+  .option('--repo <owner/repo>', 'Target repository (owner/repo)')
+  .action(async (number, opts) => {
+    try {
+      const { dispatchRemove } = await import('../lib/dispatch-remove.js');
+      await dispatchRemove(number, { repo: opts.repo });
     } catch (err) {
       handleError(err);
     }

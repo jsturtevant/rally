@@ -65,7 +65,7 @@ describe('setup', () => {
 
     assert.ok(execCalled, 'exec should have been called');
     assert.strictEqual(execArgs.cmd, 'npx');
-    assert.deepStrictEqual(execArgs.args, ['github:bradygaster/squad']);
+    assert.deepStrictEqual(execArgs.args, ['github:bradygaster/squad@v0.5.2']);
     assert.strictEqual(execArgs.cwd, join(tempDir, 'team'));
   });
 

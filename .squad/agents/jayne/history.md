@@ -562,3 +562,49 @@ Created 7 real subprocess tests invoking `bin/rally.js` via `execFileSync`. All 
 - Worktree cleanup must use `git worktree remove` before `rmSync` to avoid EIO errors
 - `dispatch` is NOT a CLI subcommand — must test via library import
 - `FORCE_COLOR` env overrides `NO_COLOR` (harmless warning)
+
+### 2026-02-23 — E2E Test Suite & Edge-Case Coverage Complete
+
+**Role:** QA / Test Infrastructure / Dashboard
+
+**Outcome:** Test suite grew from 280→321 tests; E2E tests in CI; React key collision fixed.
+
+**Work:**
+
+1. **PR #55: E2E Test Infrastructure** (pre-code-review)
+   - Created canonical E2E test pattern: seed config files (config.yaml, projects.yaml, active.yaml) to temp RALLY_HOME
+   - Pattern bypasses interactive prompts from `rally setup` and `rally onboard`
+   - Tests invoke `bin/rally.js` via execFileSync; all real gh/git/CLI behavior
+   - Worktree cleanup: `git worktree remove --force` + `git branch -D` (prevents EIO)
+   - 30-60s timeouts for ESM cold start
+   - Integrated into GitHub Actions CI workflow (npm run test:e2e)
+
+2. **PR #96: Dashboard & Edge-Case Tests** (post-round-4)
+   - Fixed React key collision in dashboard list rendering (was reusing dispatch ID as key, caused incorrect line updates with many dispatches)
+   - Added 9 edge-case tests: concurrent dispatch, missing config, malformed YAML, fork PR fetch failures, partial worktree cleanup
+   - All edge-case tests pass
+
+3. **Test Cleanup Audit:** Identified and fixed missing cleanup in DispatchTable.test.js (coordinated with Kaylee)
+   - All test/ui/*.test.js now have proper `afterEach(() => cleanup())` or `unmount()` hooks
+   - CI no longer hangs on Ink render cleanup
+
+**Test Suite Metrics:**
+- Unit tests: 272
+- Integration/E2E tests: 14 (from PR #55)
+- Edge-case tests: 9 (from PR #96)
+- UI component tests: 26
+- **Total: 321 tests** (up from 280)
+
+**E2E Pattern Decisions:**
+- `dispatch` not yet a CLI subcommand — tests import `dispatchIssue` directly
+- When dispatch is wired as CLI, switch from library import to execFileSync invocation
+- `.squad` is tracked in git; nonexistent teamDir skips symlink step in tests
+- Copilot launch failure is graceful (ENOENT) — dispatch continues
+
+**Key Learnings:**
+1. Seeding YAML configs is the right E2E pattern (avoids interactive prompt complexity)
+2. Worktree cleanup is finicky — git worktree remove must come before rmSync
+3. React list rendering with dispatches needs unique, stable keys (dispatch-context-N pattern now used)
+4. Test cleanup patterns matter for CI reliability — Ink render resources must be freed
+
+**Status:** All 26 code review findings have test coverage or edge-case tests. E2E suite in CI. Dashboard now correct.

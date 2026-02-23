@@ -318,3 +318,51 @@ See GitHub issues for full specs. Blockers resolved—proceed with implementatio
 - E2E test issue number: **#54** — Jayne needs this for test fixtures
 - `test:e2e` script already defined in package.json: runs `test/e2e/*.test.js`
 - Node matrix kept at [20, 22] (unchanged)
+
+### 2026-02-23 — E2E CI Integration Complete
+
+**Role:** DevOps / CI Infrastructure
+
+**Outcome:** E2E tests integrated into GitHub Actions workflow. All 9 PRs passed CI.
+
+**Work:**
+
+1. **E2E Test Issue & CI Setup** (pre-code-review)
+   - Created permanent E2E test issue #54 with label `e2e-test`
+   - Updated `.github/workflows/ci.yml` to run `npm run test:e2e` step
+   - Added git identity config (`github-actions[bot]`) for worktree operations in CI
+   - Wired `GH_TOKEN` via `secrets.GITHUB_TOKEN` for gh CLI auth in CI environment
+
+2. **PR #55 Merge:** E2E tests integrated and passing in CI
+   - All 14 E2E tests passing on every CI run
+   - Worktree cleanup reliable (git worktree remove + git branch -D)
+   - No timeouts; 30–60s per E2E test
+
+3. **Round 1–5 PR Support:** CI passing on all 9 merged PRs
+   - All unit tests (272) passing
+   - All E2E tests (14) passing
+   - All integration tests (9) passing
+   - No flakes; no hanging tests
+
+4. **Branch Cleanup:** Deleted 19 merged remote branches after code review completion
+
+**CI Workflow Additions:**
+```yaml
+- name: Setup git identity
+  run: |
+    git config --global user.name "github-actions[bot]"
+    git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+- name: E2E Tests
+  run: npm run test:e2e
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Key Details:**
+- Node matrix: [20, 22] (unchanged)
+- E2E test issue #54 marked with `e2e-test` label (permanent fixture)
+- RALLY_HOME seeded in tests; no permission issues
+- CI environment handles GH_TOKEN for gh CLI
+
+**Status:** CI fully operational. Five-round code review all tests passing. Ready for feature development.

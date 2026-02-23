@@ -78,6 +78,9 @@ function createExecWithIssue(issueData) {
       }
       return JSON.stringify(issueData);
     }
+    if (cmd === 'gh' && args[0] === 'copilot') {
+      return ''; // Copilot is "available" in tests
+    }
     // Delegate git commands to real git
     return execFileSync(cmd, args, opts);
   };

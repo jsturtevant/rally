@@ -930,7 +930,7 @@ api-srv    PR #87  feature/refactor-auth               reviewing     1d
 
 | Constraint | Detail |
 |-----------|--------|
-| **Runtime** | Node.js (minimum version TBD — at least v18 for stable built-in test runner) |
+| **Runtime** | Node.js >= 20.0.0 (Node 18 reached EOL) |
 | **Dependencies** | Curated set of production-quality npm packages (see §5.0). Node.js built-ins (`fs`, `path`, `os`, `child_process`) plus Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts. |
 | **Test framework** | `node:test` + `node:assert/strict` |
 | **Platforms** | Windows, macOS, Linux. All paths via `path.join()`. Symlink handling must account for Windows. |
@@ -988,6 +988,8 @@ Current design has 5 statuses (`planning` → `implementing` → `reviewing` →
 ### 9.6 Dashboard clean behavior
 Should `dashboard clean` delete the branch too? Just the worktree? Should it require confirmation?
 
+**Resolution:** Implemented in #27. `rally clean` removes completed dispatches and their worktrees. Edge cases (missing worktrees, dirty state) are handled with warnings rather than hard errors.
+
 ### 9.7 Windows symlink permissions
 Windows requires Developer Mode or elevated privileges for symlinks. Should Rally:
 - Detect and error clearly?
@@ -1001,6 +1003,15 @@ Should `rally setup` accept a Squad export JSON to bootstrap from an existing te
 ```bash
 rally setup --from teammate-export.json
 ```
+
+### 9.9 Implementation status (resolved)
+
+The following cross-cutting concerns have been implemented:
+
+- **Non-TTY support (#25):** `renderPlainDashboard` provides plain-text table output when stdout is piped.
+- **Keyboard navigation (#23):** Interactive dashboard supports ↑/↓ navigation, Enter to select, r to refresh, q to quit.
+- **Error handling (#26):** Exit codes 0–4 (`EXIT_SUCCESS`, `EXIT_GENERAL`, `EXIT_CONFIG`, `EXIT_GIT`, `EXIT_GITHUB`). `fatal()` pattern prints clean messages without stack traces.
+- **Edge cases (#27):** Tool detection (git, gh, npx) with actionable error messages, dirty working directory warnings, worktree collision guards.
 
 ---
 

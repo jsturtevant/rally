@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { formatAge } from '../dashboard-data.js';
 
 const STATUS_ICONS = {
   planning: '🔵',
@@ -8,23 +9,6 @@ const STATUS_ICONS = {
   done: '✅',
   cleaned: '⚪',
 };
-
-/**
- * Compute a human-readable age string from an ISO timestamp.
- */
-export function formatAge(createdAt) {
-  if (!createdAt) return '—';
-  const ts = new Date(createdAt).getTime();
-  if (Number.isNaN(ts)) return '—';
-  const ms = Date.now() - ts;
-  if (ms < 0) return '0m';
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
 
 function formatIssueRef(dispatch) {
   const prefix = dispatch.type === 'pr' ? 'PR' : 'Issue';

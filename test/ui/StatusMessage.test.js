@@ -2,7 +2,7 @@ import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { render, cleanup } from 'ink-testing-library';
-import { StatusMessage } from '../../lib/ui/index.js';
+import StatusMessage from '../../lib/ui/components/StatusMessage.js';
 
 afterEach(() => { cleanup(); });
 

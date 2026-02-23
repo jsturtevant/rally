@@ -2,7 +2,8 @@ import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { DispatchTable, STATUS_ICONS, formatAge } from '../../lib/ui/index.js';
+import DispatchTable, { STATUS_ICONS } from '../../lib/ui/components/DispatchTable.js';
+import { formatAge } from '../../lib/ui/dashboard-data.js';
 
 let lastCleanup;
 afterEach(() => { if (lastCleanup) lastCleanup(); });

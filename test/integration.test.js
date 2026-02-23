@@ -12,7 +12,7 @@ import yaml from 'js-yaml';
 import { dispatchIssue } from '../lib/dispatch-issue.js';
 import { dispatchPr } from '../lib/dispatch-pr.js';
 import { getActiveDispatches, removeDispatch } from '../lib/active.js';
-import { getDashboardData, computeSummary, renderPlainDashboard } from '../lib/ui/Dashboard.js';
+import { getDashboardData, computeSummary, renderPlainDashboard } from '../lib/ui/dashboard-data.js';
 
 // =====================================================
 // Helpers

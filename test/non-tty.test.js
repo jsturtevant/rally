@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
-import { renderPlainDashboard } from '../../lib/ui/Dashboard.js';
+import { renderPlainDashboard } from '../lib/ui/dashboard-data.js';
 
 let TEST_DIR;
 let WORKTREE_DIR;

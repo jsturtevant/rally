@@ -59,16 +59,16 @@ program
   .action(async (opts) => {
     try {
       if (opts.json) {
-        const { getDashboardData } = await import('../lib/ui/Dashboard.jsx');
+        const { getDashboardData } = await import('../lib/ui/Dashboard.js');
         const data = getDashboardData({ project: opts.project });
         console.log(JSON.stringify(data, null, 2));
       } else if (!process.stdout.isTTY) {
-        const { renderPlainDashboard } = await import('../lib/ui/Dashboard.jsx');
+        const { renderPlainDashboard } = await import('../lib/ui/Dashboard.js');
         console.log(renderPlainDashboard({ project: opts.project }));
       } else {
         const React = await import('react');
         const { render } = await import('ink');
-        const { default: Dashboard } = await import('../lib/ui/Dashboard.jsx');
+        const { default: Dashboard } = await import('../lib/ui/Dashboard.js');
         render(React.createElement(Dashboard, { project: opts.project }));
       }
     } catch (err) {

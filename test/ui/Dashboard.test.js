@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
-import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.jsx';
+import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.js';
 
 let TEST_DIR;
 let WORKTREE_DIR;

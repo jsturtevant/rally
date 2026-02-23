@@ -105,7 +105,11 @@ const dispatch = program
 dispatch
   .command('issue')
   .description('Dispatch Squad to a GitHub issue')
-  .argument('<number>', 'GitHub issue number')
+  .argument('<number>', 'GitHub issue number', (v) => {
+    const n = parseInt(v, 10);
+    if (isNaN(n) || n <= 0) throw new Error('Must be a positive integer');
+    return n;
+  })
   .option('--repo <owner/repo>', 'Target repository (owner/repo)')
   .option('--repo-path <path>', 'Path to local repo clone')
   .option('--team-dir <path>', 'Path to custom squad directory')
@@ -129,7 +133,11 @@ dispatch
 dispatch
   .command('pr')
   .description('Dispatch Squad to a GitHub PR review')
-  .argument('<number>', 'GitHub PR number')
+  .argument('<number>', 'GitHub PR number', (v) => {
+    const n = parseInt(v, 10);
+    if (isNaN(n) || n <= 0) throw new Error('Must be a positive integer');
+    return n;
+  })
   .option('--repo <owner/repo>', 'Target repository (owner/repo)')
   .option('--repo-path <path>', 'Path to local repo clone')
   .option('--team-dir <path>', 'Path to custom squad directory')

@@ -16,7 +16,7 @@ function SummaryLine({ summary }) {
         <Text> · </Text>
         <Text bold color="blue">{summary.done} done</Text>
         <Text> · </Text>
-        <Text bold color="red">{summary.blocked} blocked</Text>
+        <Text bold color="red">{summary.orphaned} orphaned</Text>
       </Text>
     </Box>
   );

@@ -420,9 +420,9 @@ describe('Integration: dashboard data and rendering', () => {
     assert.strictEqual(data.dispatches[1].healthy, false);
     assert.strictEqual(data.dispatches[2].healthy, false);
 
-    // Summary: d1 = active (healthy+implementing), d2 = blocked (unhealthy+reviewing), d3 = done
+    // Summary: d1 = active (healthy+implementing), d2 = orphaned (unhealthy+reviewing), d3 = done
     assert.strictEqual(data.summary.active, 1);
-    assert.strictEqual(data.summary.blocked, 1);
+    assert.strictEqual(data.summary.orphaned, 1);
     assert.strictEqual(data.summary.done, 1);
   });
 
@@ -437,7 +437,7 @@ describe('Integration: dashboard data and rendering', () => {
     const summary = computeSummary(dispatches);
     assert.strictEqual(summary.active, 2);
     assert.strictEqual(summary.done, 2);
-    assert.strictEqual(summary.blocked, 1);
+    assert.strictEqual(summary.orphaned, 1);
   });
 
   test('renderPlainDashboard outputs formatted text', () => {
@@ -514,7 +514,7 @@ describe('Integration: dashboard data and rendering', () => {
   test('getDashboardData returns empty when no dispatches', () => {
     const data = getDashboardData();
     assert.strictEqual(data.dispatches.length, 0);
-    assert.deepStrictEqual(data.summary, { active: 0, done: 0, blocked: 0 });
+    assert.deepStrictEqual(data.summary, { active: 0, done: 0, orphaned: 0 });
   });
 });
 

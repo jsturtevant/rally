@@ -347,7 +347,7 @@ Rally Dashboard
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
- 3 active · 1 done · 0 blocked
+ 3 active · 1 done · 0 orphaned
 ```
 
 **Options:**
@@ -846,7 +846,7 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
 │  api-srv    PR #87  feature/refactor-auth          ● reviewing     1d       │
 │  my-app     #38     rally/38-update-deps      ✓ done          3d       │
 │                                                                              │
-│  3 active · 1 done · 0 blocked                                              │
+│  3 active · 1 done · 0 orphaned                                              │
 │                                                                              │
 │  ────────────────────────────────────────────────────────────────────────── │
 │  q quit · r refresh · c clean done · ↑↓ select · enter open                 │
@@ -865,7 +865,7 @@ my-app     #42     rally/42-add-user-auth         implementing  2h
 my-app     #51     rally/51-fix-login-bug         planning      30m
 api-srv    PR #87  feature/refactor-auth               reviewing     1d
 
-3 active · 0 done · 0 blocked
+3 active · 0 done · 0 orphaned
 ```
 
 ---

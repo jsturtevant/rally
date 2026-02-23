@@ -96,7 +96,7 @@ describe('renderPlainDashboard (non-TTY)', () => {
     const output = renderPlainDashboard();
     assert.ok(output.includes('1 active'), 'should show active count');
     assert.ok(output.includes('1 done'), 'should show done count');
-    assert.ok(output.includes('blocked'), 'should show blocked label');
+    assert.ok(output.includes('orphaned'), 'should show orphaned label');
   });
 
   it('filters by project', () => {

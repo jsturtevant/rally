@@ -428,4 +428,31 @@ describe('dispatchPr happy path', () => {
     assert.strictEqual(result.branch, 'rally/pr-77-fix-login-validation');
     assert.ok(existsSync(result.worktreePath));
   });
+
+  test('cleans up worktree when post-creation step fails', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const exec = createExecWithPr(pr);
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    // Make active.yaml a directory so addDispatch throws
+    const activePath = join(process.env.RALLY_HOME, 'active.yaml');
+    mkdirSync(activePath, { recursive: true });
+    writeFileSync(join(activePath, 'blocker'), 'x');
+
+    const worktreePath = join(repoPath, '.worktrees', 'rally-pr-42');
+
+    await assert.rejects(
+      () => dispatchPr({
+        prNumber: 42,
+        repo: 'owner/repo',
+        repoPath,
+        _exec: exec,
+        _spawn: noopSpawn,
+      }),
+    );
+
+    assert.ok(!existsSync(worktreePath), 'worktree should be removed after failure');
+  });
 });

@@ -191,7 +191,7 @@ test('status: formatStatus renders projects and dispatches', () => {
     teamDir: '/tmp/team',
     projectsDir: '/tmp/projects',
     projects: [{ name: 'my-app', path: '/home/user/my-app' }],
-    dispatches: [{ id: 42, project: 'my-app', status: 'implementing' }],
+    dispatches: [{ id: 'my-app-issue-42', number: 42, repo: 'owner/my-app', type: 'issue', status: 'implementing' }],
   };
   const output = formatStatus(status);
   assert.ok(output.includes('✓ config:'));

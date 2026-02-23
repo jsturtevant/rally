@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { setup } from '../lib/setup.js';
 import { onboard } from '../lib/onboard.js';
 import { getStatus, formatStatus } from '../lib/status.js';
+import { handleError } from '../lib/errors.js';
 
 const program = new Command();
 
@@ -19,8 +20,7 @@ program
     try {
       await setup(options);
     } catch (err) {
-      console.error(`✗ ${err.message}`);
-      process.exit(1);
+      handleError(err);
     }
   });
 
@@ -33,8 +33,7 @@ program
     try {
       await onboard({ path: pathArg, team: opts.team });
     } catch (err) {
-      console.error(`✗ ${err.message}`);
-      process.exit(1);
+      handleError(err);
     }
   });
 
@@ -72,8 +71,7 @@ program
         render(React.createElement(Dashboard, { project: opts.project }));
       }
     } catch (err) {
-      console.error(`✗ ${err.message}`);
-      process.exit(1);
+      handleError(err);
     }
   });
 

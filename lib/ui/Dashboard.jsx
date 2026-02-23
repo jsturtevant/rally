@@ -120,7 +120,7 @@ export function renderPlainDashboard({ project } = {}) {
 export default function Dashboard({ project, onSelect, refreshInterval = 5000 }) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0); // eslint-disable-line -- state setter triggers re-render to refresh data
 
   let data;
   let error;
@@ -156,8 +156,11 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000 })
       setSelectedIndex(i => (i < count - 1 ? i + 1 : i));
     } else if (key.return && count > 0) {
       const selected = data.dispatches[selectedIndex];
+      const worktreePath = selected.worktreePath ?? '';
       if (onSelect) {
-        onSelect(selected.worktreePath ?? '');
+        onSelect(worktreePath);
+      } else if (worktreePath) {
+        console.log(worktreePath);
       }
       exit();
     } else if (input === 'r') {

@@ -272,3 +272,22 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 **Your PR #35 status:** Awaiting dual review (Copilot + Mal).
 
 **Next:** Wave 2 will implement Issues #15, #16, #17 using your dispatch.js core + Wash's active.js.
+
+### 2026-02-23 — Dashboard Testing & Non-TTY Rendering
+
+**Bug fixes for rally/25-non-tty branch:**
+- **Dashboard test hang:** Dashboard component tests (`test/ui/Dashboard.test.js`) were hanging because `useEffect` with `setInterval` (auto-refresh) and `useInput` (keyboard navigation) keep Node process alive. Fix: capture `unmount()` from `render()`, call in `afterEach`, and pass `refreshInterval: 0` to disable timer during tests.
+- **renderPlainDashboard missing:** Function was exported from `lib/ui/index.js` and tested in `test/ui/non-tty.test.js` but never implemented. Created function in `lib/ui/Dashboard.jsx` that returns plain text (no ANSI codes) with table layout matching test expectations.
+- **Testing pattern:** When Ink components use hooks like `useInput` or `useEffect` with timers/listeners, tests MUST call `unmount()` or Node won't exit. Use `refreshInterval: 0` or `null` to disable timers in tests.
+- **Key files:** `lib/ui/Dashboard.jsx`, `test/ui/Dashboard.test.js`, `test/ui/non-tty.test.js`
+
+### 2026-02-23 — Test Infrastructure Fixes (CI hang + JSX loader)
+
+- **CI hang root cause:** `test/onboard-url.test.js` "clone failure" test ran `git clone` against GitHub. In CI (no credentials), git prompts for username interactively, hanging forever. Fix: `GIT_TERMINAL_PROMPT=0` in the `npm test` script forces git to fail fast instead of prompting.
+- **JSX loader replaced with pre-build:** Removed `--loader ./test/jsx-loader.mjs` from test script. Created `test/build-jsx.mjs` that uses esbuild `transformSync` to compile all `.jsx` → `.js` files once before tests run. Eliminates per-child-process esbuild re-initialization overhead.
+- **Import migration:** All imports of `.jsx` files (in `lib/ui/index.js`, `bin/rally.js`, `test/ui/Dashboard.test.js`, `test/ui/non-tty.test.js`) changed to `.js` to reference compiled output.
+- **Compiled files gitignored:** `lib/ui/Dashboard.js`, `lib/ui/components/*.js` added to `.gitignore` as build artifacts.
+- **`--test-force-exit` added** for UI tests to prevent Ink event loop handles from keeping Node alive after tests complete.
+- **Ink import overhead:** `ink` module takes ~27s to import on WSL2 due to ESM dependency graph resolution over 9P filesystem. On native Linux (CI), this is < 1 second. Not a code issue — WSL2 filesystem performance limitation.
+
+

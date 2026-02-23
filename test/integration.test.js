@@ -117,7 +117,8 @@ function createExecWithPr(prData) {
 }
 
 function noopSpawn() {
-  return { pid: 12345, unref() {} };
+  // Use current process PID so refreshDispatchStatuses considers it alive
+  return { pid: process.pid, unref() {} };
 }
 
 // =====================================================

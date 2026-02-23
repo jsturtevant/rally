@@ -49,7 +49,11 @@ program
   .command('status')
   .description('Show Rally configuration and active dispatches for debugging')
   .option('--json', 'Output as JSON')
-  .action((opts) => {
+  .action(async (opts) => {
+    try {
+      const { refreshDispatchStatuses } = await import('../lib/dispatch-refresh.js');
+      refreshDispatchStatuses();
+    } catch { /* best-effort refresh */ }
     try {
       const status = getStatus();
       if (opts.json) {
@@ -185,6 +189,26 @@ dispatch
     try {
       const { dispatchRemove } = await import('../lib/dispatch-remove.js');
       await dispatchRemove(number, { repo: opts.repo });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+dispatch
+  .command('refresh')
+  .description('Refresh dispatch statuses by checking if Copilot processes have exited')
+  .action(async () => {
+    try {
+      const { refreshDispatchStatuses } = await import('../lib/dispatch-refresh.js');
+      const updated = refreshDispatchStatuses();
+      if (updated.length === 0) {
+        console.log('All dispatch statuses are up to date.');
+      } else {
+        for (const d of updated) {
+          console.log(`Updated ${d.id}: → done`);
+        }
+        console.log(`${updated.length} dispatch(es) updated.`);
+      }
     } catch (err) {
       handleError(err);
     }

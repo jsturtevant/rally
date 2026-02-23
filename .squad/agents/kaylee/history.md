@@ -470,3 +470,16 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - `test/copilot.test.js` — updated tests
 - `lib/dispatch-log.js` — new command implementation
 - `test/dispatch-log.test.js` — new test suite
+
+### Issue #136 — Dispatch Status Refresh (PID-based)
+
+- **Problem:** After `rally dispatch issue` launches Copilot as a detached process, the dispatch status stays stuck at "planning" forever because `child.unref()` means the parent exits before Copilot finishes — no exit event fires.
+- **Solution:** PID-based status refresh. `refreshDispatchStatuses()` checks if the stored PID is still alive via `process.kill(pid, 0)`. If the PID is gone, status moves to "done".
+- **Integration points:** Called automatically in dashboard data loading (`getDashboardData`), `rally status`, and available as manual `rally dispatch refresh` subcommand.
+- **DI pattern:** `_getActiveDispatches`, `_updateDispatchStatus`, `_isProcessRunning` — all injectable for testing.
+- **Key insight:** `child.unref()` + detached means Node won't keep the event loop alive for the child process. Process exit events are unreliable in this scenario. PID polling on next user interaction is the correct pattern.
+- **Files:**
+  - `lib/dispatch-refresh.js` — new module with `refreshDispatchStatuses()` and `isProcessRunning()`
+  - `test/dispatch-refresh.test.js` — 9 tests covering all scenarios
+  - `bin/rally.js` — wired `dispatch refresh` subcommand + refresh in `rally status`
+  - `lib/ui/dashboard-data.js` — calls refresh before loading dashboard data

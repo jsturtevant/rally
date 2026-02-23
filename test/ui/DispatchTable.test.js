@@ -84,31 +84,23 @@ describe('DispatchTable', () => {
     }
   });
 
-  it('highlights selected row with inverse styling', () => {
+  it('shows arrow indicator on selected row', () => {
     const r1 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: 0 })
     );
     const selected = r1.lastFrame();
     r1.cleanup();
-    const r2 = render(
-      React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: -1 })
-    );
-    const unselected = r2.lastFrame();
-    lastCleanup = r2.cleanup;
+    assert.ok(selected.includes('❯'), 'selected row should show arrow indicator');
     assert.ok(selected.includes('owner/repo-a'), 'selected row data should render');
-    // When FORCE_COLOR is set, inverse styling produces different ANSI output;
-    // without it, Ink strips styles in non-TTY. Either way, the component is correct.
-    if (process.env.FORCE_COLOR) {
-      assert.notEqual(selected, unselected, 'selected row styling should differ from unselected');
-    }
   });
 
-  it('does not highlight when selectedIndex is -1', () => {
+  it('does not show arrow when selectedIndex is -1', () => {
     const r1 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: -1 })
     );
     const noSelection = r1.lastFrame();
     r1.cleanup();
+    assert.ok(!noSelection.includes('❯'), 'no arrow should appear when nothing is selected');
     const r2 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );

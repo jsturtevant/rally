@@ -483,3 +483,15 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
   - `test/dispatch-refresh.test.js` — 9 tests covering all scenarios
   - `bin/rally.js` — wired `dispatch refresh` subcommand + refresh in `rally status`
   - `lib/ui/dashboard-data.js` — calls refresh before loading dashboard data
+
+### Read-Only Copilot Dispatch (#139)
+
+- **Pattern:** `gh copilot` reads `.github/copilot-instructions.md` from the repo root. Writing a policy file there before launch is the most reliable way to restrict Copilot's behavior — no PATH shadowing or wrapper scripts needed.
+- **Architecture:** `lib/copilot-instructions.js` centralizes the policy content via `getCopilotInstructions()`. Both `dispatch-core.js` (writes to worktree `.github/`) and `setup.js` (writes to squad dir as reference) use it.
+- **Placement in dispatch-core.js:** `writeCopilotInstructions()` runs after `postSymlinkFn` but before `checkCopilotAvailable`/`launchCopilot`, ensuring the instructions are in place before Copilot starts.
+- **setup.js policy file:** Written to `{teamDir}/.squad/dispatch-policy.md` during `rally setup` — idempotent, skips if already exists. Serves as a customizable reference.
+- **Key files:**
+  - `lib/copilot-instructions.js` — policy content + writer
+  - `lib/dispatch-core.js` — calls `writeCopilotInstructions` in `setupDispatchWorktree`
+  - `lib/setup.js` — writes `dispatch-policy.md` during onboarding
+  - `test/copilot-instructions.test.js` — 14 tests

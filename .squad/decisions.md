@@ -1501,3 +1501,238 @@ Rally is a CLI tool that dispatches Squad teams to GitHub issues and PRs via git
 Rally went from zero to production-ready in 3 days with 321 tests, 30 closed issues, 21 merged PRs, and a clean main branch. The PRD design phase, feature branch workflow, and five-round code review cycle were the MVPs. Two process failures (Phase 1 direct commits, Phase 4-5 unresolved comments) taught us that branch protection and structural enforcement beat behavioral rules. The codebase is clean, the team is aligned, and the patterns (PRD checklist, test cleanup standards, retro-after-phase) are now institutional knowledge.
 
 **Key Metric:** 29 issues → 321 tests → 0 technical debt blockers. Ready to ship.
+# Decision: Read-Only Copilot Dispatch via copilot-instructions.md
+
+**Author:** Kaylee (Core Dev)
+**Date:** 2026-02-24
+**Issue:** #139
+
+## Context
+
+Copilot launched via `rally dispatch` had full access to `gh` CLI and MCP tools, meaning it could create PRs, comment on issues, push commits, and modify remote state. Rally's model is: Copilot analyzes and prepares, human reviews.
+
+## Decision
+
+Use `.github/copilot-instructions.md` (read natively by `gh copilot`) to enforce read-only constraints. The policy file is written into each worktree before Copilot launches.
+
+## Why This Approach
+
+- `gh copilot` reads `.github/copilot-instructions.md` automatically — no PATH shadowing or wrapper scripts needed
+- The policy is visible and auditable (just a markdown file)
+- Can be customized per-team via `dispatch-policy.md` in the squad directory
+
+## What's Prohibited
+
+- `gh pr create/merge/close/comment`, `gh issue close/comment/edit`
+- `gh api` with POST/PUT/PATCH/DELETE
+- `git push`
+- MCP tools that modify external state
+
+## Files
+
+- `lib/copilot-instructions.js` — centralized policy content and writer
+- `lib/dispatch-core.js` — writes instructions before Copilot launch
+- `lib/setup.js` — writes reference policy during setup
+
+---
+
+### 2026-02-23T21:04:00Z: User directive
+**By:** James Sturtevant (via Copilot)
+**What:** Copilot launched via rally dispatch must NOT take actions on the target repo (no commits, no PR creation, no issue comments, no gh CLI mutations). It should only analyze and prepare the worktree for human review. Restrict Copilot's access to gh CLI and MCP tools if possible.
+**Why:** User request — safety constraint. Rally dispatches Copilot to analyze issues, not to autonomously modify repos. Human review gate is required before any repo mutations.
+
+---
+
+### 2026-02-23T20:55:15Z: User directive
+**By:** James Sturtevant (via Copilot)
+**What:** Always reply to Copilot review comments when resolving them — don't just resolve silently.
+**Why:** User request — captured for team memory
+
+---
+
+# Decision: Dispatch Status Refresh via PID Polling
+
+**By:** Kaylee (Core Dev)
+**Date:** 2025-07-17
+**Status:** Proposed
+
+## Context
+
+Issue #136: Dispatches get stuck at "planning" because the parent process exits before Copilot finishes (due to `child.unref()` on detached processes), so Node exit events never fire.
+
+## Decision
+
+Use PID-based polling instead of process exit events. `refreshDispatchStatuses()` checks if stored PIDs are still alive via `process.kill(pid, 0)`. Dead PID → status moves to "done".
+
+Refresh is called automatically:
+- Before dashboard rendering (`getDashboardData`)
+- In `rally status` command
+- Manually via `rally dispatch refresh`
+
+## Rationale
+
+- `child.unref()` means Node won't keep the event loop alive for the child — exit events are unreliable
+- PID polling on next user interaction is simple, correct, and doesn't require background daemons
+- "done" is the right terminal status for dead PIDs — Copilot may have finished successfully or failed, but either way it's no longer active
+
+## Impact
+
+- All agents: dispatches in "planning"/"implementing"/"reviewing" will auto-transition to "done" when viewed
+- Dashboard, status, and manual refresh all share the same `refreshDispatchStatuses()` function
+- New file: `lib/dispatch-refresh.js` — import from here for refresh logic
+
+---
+
+# Decision: Copilot Log Redirection Strategy
+
+**Author:** Kaylee (Core Dev)  
+**Date:** 2026-02-23  
+**Context:** Issue #135 — Copilot CLI output bleeding into user terminal  
+
+## Problem
+
+When `rally dispatch issue` launches `gh copilot` as a background process with `stdio: 'inherit'`, Copilot's output pollutes the user's terminal. Users want clean terminal output and the ability to review Copilot logs later.
+
+## Decision
+
+**Redirect Copilot stdout/stderr to a log file in the worktree.**
+
+### Implementation Details
+
+1. **Log file location:** `.copilot-output.log` in worktree root (same directory as `.squad` symlink)
+   - Consistent path pattern: `join(worktreePath, '.copilot-output.log')`
+   - Lives alongside worktree, gets cleaned up when worktree is removed
+   - Hidden file (dotfile) to avoid cluttering user's view
+
+2. **File descriptor management:** 
+   - Use `fs.openSync(logPath, 'w')` to get fd
+   - Pass `stdio: ['ignore', fd, fd]` to spawn (stdout and stderr both to log)
+   - Immediately `fs.closeSync(fd)` after spawn (child inherits the open fd)
+   - stdin ignored (Copilot is non-interactive in this mode)
+
+3. **State tracking:**
+   - Add optional `logPath` field to dispatch records in `active.yaml`
+   - Persisted during `addDispatch()` call in `setupDispatchWorktree()`
+   - Enables retrieval with `rally dispatch log <number>`
+
+4. **New command:** `rally dispatch log <number> [--repo] [--follow]`
+   - Finds dispatch by number (same disambiguation logic as `dispatch remove`)
+   - Reads and displays log file content
+   - Graceful degradation: warns if logPath missing or file not found
+   - `--follow` flag accepted but not yet implemented (placeholder for future)
+
+### Alternatives Considered
+
+- **Pipe to `tee`:** Rejected — too shell-specific, not cross-platform
+- **Separate stdout/stderr files:** Rejected — single unified log is simpler for users
+- **Global log directory:** Rejected — worktree-local keeps cleanup atomic
+- **No redirection + terminal multiplexing:** Rejected — forces user to manage terminal state
+
+## Impact
+
+### User-Facing
+- ✅ Clean terminal output during dispatch
+- ✅ Logs are retrievable: `rally dispatch log <number>`
+- ✅ Logs cleaned up automatically when dispatch removed
+- ⚠️ Pre-existing dispatches (created before this change) won't have logs
+
+### Developer-Facing
+- `launchCopilot()` signature extended with `logPath` parameter
+- Return value extended from `{ sessionId, process }` to `{ sessionId, process, logPath }`
+- All callers must be updated (currently only `setupDispatchWorktree()`)
+- DI pattern extended: `_fs` parameter with `openSync`/`closeSync` for testing
+
+### Testing
+- 7 new test cases in `test/dispatch-log.test.js`
+- 3 new test cases in `test/copilot.test.js` for log redirection
+- All existing tests continue to pass (backward compatible — logPath is optional)
+
+## Follow-Up Work
+
+1. **Implement `--follow` flag** — tail -f style log streaming (future issue)
+2. **Log rotation** — if log files grow too large (not currently a concern)
+3. **Log file compression** — for long-running dispatches (future optimization)
+
+## Rationale
+
+This approach is:
+- **Simple:** Single log file per dispatch, standard fs APIs
+- **Discoverable:** `rally dispatch log` mirrors `rally dispatch remove` UX
+- **Atomic:** Log lifecycle tied to worktree lifecycle
+- **Testable:** Full DI pattern, no global state, clean mocking
+- **Cross-platform:** Pure Node.js fs module, works on Windows/macOS/Linux
+
+---
+
+# Decision: Dispatch Remove Command
+
+**Date:** 2026-02-23
+**Author:** Kaylee (Core Dev)
+**Status:** Implemented (PR #132)
+
+## Context
+
+Issue #131 requested a way to remove an active dispatch. Users needed to clean up individual dispatches without using `dashboard clean` (which targets done dispatches or all dispatches).
+
+## Decision
+
+Added `rally dispatch remove <number>` as a new subcommand under the existing `dispatch` command group, following the same patterns as `dashboard-clean.js`:
+
+- DI pattern for all external dependencies (testability)
+- Ora spinner for progress, Chalk for colored output
+- Graceful worktree removal (try/catch, may already be gone)
+- `--repo` flag for disambiguation when multiple dispatches share the same number
+
+## Trade-offs
+
+- `findProjectPath()` is duplicated between `dashboard-clean.js` and `dispatch-remove.js`. Accepted for now to avoid refactoring an existing module mid-feature. Should be extracted to a shared utility if a third consumer appears.
+- Removal is by number (user-facing) not by internal ID. This matches user mental model but requires disambiguation logic for cross-repo collisions.
+
+---
+
+# Decision: Dashboard Folder Display and VS Code Launch
+
+**Date:** 2026-02-23  
+**Author:** Kaylee (Core Dev)  
+**Context:** Issue #129, PR #130  
+**Status:** Implemented
+
+## Problem
+
+The dashboard table showed project, issue/PR, branch, status, and age — but not the worktree folder path. Users couldn't see where the worktree was located or quickly open it in VS Code.
+
+## Decision
+
+1. **Add Folder column** to dashboard table showing `worktreePath` field
+2. **Change Enter key behavior** from `console.log(path)` to `spawn('code', [path], { detached: true, stdio: 'ignore' })`
+3. **Preserve `onSelect` callback** as an override for custom behavior (testing, alternate editors)
+
+## Implementation Details
+
+- Used `spawn` (not `exec`) with `detached: true` and `child.unref()` so VS Code doesn't block the CLI
+- Added `_spawn` prop for dependency injection (matches project's `_exec`, `_spawn` DI pattern)
+- Updated both Ink UI (`DispatchTable.jsx`, `Dashboard.jsx`) and plain text output (`dashboard-data.js`)
+- Folder column width: 30 chars (fits typical worktree paths without wrapping)
+
+## Rationale
+
+- **`worktreePath` already existed** in dispatch data — just needed to be displayed
+- **VS Code is the primary editor** for this project's target users (solo developers on OSS repos)
+- **Detached spawn** prevents CLI hang and allows user to continue working while VS Code starts
+- **Injectable `_spawn`** keeps the code testable (can mock process spawn in tests)
+
+## Alternatives Considered
+
+- **`exec` vs `spawn`:** `spawn` chosen for detach capability and better process lifecycle control
+- **Blocking vs detached:** Detached chosen so CLI doesn't wait for VS Code to exit
+- **Custom editor support:** Deferred — VS Code is sufficient for v1, can add `--editor` flag later if needed
+
+## Testing
+
+All 33 existing tests pass. No new test coverage needed (behavior change only, no new code paths).
+
+## Files Changed
+
+- `lib/ui/components/DispatchTable.jsx`
+- `lib/ui/Dashboard.jsx`
+- `lib/ui/dashboard-data.js`

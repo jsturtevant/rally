@@ -25,6 +25,6 @@ Refresh is called automatically:
 
 ## Impact
 
-- All agents: dispatches in "planning"/"implementing" will auto-transition to "done" when viewed
+- All agents: dispatches in "planning"/"implementing"/"reviewing" will auto-transition to "done" when viewed
 - Dashboard, status, and manual refresh all share the same `refreshDispatchStatuses()` function
 - New file: `lib/dispatch-refresh.js` — import from here for refresh logic

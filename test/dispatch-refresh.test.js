@@ -67,10 +67,9 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result.length, 0);
   });
 
-  test('skips dispatches with done/reviewing/cleaned status', () => {
+  test('skips dispatches with done/cleaned status', () => {
     const dispatches = [
       { id: 'd1', status: 'done', session_id: '111', type: 'issue' },
-      { id: 'd2', status: 'reviewing', session_id: '222', type: 'pr' },
       { id: 'd3', status: 'cleaned', session_id: '333', type: 'issue' },
     ];
     const updates = [];
@@ -83,6 +82,23 @@ describe('refreshDispatchStatuses', () => {
 
     assert.strictEqual(updates.length, 0);
     assert.strictEqual(result.length, 0);
+  });
+
+  test('refreshes reviewing dispatches when process exits', () => {
+    const dispatches = [
+      { id: 'd2', status: 'reviewing', session_id: '222', type: 'pr' },
+    ];
+    const updates = [];
+
+    const result = refreshDispatchStatuses({
+      _getActiveDispatches: () => dispatches,
+      _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
+      _isProcessRunning: () => false,
+    });
+
+    assert.strictEqual(updates.length, 1);
+    assert.strictEqual(updates[0].id, 'd2');
+    assert.strictEqual(updates[0].status, 'done');
   });
 
   test('handles no active dispatches', () => {

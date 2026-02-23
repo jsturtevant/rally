@@ -66,7 +66,11 @@ import { setup } from '../lib/setup.js';
 npm test
 ```
 
-This executes: `node --test ./test/*.test.js`
+This runs two passes:
+
+1. **JSX pre-build** — `node test/build-jsx.mjs` compiles `.jsx` UI components to `.js` via esbuild so tests can import them without a custom loader.
+2. **Non-UI tests** — `node --test ./test/*.test.js` runs all unit/integration tests.
+3. **UI tests** — `node --test --test-force-exit ./test/ui/*.test.js` runs Ink component tests (requires the pre-built `.js` files from step 1).
 
 ### Run a single test file
 ```bash
@@ -889,6 +893,28 @@ Rally's testing strategy is skeptical, rigorous, and error-first. Every command 
 **CI integration:** Tests run on every PR. All tests must pass. Coverage must not drop below 80%.
 
 **Philosophy:** Test the unhappy path first. Assume every input is wrong. Verify exit codes and stderr, not just stdout. Break things on purpose so they don't break by accident.
+
+---
+
+## Dependency Injection Pattern
+
+Rally functions accept injectable dependencies via underscore-prefixed options so tests can substitute real shell commands and prompts:
+
+| Parameter | Default | Used by |
+|-----------|---------|---------|
+| `_exec` | `execFileSync` | `dispatch`, `dispatch-issue`, `dispatch-pr`, `copilot` |
+| `_clone` | internal clone fn | `onboard` |
+
+Tests pass stubs for these parameters to avoid real git/gh/npx invocations:
+
+```javascript
+await dispatchIssue({
+  number: 42,
+  _exec: mock.fn(() => JSON.stringify({ title: 'Fix bug' })),
+});
+```
+
+This avoids mocking global modules and keeps tests isolated.
 
 ---
 

@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { refreshDispatchStatuses, isProcessRunning } from '../lib/dispatch-refresh.js';
+import { refreshDispatchStatuses, isProcessRunning, isLogFileActive } from '../lib/dispatch-refresh.js';
 
 describe('isProcessRunning', () => {
   test('returns true for the current process PID', () => {
@@ -13,8 +13,49 @@ describe('isProcessRunning', () => {
   });
 });
 
+describe('isLogFileActive', () => {
+  test('returns true when log file was modified recently', () => {
+    const now = 1000000;
+    const result = isLogFileActive('/tmp/test.log', {
+      _statSync: () => ({ mtimeMs: now - 5000 }),
+      _now: () => now,
+    });
+    assert.strictEqual(result, true);
+  });
+
+  test('returns false when log file is stale', () => {
+    const now = 1000000;
+    const result = isLogFileActive('/tmp/test.log', {
+      _statSync: () => ({ mtimeMs: now - 60000 }),
+      _now: () => now,
+    });
+    assert.strictEqual(result, false);
+  });
+
+  test('returns false when logPath is null', () => {
+    assert.strictEqual(isLogFileActive(null), false);
+  });
+
+  test('returns false when stat throws (file missing)', () => {
+    const result = isLogFileActive('/no/such/file', {
+      _statSync: () => { throw new Error('ENOENT'); },
+    });
+    assert.strictEqual(result, false);
+  });
+
+  test('respects custom thresholdMs', () => {
+    const now = 1000000;
+    const result = isLogFileActive('/tmp/test.log', {
+      thresholdMs: 5000,
+      _statSync: () => ({ mtimeMs: now - 10000 }),
+      _now: () => now,
+    });
+    assert.strictEqual(result, false);
+  });
+});
+
 describe('refreshDispatchStatuses', () => {
-  test('updates status to reviewing when PID is not running', () => {
+  test('updates status to reviewing when PID is not running and log is stale', () => {
     const dispatches = [
       { id: 'issue-42', status: 'planning', session_id: '99999', type: 'issue' },
     ];
@@ -24,6 +65,7 @@ describe('refreshDispatchStatuses', () => {
       _getActiveDispatches: () => dispatches,
       _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
       _isProcessRunning: () => false,
+      _isLogFileActive: () => false,
     });
 
     assert.strictEqual(updates.length, 1);
@@ -32,6 +74,23 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].id, 'issue-42');
     assert.strictEqual(result[0].status, 'reviewing');
+  });
+
+  test('leaves status unchanged when PID is dead but log is still active', () => {
+    const dispatches = [
+      { id: 'issue-42', status: 'implementing', session_id: '99999', type: 'issue', logPath: '/tmp/test.log' },
+    ];
+    const updates = [];
+
+    const result = refreshDispatchStatuses({
+      _getActiveDispatches: () => dispatches,
+      _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
+      _isProcessRunning: () => false,
+      _isLogFileActive: () => true,
+    });
+
+    assert.strictEqual(updates.length, 0);
+    assert.strictEqual(result.length, 0);
   });
 
   test('leaves status unchanged when PID is still running', () => {
@@ -44,6 +103,7 @@ describe('refreshDispatchStatuses', () => {
       _getActiveDispatches: () => dispatches,
       _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
       _isProcessRunning: () => true,
+      _isLogFileActive: () => false,
     });
 
     assert.strictEqual(updates.length, 0);
@@ -125,13 +185,14 @@ describe('refreshDispatchStatuses', () => {
       _getActiveDispatches: () => dispatches,
       _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
       _isProcessRunning: (pid) => runningPids.has(pid),
+      _isLogFileActive: () => false,
     });
 
     // 'a' (PID 100) still running — no update
-    // 'b' (PID 200) dead — updated
+    // 'b' (PID 200) dead, log stale — updated
     // 'c' done — skipped
     // 'd' non-PID — skipped
-    // 'e' (PID 400) dead — updated
+    // 'e' (PID 400) dead, log stale — updated
     assert.strictEqual(updates.length, 2);
     assert.strictEqual(updates[0].id, 'b');
     assert.strictEqual(updates[1].id, 'e');
@@ -152,9 +213,8 @@ describe('refreshDispatchStatuses', () => {
         if (callCount === 1) throw new Error('disk full');
       },
       _isProcessRunning: () => false,
+      _isLogFileActive: () => false,
     });
-
-    // First update throws but second succeeds
     assert.strictEqual(callCount, 2);
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].id, 'y');

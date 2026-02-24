@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkCopilotAvailable, checkDockerSandboxAvailable, launchCopilot } from '../lib/copilot.js';
+import { checkCopilotAvailable, checkDockerSandboxAvailable, launchCopilot, DENY_TOOLS, getReadOnlyPolicy } from '../lib/copilot.js';
 
 // =====================================================
 // checkCopilotAvailable
@@ -77,7 +77,7 @@ describe('checkDockerSandboxAvailable', () => {
 // =====================================================
 
 describe('launchCopilot', () => {
-  test('spawns gh copilot with -p flag and workspace prompt', () => {
+  test('spawns gh copilot with deny-tool flags and policy in prompt', () => {
     let captured;
     const mockSpawn = (cmd, args, opts) => {
       captured = { cmd, args, opts };
@@ -87,9 +87,58 @@ describe('launchCopilot', () => {
     launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn });
 
     assert.strictEqual(captured.cmd, 'gh');
-    assert.deepStrictEqual(captured.args, ['copilot', '-p', 'workspace my prompt']);
+    // Verify --allow-all-tools is present
+    assert.ok(captured.args.includes('--allow-all-tools'));
+    // Verify all deny-tool flags are present
+    for (const tool of DENY_TOOLS) {
+      const idx = captured.args.indexOf(tool);
+      assert.ok(idx > 0, `deny-tool ${tool} should be in args`);
+      assert.strictEqual(captured.args[idx - 1], '--deny-tool');
+    }
+    // Verify -p flag with read-only policy in prompt
+    const pIdx = captured.args.indexOf('-p');
+    assert.ok(pIdx >= 0, '-p flag should be present');
+    const prompt = captured.args[pIdx + 1];
+    assert.ok(prompt.startsWith('workspace '), 'prompt should start with "workspace "');
+    assert.ok(prompt.includes('Read-Only Policy'), 'prompt should include read-only policy');
+    assert.ok(prompt.includes('my prompt'), 'prompt should include user prompt');
     assert.strictEqual(captured.opts.cwd, '/path/to/worktree');
-    assert.strictEqual(captured.opts.stdio, 'inherit');
+    assert.strictEqual(captured.opts.detached, true);
+  });
+
+  test('sandbox mode uses docker sandbox run with deny-tool flags and policy', () => {
+    let captured;
+    const mockSpawn = (cmd, args, opts) => {
+      captured = { cmd, args, opts };
+      return { pid: 55, unref() {} };
+    };
+
+    launchCopilot('/path/to/worktree', 'fix the bug', { _spawn: mockSpawn, sandbox: true });
+
+    assert.strictEqual(captured.cmd, 'docker');
+    // First four args: sandbox run copilot <workspace>
+    assert.deepStrictEqual(captured.args.slice(0, 4), [
+      'sandbox', 'run', 'copilot', '/path/to/worktree',
+    ]);
+    // -- separator
+    assert.strictEqual(captured.args[4], '--');
+    const agentArgs = captured.args.slice(5);
+    // Agent args must include --allow-all-tools
+    assert.ok(agentArgs.includes('--allow-all-tools'));
+    // Agent args must include deny-tool flags
+    for (const tool of DENY_TOOLS) {
+      const idx = agentArgs.indexOf(tool);
+      assert.ok(idx > 0, `deny-tool ${tool} should be in agent args`);
+      assert.strictEqual(agentArgs[idx - 1], '--deny-tool');
+    }
+    // Agent args must include -p with policy and user prompt
+    const pIdx = agentArgs.indexOf('-p');
+    assert.ok(pIdx >= 0, '-p flag should be in agent args');
+    const prompt = agentArgs[pIdx + 1];
+    assert.ok(prompt.startsWith('workspace '), 'prompt should start with "workspace "');
+    assert.ok(prompt.includes('Read-Only Policy'), 'prompt should include read-only policy');
+    assert.ok(prompt.includes('fix the bug'), 'prompt should include user prompt');
+    assert.strictEqual(captured.opts.cwd, '/path/to/worktree');
     assert.strictEqual(captured.opts.detached, true);
   });
 
@@ -190,54 +239,6 @@ describe('launchCopilot', () => {
     assert.strictEqual(unrefCalled, true);
   });
 
-  test('uses docker sandbox run when sandbox option is true', () => {
-    let captured;
-    const mockSpawn = (cmd, args, opts) => {
-      captured = { cmd, args, opts };
-      return { pid: 55, unref() {} };
-    };
-
-    launchCopilot('/path/to/worktree', 'fix the bug', { _spawn: mockSpawn, sandbox: true });
-
-    assert.strictEqual(captured.cmd, 'docker');
-    assert.deepStrictEqual(captured.args, [
-      'sandbox', 'run',
-      'copilot', '/path/to/worktree',
-      '--', '-p', 'workspace fix the bug',
-    ]);
-    assert.strictEqual(captured.opts.cwd, '/path/to/worktree');
-    assert.strictEqual(captured.opts.detached, true);
-  });
-
-  test('uses gh copilot directly when sandbox option is false', () => {
-    let captured;
-    const mockSpawn = (cmd, args, opts) => {
-      captured = { cmd, args, opts };
-      return { pid: 56, unref() {} };
-    };
-
-    launchCopilot('/wt', 'my prompt', { _spawn: mockSpawn, sandbox: false });
-
-    assert.strictEqual(captured.cmd, 'gh');
-    assert.deepStrictEqual(captured.args, ['copilot', '-p', 'workspace my prompt']);
-  });
-
-  test('sandbox mode returns sessionId, process, and logPath', () => {
-    const mockSpawn = () => ({ pid: 77, unref() {} });
-    const result = launchCopilot('/wt', 'prompt', {
-      _spawn: mockSpawn,
-      sandbox: true,
-      logPath: '/wt/.copilot-output.log',
-      _fs: {
-        openSync: () => 10,
-        closeSync: () => {},
-      },
-    });
-    assert.strictEqual(result.sessionId, '77');
-    assert.ok(result.process);
-    assert.strictEqual(result.logPath, '/wt/.copilot-output.log');
-  });
-
   test('sandbox mode returns nulls when docker is not installed (ENOENT)', () => {
     const mockSpawn = () => {
       throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' });
@@ -246,5 +247,51 @@ describe('launchCopilot', () => {
     assert.strictEqual(result.sessionId, null);
     assert.strictEqual(result.process, null);
     assert.strictEqual(result.logPath, null);
+  });
+});
+
+// =====================================================
+// DENY_TOOLS constant
+// =====================================================
+
+describe('DENY_TOOLS', () => {
+  test('is a non-empty array of strings', () => {
+    assert.ok(Array.isArray(DENY_TOOLS));
+    assert.ok(DENY_TOOLS.length > 0);
+    for (const t of DENY_TOOLS) {
+      assert.strictEqual(typeof t, 'string');
+    }
+  });
+
+  test('blocks git push', () => {
+    assert.ok(DENY_TOOLS.includes('shell(git push)'));
+  });
+
+  test('blocks gh pr commands', () => {
+    assert.ok(DENY_TOOLS.includes('shell(gh pr)'));
+  });
+
+  test('blocks github-mcp-server', () => {
+    assert.ok(DENY_TOOLS.includes('github-mcp-server'));
+  });
+});
+
+// =====================================================
+// getReadOnlyPolicy
+// =====================================================
+
+describe('getReadOnlyPolicy', () => {
+  test('returns a non-empty string with policy header', () => {
+    const policy = getReadOnlyPolicy();
+    assert.ok(typeof policy === 'string');
+    assert.ok(policy.includes('Read-Only Policy'));
+  });
+
+  test('prohibits git push', () => {
+    assert.ok(getReadOnlyPolicy().includes('git push'));
+  });
+
+  test('allows local code changes', () => {
+    assert.ok(getReadOnlyPolicy().includes('local code changes'));
   });
 });

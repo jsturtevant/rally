@@ -1,6 +1,10 @@
-# Rally
+# [Rally](https://bradygaster.github.io/squad/) your <sub>Squad</sub>
 
 CLI tool for dispatching AI coding agents (Squad teams) to GitHub issues via git worktrees.
+
+## Why Rally?
+
+Rally automates the full Squad workflow — from GitHub issues to pull requests — without polluting your repository. It eliminates ~15 manual steps: creating branches, setting up worktrees, symlinking Squad state, and managing multiple parallel dispatches. Use Rally to parallelize work across issues and keep your shared repos clean.
 
 ## Requirements
 
@@ -38,8 +42,7 @@ rally dashboard clean    # Remove completed dispatches
 Initialize Squad team state and Rally directories.
 
 ```
-$ rally setup --help
-Usage: rally setup [options]
+$ rally setup [options]
 
 Initialize Squad team state and Rally directories
 
@@ -53,8 +56,7 @@ Options:
 Onboard a repo to Rally (local path, GitHub URL, or owner/repo).
 
 ```
-$ rally onboard --help
-Usage: rally onboard [options] [path]
+$ rally onboard [options] [path]
 
 Onboard a repo to Rally (local path, GitHub URL, or owner/repo)
 
@@ -71,8 +73,7 @@ Options:
 Show Rally configuration and active dispatches for debugging.
 
 ```
-$ rally status --help
-Usage: rally status [options]
+$ rally status [options]
 
 Show Rally configuration and active dispatches for debugging
 
@@ -86,8 +87,7 @@ Options:
 Show active dispatch dashboard. Supports interactive (TTY) and plain-text (piped) output.
 
 ```
-$ rally dashboard --help
-Usage: rally dashboard [options]
+$ rally dashboard [options]
 
 Show active dispatch dashboard
 
@@ -104,8 +104,7 @@ Options:
 Dispatch Squad to a GitHub issue. Creates a worktree, symlinks Squad, writes context, and launches Copilot CLI.
 
 ```
-$ rally dispatch issue --help
-Usage: rally dispatch issue [options] <number>
+$ rally dispatch issue [options] <number>
 
 Dispatch Squad to a GitHub issue
 
@@ -124,8 +123,7 @@ Options:
 Dispatch Squad to a GitHub PR review. Creates a worktree checked out to the PR head, symlinks Squad, and launches Copilot CLI.
 
 ```
-$ rally dispatch pr --help
-Usage: rally dispatch pr [options] <number>
+$ rally dispatch pr [options] <number>
 
 Dispatch Squad to a GitHub PR review
 
@@ -138,6 +136,77 @@ Options:
   --team-dir <path>      Path to custom squad directory
   -h, --help             display help for command
 ```
+
+### `rally dispatch remove`
+
+Remove an active dispatch.
+
+```
+$ rally dispatch remove [options] <number>
+
+Remove an active dispatch
+
+Arguments:
+  number               Issue or PR number
+
+Options:
+  --repo <owner/repo>  Target repository (owner/repo)
+  -h, --help           display help for command
+```
+
+### `rally dispatch log`
+
+View Copilot output log for a dispatch.
+
+```
+$ rally dispatch log [options] <number>
+
+View Copilot output log for a dispatch
+
+Arguments:
+  number               Issue or PR number
+
+Options:
+  --repo <owner/repo>  Target repository (owner/repo)
+  -f, --follow         Follow log output (tail -f style)
+  -h, --help           display help for command
+```
+
+### `rally dispatch clean`
+
+Clean done dispatches (remove worktrees and branches).
+
+```
+$ rally dispatch clean [options]
+
+Clean done dispatches (remove worktrees and branches)
+
+Options:
+  --all       Clean all dispatches, not just done ones
+  --yes       Skip confirmation prompt for --all
+  -h, --help  display help for command
+```
+
+### `rally dispatch refresh`
+
+Refresh dispatch statuses by checking if Copilot processes have exited.
+
+```
+$ rally dispatch refresh [options]
+
+Refresh dispatch statuses by checking if Copilot processes have exited
+
+Options:
+  -h, --help  display help for command
+```
+
+## Future Work
+
+- **Smart worktree cleanup:** Automatic removal of completed worktrees and branches after PR merge
+- **Team templates:** Pre-configured team setups for common tech stacks (Node, Python, Go, etc.)
+- **PR creation automation:** Auto-create pull requests after Squad completes implementation
+- **Advanced team configuration:** Team overlays, partial sharing, and team migration between projects
+- **Team snapshots:** Export/import team state for bootstrapping from templates
 
 ## License
 

@@ -360,6 +360,27 @@ describe('Dashboard component', () => {
     assert.ok(instance.lastFrame().includes('Rally Dashboard'), 'should stay on dashboard');
   });
 
+  it('d shortcut removes selected dispatch', async () => {
+    let removeCalled = false;
+    let removeNumber;
+    const mockDispatchRemove = async (number, opts) => {
+      removeCalled = true;
+      removeNumber = number;
+    };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _dispatchRemove: mockDispatchRemove,
+      })
+    );
+    await delay();
+    instance.stdin.write('d');
+    await delay();
+    assert.ok(removeCalled, 'd shortcut should call dispatchRemove');
+    assert.equal(removeNumber, 42, 'should pass dispatch number');
+  });
+
   it('action menu View logs calls dispatchLog', async () => {
     let logCalled = false;
     let logNumber;

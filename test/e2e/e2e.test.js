@@ -270,9 +270,9 @@ describe('e2e: dispatch issue 54 (library)', () => {
   });
 });
 
-// ─── Group 4: Dashboard clean ───────────────────────────────────────────────
+// ─── Group 4: Dispatch clean ───────────────────────────────────────────────
 
-describe('e2e: dashboard clean', () => {
+describe('e2e: dispatch clean', () => {
   let tempDir;
 
   beforeEach(() => {
@@ -282,7 +282,7 @@ describe('e2e: dashboard clean', () => {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test('dashboard clean removes done dispatches', { timeout: DISPATCH_TIMEOUT }, async () => {
+  test('dispatch clean removes done dispatches', { timeout: DISPATCH_TIMEOUT }, async () => {
     // Seed config with a "done" dispatch
     seedConfig(tempDir, REPO_ROOT);
     const active = {
@@ -305,14 +305,14 @@ describe('e2e: dashboard clean', () => {
     process.env.RALLY_HOME = tempDir;
 
     try {
-      const { dashboardClean } = await import('../../lib/dashboard-clean.js');
+      const { dispatchClean } = await import('../../lib/dispatch-clean.js');
       const noopOra = (opts) => ({
         start() { return this; },
         succeed() {},
         fail() {},
       });
 
-      const result = await dashboardClean({
+      const result = await dispatchClean({
         _ora: noopOra,
         _chalk: { green: s => s, red: s => s, yellow: s => s, dim: s => s },
         _removeWorktree: () => {},  // worktree doesn't exist; skip removal
@@ -333,7 +333,7 @@ describe('e2e: dashboard clean', () => {
     }
   });
 
-  test('dashboard clean skips when no done dispatches', { timeout: DISPATCH_TIMEOUT }, async () => {
+  test('dispatch clean skips when no done dispatches', { timeout: DISPATCH_TIMEOUT }, async () => {
     seedConfig(tempDir, REPO_ROOT);
     // All dispatches are "implementing" — none are "done"
     const active = {
@@ -355,10 +355,10 @@ describe('e2e: dashboard clean', () => {
     process.env.RALLY_HOME = tempDir;
 
     try {
-      const { dashboardClean } = await import('../../lib/dashboard-clean.js');
+      const { dispatchClean } = await import('../../lib/dispatch-clean.js');
       const noopOra = () => ({ start() { return this; }, succeed() {}, fail() {} });
 
-      const result = await dashboardClean({
+      const result = await dispatchClean({
         _ora: noopOra,
         _chalk: { green: s => s, red: s => s, yellow: s => s, dim: s => s },
         _removeWorktree: () => {},

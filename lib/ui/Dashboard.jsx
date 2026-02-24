@@ -5,6 +5,7 @@ import DispatchTable from './components/DispatchTable.jsx';
 import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 import { dispatchLog as defaultDispatchLog } from '../dispatch-log.js';
+import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 
 export { computeSummary, getDashboardData, renderPlainDashboard };
 
@@ -30,7 +31,7 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchLog = defaultDispatchLog }) {
+export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchLog = defaultDispatchLog, _dispatchRemove = defaultDispatchRemove }) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0); // eslint-disable-line -- state setter triggers re-render to refresh data
@@ -95,6 +96,13 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     });
   }
 
+  function removeSelectedDispatch(dispatch) {
+    exit();
+    _dispatchRemove(dispatch.number, { repo: dispatch.repo }).catch((err) => {
+      console.error(`Failed to remove dispatch: ${err.message}`);
+    });
+  }
+
   function handleActionSelect(direction) {
     if (direction === 'up') {
       setActionIndex(i => (i > 0 ? i - 1 : 0));
@@ -143,6 +151,8 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       }
     } else if (input === 'r') {
       setRefreshKey(k => k + 1);
+    } else if (input === 'd' && count > 0) {
+      removeSelectedDispatch(data.dispatches[selectedIndex]);
     } else if (input === 'q') {
       exit();
     }
@@ -175,7 +185,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · v open · l logs · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · v open · l logs · d delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

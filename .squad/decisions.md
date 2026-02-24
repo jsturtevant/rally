@@ -1763,3 +1763,49 @@ The `clean` command was under `rally dashboard clean` but it's a dispatch lifecy
 - Anyone who used `rally dashboard clean` needs to use `rally dispatch clean`
 - Branches are now deleted during clean — this is a behavior change
 - Dashboard 'd' shortcut added for quick dispatch removal
+
+---
+
+# Decision: Read-Only Enforcement via --deny-tool Flags (PR #156, Issue #151)
+
+**Date:** 2026-02-24  
+**Author:** Kaylee (Core Dev)  
+**Status:** Implemented
+
+## Context
+
+PR #141 attempted to enforce read-only dispatch by writing `.github/copilot-instructions.md` into worktrees. This approach violated worktree isolation — we cannot modify user files in worktrees. Additionally, instructions are advisory and can be ignored.
+
+## Decision
+
+1. **Primary enforcement:** `--deny-tool` CLI flags passed to `gh copilot` in `launchCopilot()`
+   - Blocks write commands: `shell(git push)`, `shell(git commit)`, `shell(gh pr)`, `shell(gh issue)`, `shell(gh repo)`, `shell(gh api)`
+   - Blocks MCP tools: `github-mcp-server`
+2. **Defense-in-depth:** Read-only policy text prepended to the prompt via `-p` flag (not written to files)
+3. **Allow read tools:** `--allow-all-tools` enables read tools without prompting; deny flags take precedence
+
+## What Was Removed
+
+- `lib/copilot-instructions.js` (file writing approach no longer needed)
+- `writeCopilotInstructions()` call from `dispatch-core.js`
+- `dispatch-policy.md` writing from `setup.js`
+
+## What Was Added
+
+- `DENY_TOOLS` constant and `getReadOnlyPolicy()` in `lib/copilot.js`
+- Tests for deny-tool flag passing in spawn args
+
+## Trade-offs
+
+- Denying `shell(gh issue)` blocks `gh issue view` (read-only command). Acceptable because `dispatch-context.md` provides the needed context.
+- Copilot CLI is in public preview — flags could change. Low risk since `--deny-tool` is a core security feature.
+
+## Impact
+
+- No file system side effects — doesn't write into worktrees
+- Simple implementation — flags added to spawn args in `lib/copilot.js`
+- All 396 tests pass
+
+## PR
+
+- #156: Implement deny-tool flags for read-only dispatch

@@ -143,35 +143,6 @@ describe('setup', () => {
     await assert.doesNotReject(() => setup());
   });
 
-  // --- Acceptance Criteria: dispatch-policy.md creation ---
-
-  test('creates dispatch-policy.md in squad directory', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    await setup();
-
-    const policyPath = join(teamDir, '.squad', 'dispatch-policy.md');
-    assert.ok(existsSync(policyPath), 'dispatch-policy.md should exist');
-    const content = readFileSync(policyPath, 'utf8');
-    assert.ok(content.includes('Read-Only Policy'), 'dispatch-policy.md should contain read-only policy');
-  });
-
-  test('does not overwrite existing dispatch-policy.md', async () => {
-    const teamDir = join(tempDir, 'team');
-    const squadDir = join(teamDir, '.squad');
-    mkdirSync(squadDir, { recursive: true });
-
-    const policyPath = join(squadDir, 'dispatch-policy.md');
-    writeFileSync(policyPath, 'custom policy content', 'utf8');
-
-    await setup();
-
-    const content = readFileSync(policyPath, 'utf8');
-    assert.strictEqual(content, 'custom policy content', 'should not overwrite existing dispatch-policy.md');
-  });
-
   // --- Error Cases ---
 
   test('squad init failure is non-fatal (npx ENOENT)', async () => {

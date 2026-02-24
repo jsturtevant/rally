@@ -12,6 +12,20 @@ Rally is for individual developers using [Squad](https://bradygaster.github.io/s
 - [git](https://git-scm.com/)
 - [GitHub CLI (`gh`)](https://cli.github.com/)
 
+### Docker Sandbox (Optional)
+
+For enhanced isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM:
+
+- [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support
+- `GH_TOKEN` or `GITHUB_TOKEN` set globally in shell config
+- Docker Desktop restarted after setting the token
+
+Use `--sandbox` with dispatch commands:
+```bash
+rally dispatch issue 42 --sandbox
+rally dispatch pr 10 --sandbox
+```
+
 ## Installation
 
 ```bash

@@ -2,6 +2,7 @@ import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync, rmSync, mkdirSync, writeFileSync,
+  existsSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -166,5 +167,28 @@ describe('setupDispatchWorktree Copilot launch', () => {
 
     assert.strictEqual(spawnCalled, false);
     assert.strictEqual(result.sessionId, null);
+  });
+});
+
+describe('setupDispatchWorktree cleanup', () => {
+  test('deletes branch when setup fails after worktree creation', () => {
+    setupRallyHome();
+    const opts = baseOpts({
+      postSymlinkFn: () => {
+        throw new Error('boom');
+      },
+    });
+
+    assert.throws(
+      () => setupDispatchWorktree(opts),
+      { message: 'boom' }
+    );
+
+    const branchList = execFileSync('git', ['branch', '--list', opts.branch], {
+      cwd: repoPath,
+      encoding: 'utf8',
+    });
+    assert.strictEqual(branchList.trim(), '');
+    assert.strictEqual(existsSync(opts.worktreePath), false);
   });
 });

@@ -28,14 +28,23 @@ rally dispatch pr 10 --sandbox
 
 ## Installation
 
+Run directly with npx from GitHub:
+
 ```bash
-npm install -g rally
+npx github:jsturtevant/rally
 ```
 
-Or run directly with npx:
+Or install globally:
 
 ```bash
-npx rally
+npm install -g github:jsturtevant/rally
+rally
+```
+
+For a specific version, pin to a tag:
+
+```bash
+npx github:jsturtevant/rally#v0.1.0
 ```
 
 ## Quick Start

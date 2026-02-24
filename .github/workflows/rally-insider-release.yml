@@ -1,0 +1,32 @@
+name: Rally Insider Release
+on:
+  push:
+    branches: [insider]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - run: npm test
+      - name: Create insider pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          TAG="v${VERSION}-insider.$(date +%Y%m%d%H%M%S)"
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" --prerelease --generate-notes --title "$TAG"

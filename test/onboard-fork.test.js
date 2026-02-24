@@ -280,4 +280,91 @@ describe('onboard --fork integration', () => {
     const origin = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).trim();
     assert.strictEqual(origin, 'https://github.com/myuser/has-upstream.git');
   });
+
+  test('--fork without path clones upstream and sets up fork remotes (#210)', async () => {
+    const { rallyHome } = setupTeam();
+
+    // Simulate: rally onboard --fork upstream-org/my-project (no path argument)
+    // _clone creates a real git repo to simulate the clone
+    let clonedUrl, clonedTarget;
+    const _clone = (url, target) => {
+      clonedUrl = url;
+      clonedTarget = target;
+      mkdirSync(target, { recursive: true });
+      execFileSync('git', ['init', target], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
+      writeFileSync(join(target, 'README.md'), '# test');
+      execFileSync('git', ['-C', target, 'add', '.'], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'commit', '-m', 'init'], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'remote', 'add', 'origin', url], { stdio: 'ignore' });
+    };
+
+    const _exec = (cmd, args, opts) => {
+      // Mock gh api user to return a test username
+      if (cmd === 'gh' && args[0] === 'api' && args[1] === 'user') {
+        return 'testuser\n';
+      }
+      if (args[0] === 'fetch') return '';
+      return execFileSync(cmd, args, { ...opts, encoding: 'utf8', stdio: 'pipe' });
+    };
+
+    await onboard({
+      fork: 'upstream-org/my-project',
+      _clone,
+      _exec,
+      _select: sharedSelect,
+    });
+
+    // Should have cloned the upstream repo
+    assert.strictEqual(clonedUrl, 'https://github.com/upstream-org/my-project.git');
+    assert.ok(clonedTarget.endsWith('my-project'));
+
+    // Remotes: origin → user's fork, upstream → upstream repo
+    const upstream = execFileSync('git', ['-C', clonedTarget, 'remote', 'get-url', 'upstream'], { encoding: 'utf8' }).trim();
+    assert.strictEqual(upstream, 'https://github.com/upstream-org/my-project.git');
+
+    const origin = execFileSync('git', ['-C', clonedTarget, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).trim();
+    assert.strictEqual(origin, 'https://github.com/testuser/my-project.git');
+
+    // Project should be registered with fork info
+    const projectsPath = join(rallyHome, 'projects.yaml');
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    assert.strictEqual(projects.projects[0].repo, 'upstream-org/my-project');
+    assert.strictEqual(projects.projects[0].fork, 'testuser/my-project');
+  });
+
+  test('--fork without path works with owner/repo shorthand (#210)', async () => {
+    setupTeam();
+
+    let clonedUrl;
+    const _clone = (url, target) => {
+      clonedUrl = url;
+      mkdirSync(target, { recursive: true });
+      execFileSync('git', ['init', target], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
+      writeFileSync(join(target, 'README.md'), '# test');
+      execFileSync('git', ['-C', target, 'add', '.'], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'commit', '-m', 'init'], { stdio: 'ignore' });
+      execFileSync('git', ['-C', target, 'remote', 'add', 'origin', url], { stdio: 'ignore' });
+    };
+
+    const _exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === 'api' && args[1] === 'user') {
+        return 'jsturtevant\n';
+      }
+      if (args[0] === 'fetch') return '';
+      return execFileSync(cmd, args, { ...opts, encoding: 'utf8', stdio: 'pipe' });
+    };
+
+    await onboard({
+      fork: 'hyperlight-dev/hyperlight-wasm',
+      _clone,
+      _exec,
+      _select: sharedSelect,
+    });
+
+    assert.strictEqual(clonedUrl, 'https://github.com/hyperlight-dev/hyperlight-wasm.git');
+  });
 });

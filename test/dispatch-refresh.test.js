@@ -2,6 +2,92 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { refreshDispatchStatuses, isProcessRunning, isLogFileActive } from '../lib/dispatch-refresh.js';
 
+describe('refreshDispatchStatuses — session ID auto-resolution', () => {
+  test('resolves PID-style session_id to UUID from log when moving to reviewing', () => {
+    const dispatches = [
+      { id: 'rally-42', status: 'implementing', session_id: '99999', logPath: '/tmp/copilot.log' },
+    ];
+    const fieldUpdates = [];
+    const statusUpdates = [];
+
+    refreshDispatchStatuses({
+      _getActiveDispatches: () => dispatches,
+      _updateDispatchStatus: (id, status) => { statusUpdates.push({ id, status }); },
+      _updateDispatchField: (id, field, value) => { fieldUpdates.push({ id, field, value }); },
+      _isProcessRunning: () => false,
+      _isLogFileActive: () => false,
+      _parseSessionIdFromLog: () => 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    });
+
+    assert.strictEqual(statusUpdates.length, 1);
+    assert.strictEqual(statusUpdates[0].status, 'reviewing');
+    assert.strictEqual(fieldUpdates.length, 1);
+    assert.deepEqual(fieldUpdates[0], {
+      id: 'rally-42',
+      field: 'session_id',
+      value: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    });
+  });
+
+  test('does not update session_id when it is already a UUID', () => {
+    const dispatches = [
+      { id: 'rally-42', status: 'implementing', session_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', logPath: '/tmp/copilot.log' },
+    ];
+    const fieldUpdates = [];
+
+    // session_id is not all-digits, so refreshDispatchStatuses won't even try to resolve
+    // (it skips the dispatch in the PID check)
+    refreshDispatchStatuses({
+      _getActiveDispatches: () => dispatches,
+      _updateDispatchStatus: () => {},
+      _updateDispatchField: (id, field, value) => { fieldUpdates.push({ id, field, value }); },
+      _isProcessRunning: () => false,
+      _isLogFileActive: () => false,
+      _parseSessionIdFromLog: () => 'should-not-be-called',
+    });
+
+    assert.strictEqual(fieldUpdates.length, 0);
+  });
+
+  test('skips session_id update when parseSessionIdFromLog returns null', () => {
+    const dispatches = [
+      { id: 'rally-42', status: 'planning', session_id: '12345', logPath: '/tmp/copilot.log' },
+    ];
+    const fieldUpdates = [];
+
+    refreshDispatchStatuses({
+      _getActiveDispatches: () => dispatches,
+      _updateDispatchStatus: () => {},
+      _updateDispatchField: (id, field, value) => { fieldUpdates.push({ id, field, value }); },
+      _isProcessRunning: () => false,
+      _isLogFileActive: () => false,
+      _parseSessionIdFromLog: () => null,
+    });
+
+    assert.strictEqual(fieldUpdates.length, 0);
+  });
+
+  test('continues processing when updateDispatchField throws during session resolve', () => {
+    const dispatches = [
+      { id: 'rally-42', status: 'implementing', session_id: '11111', logPath: '/tmp/a.log' },
+      { id: 'rally-43', status: 'planning', session_id: '22222', logPath: '/tmp/b.log' },
+    ];
+    const statusUpdates = [];
+
+    refreshDispatchStatuses({
+      _getActiveDispatches: () => dispatches,
+      _updateDispatchStatus: (id, status) => { statusUpdates.push({ id, status }); },
+      _updateDispatchField: () => { throw new Error('disk full'); },
+      _isProcessRunning: () => false,
+      _isLogFileActive: () => false,
+      _parseSessionIdFromLog: () => 'uuid-parsed',
+    });
+
+    // Both should still get their status updated
+    assert.strictEqual(statusUpdates.length, 2);
+  });
+});
+
 describe('isProcessRunning', () => {
   test('returns true for the current process PID', () => {
     assert.strictEqual(isProcessRunning(process.pid), true);

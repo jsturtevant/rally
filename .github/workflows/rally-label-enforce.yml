@@ -1,4 +1,4 @@
-name: Squad Label Enforce
+name: Rally Label Enforce
 
 on:
   issues:

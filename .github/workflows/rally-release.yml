@@ -1,4 +1,4 @@
-name: Squad Release
+name: Rally Release
 on:
   push:
     tags: ['v*']

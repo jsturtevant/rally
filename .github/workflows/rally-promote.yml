@@ -1,4 +1,4 @@
-name: Squad Promote
+name: Rally Promote
 
 on:
   workflow_dispatch:

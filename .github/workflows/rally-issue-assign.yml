@@ -1,4 +1,4 @@
-name: Squad Issue Assign
+name: Rally Issue Assign
 
 on:
   issues:

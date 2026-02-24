@@ -1,4 +1,4 @@
-name: Squad Insider Release
+name: Rally Insider Release
 on:
   push:
     branches: [insider]

@@ -1,4 +1,4 @@
-name: Squad Triage
+name: Rally Triage
 
 on:
   issues:

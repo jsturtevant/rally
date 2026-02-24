@@ -1,4 +1,4 @@
-name: Sync Squad Labels
+name: Sync Rally Labels
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Squad Preview Validation
+name: Rally Preview Validation
 on:
   push:
     branches: [preview]

@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkCopilotAvailable, checkDockerSandboxAvailable, launchCopilot, DENY_TOOLS, getReadOnlyPolicy, parseSessionIdFromLog } from '../lib/copilot.js';
+import { checkCopilotAvailable, checkDockerSandboxAvailable, launchCopilot, resumeCopilot, DENY_TOOLS, getReadOnlyPolicy, parseSessionIdFromLog } from '../lib/copilot.js';
 
 // =====================================================
 // checkDockerSandboxAvailable
@@ -327,5 +327,65 @@ describe('parseSessionIdFromLog', () => {
   test('returns null when logPath is falsy', () => {
     const result = parseSessionIdFromLog(null);
     assert.strictEqual(result, null);
+  });
+});
+
+// =====================================================
+// resumeCopilot
+// =====================================================
+
+describe('resumeCopilot', () => {
+  test('calls gh copilot --resume with session ID', () => {
+    let captured;
+    const mockSpawnSync = (cmd, args, opts) => {
+      captured = { cmd, args, opts };
+      return { status: 0 };
+    };
+    resumeCopilot('/tmp/worktree', 'abc-123', { _spawnSync: mockSpawnSync });
+    assert.strictEqual(captured.cmd, 'gh');
+    assert.deepStrictEqual(captured.args, ['copilot', '--resume', 'abc-123']);
+    assert.strictEqual(captured.opts.cwd, '/tmp/worktree');
+  });
+
+  test('omits session ID when not provided', () => {
+    let captured;
+    const mockSpawnSync = (cmd, args, opts) => {
+      captured = { cmd, args, opts };
+      return { status: 0 };
+    };
+    resumeCopilot('/tmp/worktree', null, { _spawnSync: mockSpawnSync });
+    assert.deepStrictEqual(captured.args, ['copilot', '--resume']);
+  });
+
+  test('passes message option as -p flag', () => {
+    let captured;
+    const mockSpawnSync = (cmd, args) => {
+      captured = { cmd, args };
+      return { status: 0 };
+    };
+    resumeCopilot('/tmp/wt', 'sess-1', { message: 'hello', _spawnSync: mockSpawnSync });
+    assert.deepStrictEqual(captured.args, ['copilot', '--resume', 'sess-1', '-p', 'hello']);
+  });
+
+  test('throws user-friendly error on ENOENT', () => {
+    const mockSpawnSync = () => ({ error: { code: 'ENOENT' } });
+    assert.throws(
+      () => resumeCopilot('/tmp/wt', 'sess-1', { _spawnSync: mockSpawnSync }),
+      /gh CLI not found/
+    );
+  });
+
+  test('re-throws non-ENOENT errors', () => {
+    const mockSpawnSync = () => ({ error: new Error('boom') });
+    assert.throws(
+      () => resumeCopilot('/tmp/wt', 'sess-1', { _spawnSync: mockSpawnSync }),
+      /boom/
+    );
+  });
+
+  test('returns exit status', () => {
+    const mockSpawnSync = () => ({ status: 42 });
+    const result = resumeCopilot('/tmp/wt', 'sess-1', { _spawnSync: mockSpawnSync });
+    assert.strictEqual(result.status, 42);
   });
 });

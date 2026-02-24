@@ -153,6 +153,26 @@ test('passes message option through to resumeCopilot', async () => {
   assert.strictEqual(capturedOpts.message, 'focus on tests');
 });
 
+test('resume message includes dispatch id context', async () => {
+  const logs = [];
+  const origLog = console.log;
+  console.log = (...args) => { logs.push(args.join(' ')); };
+
+  await dispatchContinue(42, {
+    _getActiveDispatches: () => [makeRecord({ id: 'rally-42' })],
+    _existsSync: () => true,
+    _parseSessionIdFromLog: () => null,
+    _updateDispatchField: () => {},
+    _updateDispatchStatus: () => {},
+    _resumeCopilot: () => ({ status: 0 }),
+    _chalk: silentChalk,
+  });
+
+  console.log = origLog;
+  const msg = logs.join('\n');
+  assert.ok(msg.includes('rally-42'), `Expected dispatch id in message, got: ${msg}`);
+});
+
 test('works with --repo filter for disambiguation', async () => {
   const restore = hushLog();
   let resumedId = null;

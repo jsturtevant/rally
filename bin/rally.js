@@ -111,7 +111,7 @@ const dispatch = program
   .description('Dispatch Squad to a GitHub issue or PR')
   .hook('preAction', () => assertTools())
   .action(() => {
-    console.log('Usage: rally dispatch <issue|pr|remove|continue|log> <number> [options]\n');
+    console.log('Usage: rally dispatch <issue|pr|remove|continue|log|sessions> <number> [options]\n');
     console.log('Examples:');
     console.log('  rally dispatch issue 42          Dispatch to GitHub issue #42');
     console.log('  rally dispatch pr 15             Dispatch to GitHub PR #15');
@@ -119,6 +119,7 @@ const dispatch = program
     console.log('  rally dispatch continue 42       Reconnect to Copilot session for #42');
     console.log('  rally dispatch log 42            View Copilot output log for #42');
     console.log('  rally dispatch clean             Clean done dispatches');
+    console.log('  rally dispatch sessions          List active dispatches with session info');
     console.log('  rally dispatch issue 42 --repo owner/repo');
     dispatch.help();
   });
@@ -289,6 +290,23 @@ dispatch
     try {
       const { dispatchContinue } = await import('../lib/dispatch-continue.js');
       await dispatchContinue(number, { repo: opts.repo, message: opts.message });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+dispatch
+  .command('sessions')
+  .description('List active dispatches with session info')
+  .action(async () => {
+    try {
+      const { refreshDispatchStatuses } = await import('../lib/dispatch-refresh.js');
+      refreshDispatchStatuses();
+    } catch { /* best-effort refresh */ }
+    try {
+      const { listDispatchSessions, formatDispatchSessions } = await import('../lib/dispatch-sessions.js');
+      const sessions = listDispatchSessions();
+      console.log(formatDispatchSessions(sessions));
     } catch (err) {
       handleError(err);
     }

@@ -299,6 +299,21 @@ test('terminatePid returns false when PID is not a number', () => {
   assert.strictEqual(result, false);
 });
 
+test('terminatePid returns false for negative PID', () => {
+  const result = terminatePid(-1);
+  assert.strictEqual(result, false);
+});
+
+test('terminatePid returns false for zero PID', () => {
+  const result = terminatePid(0);
+  assert.strictEqual(result, false);
+});
+
+test('terminatePid returns false for float PID', () => {
+  const result = terminatePid(123.45);
+  assert.strictEqual(result, false);
+});
+
 test('terminatePid calls process.kill with SIGTERM', () => {
   let captured;
   const mockKill = (pid, signal) => {

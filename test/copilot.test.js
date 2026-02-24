@@ -229,34 +229,16 @@ describe('DENY_TOOLS', () => {
     assert.ok(DENY_TOOLS.includes('shell(git push)'));
   });
 
-  test('blocks gh pr write operations but not reads', () => {
-    assert.ok(DENY_TOOLS.includes('shell(gh pr create)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh pr merge)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh pr close)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh pr comment)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh pr review)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh pr edit)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh pr ready)'));
-    // Read operations should NOT be blocked
-    assert.ok(!DENY_TOOLS.some(t => t === 'shell(gh pr)'));
+  test('blocks all gh commands with broad shell(gh) rule', () => {
+    assert.ok(DENY_TOOLS.includes('shell(gh)'));
   });
 
-  test('blocks gh issue write operations but not reads', () => {
-    assert.ok(DENY_TOOLS.includes('shell(gh issue create)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh issue close)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh issue comment)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh issue edit)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh issue delete)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh issue reopen)'));
-    // Read operations should NOT be blocked
-    assert.ok(!DENY_TOOLS.some(t => t === 'shell(gh issue)'));
-  });
-
-  test('blocks gh api mutations', () => {
-    assert.ok(DENY_TOOLS.includes('shell(gh api -X POST)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh api --method DELETE)'));
-    // Broad block should NOT be present
-    assert.ok(!DENY_TOOLS.some(t => t === 'shell(gh api)'));
+  test('does not use granular deny rules (they do not work)', () => {
+    // Granular rules like shell(gh pr create) are NOT matched by --deny-tool
+    const granular = DENY_TOOLS.filter(t =>
+      t.startsWith('shell(gh ') && t.split(' ').length > 2
+    );
+    assert.deepStrictEqual(granular, [], 'No granular gh rules should exist');
   });
 
   test('does not block github-mcp-server read tools', () => {
@@ -281,5 +263,11 @@ describe('getReadOnlyPolicy', () => {
 
   test('allows local code changes', () => {
     assert.ok(getReadOnlyPolicy().includes('local code changes'));
+  });
+
+  test('directs to MCP tools for remote reads', () => {
+    const policy = getReadOnlyPolicy();
+    assert.ok(policy.includes('MCP read-only tools'));
+    assert.ok(policy.includes('github-mcp-server'));
   });
 });

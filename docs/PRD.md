@@ -48,22 +48,22 @@ rally setup [--dir <path>]
 ```
 
 **Behavior:**
-1. Create a directory for external team state (default: `~/.rally/team/`)
-2. Create a directory for cloned projects (default: `~/.rally/projects/`)
+1. Create a directory for external team state (default: `~/rally/team/`)
+2. Create a directory for cloned projects (default: `~/rally/projects/`)
 3. Run `npx github:bradygaster/squad` inside that directory to generate the full `.squad/` tree, `.squad-templates/`, and `.github/agents/squad.agent.md`
-4. Store the setup paths in `~/.rally/config.yaml`
+4. Store the setup paths in `~/rally/config.yaml`
 
 **Options:**
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--dir <path>` | `~/.rally/team/` | Where to create external team state |
+| `--dir <path>` | `~/rally/team/` | Where to create external team state |
 
 **Example:**
 ```bash
 $ rally setup
-✓ Created team directory at ~/.rally/team/
-✓ Initialized Squad in ~/.rally/team/
-✓ Saved config to ~/.rally/config.yaml
+✓ Created team directory at ~/rally/team/
+✓ Initialized Squad in ~/rally/team/
+✓ Saved config to ~/rally/config.yaml
 ```
 
 **Output on re-run (idempotent):**
@@ -74,10 +74,10 @@ $ rally setup
 ✓ Config verified
 ```
 
-**Config file (`~/.rally/config.yaml`):**
+**Config file (`~/rally/config.yaml`):**
 ```yaml
-teamDir: /home/user/.rally/team
-projectsDir: /home/user/.rally/projects
+teamDir: /home/user/rally/team
+projectsDir: /home/user/rally/projects
 version: 0.1.0
 ```
 
@@ -104,18 +104,18 @@ The argument can be:
 - **A GitHub URL** — `https://github.com/owner/repo` or the shorthand `owner/repo`. Clones the repo into the configured projects directory first, then onboards it.
 
 **Behavior:**
-1. Read `~/.rally/config.yaml` to find team directory and projects directory
+1. Read `~/rally/config.yaml` to find team directory and projects directory
 2. **If the argument is a GitHub URL or `owner/repo` shorthand:**
-   - Clone the repo into `<projectsDir>/<repo-name>/` (default: `~/.rally/projects/<repo-name>/`)
+   - Clone the repo into `<projectsDir>/<repo-name>/` (default: `~/rally/projects/<repo-name>/`)
    - If the directory already exists, skip the clone and use the existing checkout
 3. **Team selection prompt:** Ask the user which team configuration to use:
    ```
    ? Use your existing team or create a new one for this project?
-     ❯ Existing team — use shared team from ~/.rally/team/
+     ❯ Existing team — use shared team from ~/rally/team/
        New team — create a project-specific team for <project-name>
    ```
    - **Existing team:** Symlinks point to the shared `<teamDir>/` (default behavior, same as before)
-   - **New team:** Creates a project-specific team directory at `~/.rally/teams/<project-name>/`, runs `npx github:bradygaster/squad` inside it, and symlinks point there instead
+   - **New team:** Creates a project-specific team directory at `~/rally/teams/<project-name>/`, runs `npx github:bradygaster/squad` inside it, and symlinks point there instead
 4. In the target repo, create symlinks (pointing to whichever team directory was selected):
    - `.squad/` → `<selectedTeamDir>/.squad/`
    - `.squad-templates/` → `<selectedTeamDir>/.squad-templates/`
@@ -129,7 +129,7 @@ The argument can be:
    .squad-templates/
    .github/agents/squad.agent.md
    ```
-6. Register the repo in `~/.rally/projects.yaml` (including which team type was selected)
+6. Register the repo in `~/rally/projects.yaml` (including which team type was selected)
 
 **Why `.git/info/exclude`?**
 From Tamir Dresher's technique: `.git/info/exclude` works identically to `.gitignore` but is local-only. It's never committed, so the repo stays clean. On Windows, both the symlink name and the directory form need separate entries (e.g., `.squad` and `.squad/`).
@@ -145,9 +145,9 @@ $ cd ~/projects/my-app
 $ rally onboard
 ? Use your existing team or create a new one for this project?
   ❯ Existing team
-✓ Symlinked .squad/ → ~/.rally/team/.squad/
-✓ Symlinked .squad-templates/ → ~/.rally/team/.squad-templates/
-✓ Symlinked .github/agents/squad.agent.md → ~/.rally/team/.github/agents/squad.agent.md
+✓ Symlinked .squad/ → ~/rally/team/.squad/
+✓ Symlinked .squad-templates/ → ~/rally/team/.squad-templates/
+✓ Symlinked .github/agents/squad.agent.md → ~/rally/team/.github/agents/squad.agent.md
 ✓ Updated .git/info/exclude
 ✓ Registered project: my-app (shared team)
 ```
@@ -155,14 +155,14 @@ $ rally onboard
 **Example (GitHub URL, new project-specific team):**
 ```bash
 $ rally onboard owner/cool-project
-✓ Cloned owner/cool-project → ~/.rally/projects/cool-project/
+✓ Cloned owner/cool-project → ~/rally/projects/cool-project/
 ? Use your existing team or create a new one for this project?
   ❯ New team
-✓ Created team directory at ~/.rally/teams/cool-project/
-✓ Initialized Squad in ~/.rally/teams/cool-project/
-✓ Symlinked .squad/ → ~/.rally/teams/cool-project/.squad/
-✓ Symlinked .squad-templates/ → ~/.rally/teams/cool-project/.squad-templates/
-✓ Symlinked .github/agents/squad.agent.md → ~/.rally/teams/cool-project/.github/agents/squad.agent.md
+✓ Created team directory at ~/rally/teams/cool-project/
+✓ Initialized Squad in ~/rally/teams/cool-project/
+✓ Symlinked .squad/ → ~/rally/teams/cool-project/.squad/
+✓ Symlinked .squad-templates/ → ~/rally/teams/cool-project/.squad-templates/
+✓ Symlinked .github/agents/squad.agent.md → ~/rally/teams/cool-project/.github/agents/squad.agent.md
 ✓ Updated .git/info/exclude
 ✓ Registered project: cool-project (project-specific team)
 ```
@@ -176,18 +176,18 @@ $ rally onboard owner/cool-project
 - Clone fails → `✗ Failed to clone <url>: <git error>`
 - Invalid URL/shorthand → `✗ Not a valid GitHub URL or owner/repo shorthand: <input>`
 
-**Projects registry (`~/.rally/projects.yaml`):**
+**Projects registry (`~/rally/projects.yaml`):**
 ```yaml
 projects:
   - name: my-app
     path: /home/user/projects/my-app
     team: shared
-    teamDir: /home/user/.rally/team
+    teamDir: /home/user/rally/team
     onboarded: "2026-02-21T10:00:00Z"
   - name: cool-project
-    path: /home/user/.rally/projects/cool-project
+    path: /home/user/rally/projects/cool-project
     team: project
-    teamDir: /home/user/.rally/teams/cool-project
+    teamDir: /home/user/rally/teams/cool-project
     onboarded: "2026-02-21T11:00:00Z"
 ```
 
@@ -212,7 +212,7 @@ rally dispatch issue <issue-number> [--repo <owner/repo>]
 5. Symlink Squad files into the worktree (leverages `.git/info/exclude` entries from `onboard` — they apply to all worktrees automatically)
 6. Write issue context to `.squad/dispatch-context.md` in the worktree
 7. Invoke Squad to plan: `npx github:bradygaster/squad` with issue context
-8. Log the dispatch to `~/.rally/active.yaml`
+8. Log the dispatch to `~/rally/active.yaml`
 
 **Repo resolution (applies to both `issue` and `pr` subcommands):**
 The `--repo <owner/repo>` flag explicitly specifies the GitHub repo to target. If omitted, Rally infers the repo:
@@ -249,7 +249,7 @@ $ rally dispatch issue 42
 $ rally dispatch issue 42 --repo owner/my-app
 ```
 
-**Active dispatch registry (`~/.rally/active.yaml`):**
+**Active dispatch registry (`~/rally/active.yaml`):**
 ```yaml
 dispatches:
   - id: my-app-42
@@ -288,7 +288,7 @@ rally dispatch pr <pr-number> [--repo <owner/repo>]
 4. Symlink Squad into the worktree
 5. Write PR context (diff summary, changed files, PR description) to `.squad/dispatch-context.md`
 6. Invoke Squad with a review-focused prompt
-7. Log to `~/.rally/active.yaml` with status `reviewing`
+7. Log to `~/rally/active.yaml` with status `reviewing`
 
 **Options:**
 | Flag | Default | Description |
@@ -329,7 +329,7 @@ rally dashboard
 ```
 
 **Behavior:**
-1. Read `~/.rally/active.yaml`
+1. Read `~/rally/active.yaml`
 2. For each active dispatch, check worktree health (does it still exist?)
 3. Display a table of active work
 
@@ -369,7 +369,7 @@ rally dashboard clean --all     # Remove ALL dispatches and worktrees
 ### 4.1 State Layout
 
 ```
-~/.rally/
+~/rally/
 ├── config.yaml          # Global config (team directory, projects directory)
 ├── projects.yaml        # Registry of onboarded projects
 ├── active.yaml          # Active dispatches across all projects
@@ -390,8 +390,8 @@ rally dashboard clean --all     # Remove ALL dispatches and worktrees
     └── cool-project/    # A repo cloned via `rally onboard owner/cool-project`
 
 ~/projects/my-app/                   # An onboarded project (shared team)
-├── .squad/ → ~/.rally/team/.squad/           (symlink)
-├── .squad-templates/ → ~/.rally/team/...     (symlink)
+├── .squad/ → ~/rally/team/.squad/           (symlink)
+├── .squad-templates/ → ~/rally/team/...     (symlink)
 ├── .github/agents/squad.agent.md → ...            (symlink)
 ├── .git/
 │   └── info/
@@ -402,9 +402,9 @@ rally dashboard clean --all     # Remove ALL dispatches and worktrees
     │   └── (project files)
     └── rally-pr-87/            # Worktree for PR review
 
-~/.rally/projects/cool-project/ # An onboarded project (project-specific team)
-├── .squad/ → ~/.rally/teams/cool-project/.squad/    (symlink)
-├── .squad-templates/ → ~/.rally/teams/cool-project/...  (symlink)
+~/rally/projects/cool-project/ # An onboarded project (project-specific team)
+├── .squad/ → ~/rally/teams/cool-project/.squad/    (symlink)
+├── .squad-templates/ → ~/rally/teams/cool-project/...  (symlink)
 ├── .github/agents/squad.agent.md → ...                   (symlink)
 ├── .git/
 │   └── info/
@@ -416,14 +416,14 @@ rally dashboard clean --all     # Remove ALL dispatches and worktrees
 
 ```
 rally setup
-  └─→ Creates ~/.rally/team/ with Squad files
-  └─→ Writes ~/.rally/config.yaml
+  └─→ Creates ~/rally/team/ with Squad files
+  └─→ Writes ~/rally/config.yaml
 
 rally onboard
   └─→ Reads config.yaml
   └─→ If GitHub URL: clones repo into projectsDir
   └─→ Prompts for team selection (shared or project-specific)
-  └─→ If new team: creates ~/.rally/teams/<project>/ and runs Squad init
+  └─→ If new team: creates ~/rally/teams/<project>/ and runs Squad init
   └─→ Creates symlinks in repo (pointing to selected team dir)
   └─→ Updates .git/info/exclude
   └─→ Writes to projects.yaml (with team type)
@@ -455,7 +455,7 @@ rally/
 │   ├── onboard.js           # onboard command
 │   ├── dispatch.js          # dispatch command (issue + PR modes)
 │   ├── dashboard.js         # dashboard command
-│   ├── config.js            # Config read/write (~/.rally/*.yaml) — uses js-yaml
+│   ├── config.js            # Config read/write (~/rally/*.yaml) — uses js-yaml
 │   ├── symlink.js           # Symlink creation + validation
 │   ├── exclude.js           # .git/info/exclude management
 │   ├── worktree.js          # Git worktree create/remove
@@ -542,7 +542,7 @@ Chalk automatically handles TTY detection, `NO_COLOR`, and `FORCE_COLOR` — no 
 |---------|-------------|---------|
 | Section headers | `chalk.bold.cyan(…)` | `Rally Dashboard` |
 | Command names | `chalk.cyan(…)` | `rally setup` |
-| File paths | `chalk.dim(…)` | `~/.rally/config.yaml` |
+| File paths | `chalk.dim(…)` | `~/rally/config.yaml` |
 | User input / values | `chalk.bold(…)` | `my-app` |
 | Hints / help text | `chalk.dim(…)` | `Run: rally setup` |
 | Error messages | `chalk.bold.red('✗') + msg` | `✗ Message here` |
@@ -667,7 +667,7 @@ import { select } from '@inquirer/prompts';
 const teamChoice = await select({
   message: 'Use your existing team or create a new one for this project?',
   choices: [
-    { name: 'Existing team — use shared team from ~/.rally/team/', value: 'shared' },
+    { name: 'Existing team — use shared team from ~/rally/team/', value: 'shared' },
     { name: 'New team — create a project-specific team', value: 'new' },
   ],
 });
@@ -677,7 +677,7 @@ const teamChoice = await select({
 
 ```
 ? Use your existing team or create a new one for this project?
-  ❯ Existing team — use shared team from ~/.rally/team/
+  ❯ Existing team — use shared team from ~/rally/team/
     New team — create a project-specific team
 ```
 
@@ -716,7 +716,7 @@ import { useState, useEffect } from 'react';
 │  └─────────────────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                          │
 │  ┌─ Projects ──────────────────────────┐  ┌─ Team ──────────────────────────────────┐   │
-│  │  my-app       3 dispatches (shared) │  │  Team dir:  ~/.rally/team/         │   │
+│  │  my-app       3 dispatches (shared) │  │  Team dir:  ~/rally/team/         │   │
 │  │  api-srv      1 dispatch   (shared) │  │  Agents:    5                           │   │
 │  │  cool-proj    0 dispatches (own)    │  │  Type:      shared                      │   │
 │  └─────────────────────────────────────┘  └─────────────────────────────────────────┘   │
@@ -779,11 +779,11 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
 ```
   ┌─ rally setup ─────────────────────────────┐
   │                                                 │
-  │  ✓ Created team directory at ~/.rally/team/│
+  │  ✓ Created team directory at ~/rally/team/│
   │  ⠹ Initializing Squad…                         │
-  │  ✓ Initialized Squad in ~/.rally/team/     │
+  │  ✓ Initialized Squad in ~/rally/team/     │
   │  ✓ Created projects directory                   │
-  │  ✓ Saved config to ~/.rally/config.yaml    │
+  │  ✓ Saved config to ~/rally/config.yaml    │
   │                                                 │
   │  Ready! Next step:                              │
   │    rally onboard                           │
@@ -795,10 +795,10 @@ All UI output must work in two modes. Chalk and Ink handle most of this automati
 
 ```
   ⠹ Cloning owner/cool-project…
-  ✓ Cloned owner/cool-project → ~/.rally/projects/cool-project/
+  ✓ Cloned owner/cool-project → ~/rally/projects/cool-project/
 
   ? Use your existing team or create a new one for this project?
-    ❯ Existing team — use shared team from ~/.rally/team/
+    ❯ Existing team — use shared team from ~/rally/team/
       New team — create a project-specific team
 
   ✓ Symlinked .squad/
@@ -955,7 +955,7 @@ Squad is normally invoked via Copilot agent mode in the IDE. When Rally creates 
 The `onboard` command now prompts users to choose between a shared team and a project-specific team. This resolves the basic question of "should we support both?" — yes, via a prompt at onboard time.
 
 **What's been decided:**
-- Users choose at onboard time: shared team (`~/.rally/team/`) or project-specific team (`~/.rally/teams/<project>/`)
+- Users choose at onboard time: shared team (`~/rally/team/`) or project-specific team (`~/rally/teams/<project>/`)
 - Project-specific teams get a fresh Squad init — independent `.squad/` state, decisions, history
 - The `--team <shared|new>` flag allows scripting without the prompt
 - `projects.yaml` tracks which team type each project uses
@@ -967,7 +967,7 @@ The `onboard` command now prompts users to choose between a shared team and a pr
 
 ### 9.3 Worktree location
 - **Option A:** Inside the repo at `.worktrees/` (current design — easy to find, but adds a directory to the repo root)
-- **Option B:** Outside the repo at `~/.rally/worktrees/<project>/` (clean repo, but harder to navigate)
+- **Option B:** Outside the repo at `~/rally/worktrees/<project>/` (clean repo, but harder to navigate)
 - **Option C:** Sibling to the repo at `../<repo>-worktrees/` (git's default suggestion)
 
 **Resolution:** Inside repo at `.worktrees/rally-<issue>/`. This is already the default design in the PRD and remains the best choice — worktrees stay with the repo, easy to navigate, and the directory is already excluded from git via `.git/info/exclude`.

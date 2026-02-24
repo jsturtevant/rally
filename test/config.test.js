@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
@@ -14,15 +14,66 @@ import {
   validateOnboarded,
 } from '../lib/config.js';
 
-test('getConfigDir returns default path', () => {
+test('getConfigDir returns ~/rally by default on fresh install', () => {
   const originalEnv = process.env.RALLY_HOME;
-  delete process.env.RALLY_HOME;
+  const originalHome = process.env.HOME;
+  const tempHome = mkdtempSync(join(tmpdir(), 'rally-home-'));
   
-  const configDir = getConfigDir();
-  assert.ok(configDir.endsWith('.rally'));
+  try {
+    delete process.env.RALLY_HOME;
+    process.env.HOME = tempHome;
+    // Neither ~/rally nor ~/.rally exists — should return ~/rally
+    const configDir = getConfigDir();
+    assert.strictEqual(configDir, join(tempHome, 'rally'));
+  } finally {
+    process.env.HOME = originalHome;
+    if (originalEnv) {
+      process.env.RALLY_HOME = originalEnv;
+    }
+    rmSync(tempHome, { recursive: true, force: true });
+  }
+});
+
+test('getConfigDir falls back to ~/.rally when it exists and ~/rally does not', () => {
+  const originalEnv = process.env.RALLY_HOME;
+  const originalHome = process.env.HOME;
+  const tempHome = mkdtempSync(join(tmpdir(), 'rally-home-'));
   
-  if (originalEnv) {
-    process.env.RALLY_HOME = originalEnv;
+  try {
+    delete process.env.RALLY_HOME;
+    process.env.HOME = tempHome;
+    // Create only ~/.rally (legacy)
+    mkdirSync(join(tempHome, '.rally'), { recursive: true });
+    const configDir = getConfigDir();
+    assert.strictEqual(configDir, join(tempHome, '.rally'));
+  } finally {
+    process.env.HOME = originalHome;
+    if (originalEnv) {
+      process.env.RALLY_HOME = originalEnv;
+    }
+    rmSync(tempHome, { recursive: true, force: true });
+  }
+});
+
+test('getConfigDir prefers ~/rally over ~/.rally when both exist', () => {
+  const originalEnv = process.env.RALLY_HOME;
+  const originalHome = process.env.HOME;
+  const tempHome = mkdtempSync(join(tmpdir(), 'rally-home-'));
+  
+  try {
+    delete process.env.RALLY_HOME;
+    process.env.HOME = tempHome;
+    // Create both
+    mkdirSync(join(tempHome, 'rally'), { recursive: true });
+    mkdirSync(join(tempHome, '.rally'), { recursive: true });
+    const configDir = getConfigDir();
+    assert.strictEqual(configDir, join(tempHome, 'rally'));
+  } finally {
+    process.env.HOME = originalHome;
+    if (originalEnv) {
+      process.env.RALLY_HOME = originalEnv;
+    }
+    rmSync(tempHome, { recursive: true, force: true });
   }
 });
 

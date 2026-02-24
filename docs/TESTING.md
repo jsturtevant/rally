@@ -16,7 +16,7 @@ Rally uses **node:test** (Node.js built-in test runner) and **node:assert/strict
 1. **Error paths before happy paths.** Every test suite starts with error cases. If something can fail, test the failure first.
 2. **Assume every input is wrong.** Test invalid inputs, missing arguments, malformed data, corrupted state.
 3. **Exit codes matter.** Tests verify stderr output AND exit codes. Success is `0`, everything else is non-zero.
-4. **Isolation.** Every test runs in a clean environment. No shared state. No pollution of `~/.rally/` or user directories.
+4. **Isolation.** Every test runs in a clean environment. No shared state. No pollution of `~/rally/` or user directories.
 5. **No mocking libraries.** Use `node:test`'s built-in `mock` module for all mocking needs.
 
 ### Test Framework Stack
@@ -153,12 +153,12 @@ test('config: read missing config file', (t) => {
 });
 
 test('config: parse valid YAML', (t) => {
-  const mockYaml = 'teamDir: /home/user/.rally/team\nversion: 0.1.0\n';
+  const mockYaml = 'teamDir: /home/user/rally/team\nversion: 0.1.0\n';
   
   mock.method(fs, 'readFileSync', () => mockYaml);
 
   const config = readConfig();
-  assert.equal(config.teamDir, '/home/user/.rally/team');
+  assert.equal(config.teamDir, '/home/user/rally/team');
   assert.equal(config.version, '0.1.0');
 });
 ```
@@ -267,12 +267,12 @@ projects:
   - name: my-app
     path: /home/user/projects/my-app
     team: shared
-    teamDir: /home/user/.rally/team
+    teamDir: /home/user/rally/team
     onboarded: "2026-02-21T10:00:00Z"
   - name: cool-project
-    path: /home/user/.rally/projects/cool-project
+    path: /home/user/rally/projects/cool-project
     team: project
-    teamDir: /home/user/.rally/teams/cool-project
+    teamDir: /home/user/rally/teams/cool-project
     onboarded: "2026-02-21T11:00:00Z"
 `;
 

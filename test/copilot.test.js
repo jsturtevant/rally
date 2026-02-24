@@ -229,13 +229,8 @@ describe('DENY_TOOLS', () => {
     assert.ok(DENY_TOOLS.includes('shell(git push)'));
   });
 
-  test('blocks entire gh subcommand trees (broad rules)', () => {
-    // --deny-tool only matches first-level subcommands, so we must
-    // use broad prefixes like shell(gh pr) instead of shell(gh pr create)
-    assert.ok(DENY_TOOLS.includes('shell(gh pr)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh issue)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh repo)'));
-    assert.ok(DENY_TOOLS.includes('shell(gh api)'));
+  test('blocks all gh commands with broad shell(gh) rule', () => {
+    assert.ok(DENY_TOOLS.includes('shell(gh)'));
   });
 
   test('does not use granular deny rules (they do not work)', () => {

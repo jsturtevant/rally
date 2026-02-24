@@ -251,6 +251,53 @@ describe('onboard URL cloning', () => {
     );
   });
 
+  test('rejects collision when directory exists with different owner', async () => {
+    const { rallyHome } = setupTeam();
+    const projectsDir = join(rallyHome, 'projects');
+    mkdirSync(projectsDir, { recursive: true });
+
+    // Create a mock repo with ownerA/my-repo as its remote
+    const targetDir = join(projectsDir, 'my-repo');
+    mkdirSync(targetDir, { recursive: true });
+    execFileSync('git', ['init', targetDir], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'https://github.com/ownerA/my-repo.git'], { stdio: 'ignore' });
+
+    // Now try to onboard ownerB/my-repo — should throw collision error
+    await assert.rejects(
+      () => onboard({ path: 'ownerB/my-repo', _select: sharedSelect }),
+      (err) => {
+        assert.ok(
+          err.message.includes('already exists but belongs to a different repository'),
+          `Expected collision error but got: ${err.message}`
+        );
+        assert.ok(err.message.includes('ownerB/my-repo'), 'Error should mention expected owner/repo');
+        assert.ok(err.message.includes('ownerA/my-repo'), 'Error should mention found owner/repo');
+        return true;
+      }
+    );
+  });
+
+  test('allows reuse when directory exists with matching owner', async () => {
+    const { rallyHome } = setupTeam();
+    const projectsDir = join(rallyHome, 'projects');
+    mkdirSync(projectsDir, { recursive: true });
+
+    // Create a mock repo with correct owner/repo as its remote
+    const targetDir = join(projectsDir, 'my-repo');
+    mkdirSync(targetDir, { recursive: true });
+    execFileSync('git', ['init', targetDir], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'https://github.com/octocat/my-repo.git'], { stdio: 'ignore' });
+
+    // Try to onboard octocat/my-repo — should succeed (reuse existing directory)
+    await onboard({ path: 'octocat/my-repo', _select: sharedSelect });
+
+    assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
+  });
+
   test('local path still works unchanged', async () => {
     setupTeam();
     const repoPath = join(tempDir, 'local-repo');

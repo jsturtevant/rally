@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
+import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { spawn as defaultSpawn } from 'node:child_process';
 import DispatchTable from './components/DispatchTable.jsx';
 import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
@@ -34,6 +34,7 @@ function SummaryLine({ summary }) {
  */
 export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove }) {
   const { exit } = useApp();
+  const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0); // eslint-disable-line -- state setter triggers re-render to refresh data
   const [actionDispatch, setActionDispatch] = useState(null);
@@ -199,7 +200,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
   }
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" height={stdout.rows}>
       <Box marginBottom={1}>
         <Text bold>Rally Dashboard</Text>
       </Box>

@@ -99,7 +99,7 @@ const dashboard = program
         const React = await import('react');
         const { render } = await import('ink');
         const { default: Dashboard } = await import('../lib/ui/Dashboard.js');
-        render(React.createElement(Dashboard, { project: opts.project }));
+        render(React.createElement(Dashboard, { project: opts.project }), { fullScreen: true });
       }
     } catch (err) {
       handleError(err);

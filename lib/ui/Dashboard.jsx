@@ -7,6 +7,7 @@ import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
+import { parseSessionIdFromLog as defaultParseSessionId } from '../copilot.js';
 
 export { computeSummary, getDashboardData, renderPlainDashboard };
 
@@ -32,7 +33,7 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove }) {
+export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -53,10 +54,15 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
 
   const count = data ? data.dispatches.length : 0;
 
+  // A session ID is connectable if it looks like a UUID (not a PID or 'pending')
+  const hasConnectableSession = actionDispatch?.session_id &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(actionDispatch.session_id);
+
   // Derive the action list once — used for both count and selection
   const actions = actionDispatch
     ? [
         ACTIONS.OPEN_VSCODE,
+        ...(hasConnectableSession ? [ACTIONS.CONNECT_IDE] : []),
         ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
         ACTIONS.BACK,
       ]
@@ -92,6 +98,37 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     }
   }
 
+  function connectIDE(dispatch) {
+    const worktreePath = dispatch.worktreePath ?? '';
+    if (!worktreePath) return;
+
+    // Resolve session ID — parse from log if stored value is a PID
+    let sessionId = dispatch.session_id;
+    if (!sessionId || sessionId === 'pending' || /^\d+$/.test(sessionId)) {
+      const parsed = _parseSessionIdFromLog(dispatch.logPath);
+      if (parsed) sessionId = parsed;
+    }
+    if (!sessionId || sessionId === 'pending') return;
+
+    // Open VS Code at the worktree path
+    const codeChild = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
+    codeChild.unref();
+    codeChild.on('error', () => {});
+
+    // Bridge the session to VS Code via copilot --resume + /ide
+    const copilotChild = _spawn('copilot', [
+      '--resume', sessionId,
+      '-p', '/ide',
+      '--allow-all',
+    ], {
+      cwd: worktreePath,
+      detached: true,
+      stdio: 'ignore',
+    });
+    copilotChild.unref();
+    copilotChild.on('error', () => {});
+  }
+
   function viewLogs(dispatch) {
     if (dispatch.logPath) {
       setLogViewDispatch(dispatch);
@@ -115,12 +152,16 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       setActionIndex(i => (i < actionCount - 1 ? i + 1 : i));
     } else if (direction === ACTIONS.OPEN_VSCODE) {
       openInVSCode(actionDispatch);
+    } else if (direction === ACTIONS.CONNECT_IDE) {
+      connectIDE(actionDispatch);
     } else if (direction === ACTIONS.VIEW_LOGS) {
       viewLogs(actionDispatch);
     } else if (direction === 'confirm') {
       const selectedAction = actions[actionIndex];
       if (selectedAction === ACTIONS.OPEN_VSCODE) {
         openInVSCode(actionDispatch);
+      } else if (selectedAction === ACTIONS.CONNECT_IDE) {
+        connectIDE(actionDispatch);
       } else if (selectedAction === ACTIONS.VIEW_LOGS) {
         viewLogs(actionDispatch);
       } else {
@@ -151,6 +192,8 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       setDetailViewDispatch(data.dispatches[selectedIndex]);
     } else if (input === 'v' && count > 0) {
       openInVSCode(data.dispatches[selectedIndex]);
+    } else if (input === 'c' && count > 0) {
+      connectIDE(data.dispatches[selectedIndex]);
     } else if (input === 'l' && count > 0) {
       viewLogs(data.dispatches[selectedIndex]);
     } else if (input === 'r') {
@@ -207,7 +250,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · l logs · x delete · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · c connect IDE · l logs · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

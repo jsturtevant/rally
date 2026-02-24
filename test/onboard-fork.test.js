@@ -1,7 +1,7 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, rmSync, existsSync, readFileSync,
+  mkdtempSync, rmSync, readFileSync,
   mkdirSync, writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -39,6 +39,12 @@ describe('parseForkArg', () => {
   test('throws on invalid format (three segments)', () => {
     assert.throws(() => parseForkArg('a/b/c'), /Invalid --fork format/);
   });
+
+  test('rejects path traversal in owner or repo', () => {
+    assert.throws(() => parseForkArg('../evil'), /Invalid --fork/);
+    assert.throws(() => parseForkArg('owner/..'), /Invalid --fork/);
+    assert.throws(() => parseForkArg('./repo'), /Invalid --fork/);
+  });
 });
 
 // ─── configureForkRemotes unit tests ─────────────────────────────────────────
@@ -69,16 +75,11 @@ describe('configureForkRemotes', () => {
     return repoPath;
   }
 
-  // Use injectable _exec to avoid actual network fetch
-  function makeExec(repoPath) {
-    return (args) => execFileSync('git', args, { cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
-  }
-
-  // Skip fetch for tests (no network)
+  // Skip fetch for tests (no network), uses execFileSync signature
   function makeExecNoFetch(repoPath) {
-    return (args) => {
+    return (cmd, args, opts) => {
       if (args[0] === 'fetch') return '';
-      return execFileSync('git', args, { cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
+      return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
   }
 
@@ -190,20 +191,14 @@ describe('onboard --fork integration', () => {
     return repoPath;
   }
 
-  // Skip network fetch in _exec
-  function noFetchExec(args) {
-    if (args[0] === 'fetch') return '';
-    return undefined; // fall through to default exec
-  }
-
   test('--fork stores fork in projects.yaml', async () => {
     const { rallyHome } = setupTeam();
     const repoPath = createRepoWithOrigin('my-repo', 'https://github.com/upstream-org/my-repo.git');
 
     // Injectable _exec that skips fetch but delegates other commands
-    const _exec = (args) => {
+    const _exec = (cmd, args, opts) => {
       if (args[0] === 'fetch') return '';
-      return execFileSync('git', args, { cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
+      return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
     await onboard({ path: repoPath, fork: 'myuser/my-repo', _select: sharedSelect, _exec });
@@ -217,9 +212,9 @@ describe('onboard --fork integration', () => {
     setupTeam();
     const repoPath = createRepoWithOrigin('fork-remotes', 'https://github.com/upstream-org/fork-remotes.git');
 
-    const _exec = (args) => {
+    const _exec = (cmd, args, opts) => {
       if (args[0] === 'fetch') return '';
-      return execFileSync('git', args, { cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
+      return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
     await onboard({ path: repoPath, fork: 'myuser/fork-remotes', _select: sharedSelect, _exec });
@@ -272,9 +267,9 @@ describe('onboard --fork integration', () => {
     const repoPath = createRepoWithOrigin('has-upstream', 'https://github.com/old-origin/has-upstream.git');
     execFileSync('git', ['-C', repoPath, 'remote', 'add', 'upstream', 'https://github.com/upstream-org/has-upstream.git'], { stdio: 'ignore' });
 
-    const _exec = (args) => {
+    const _exec = (cmd, args, opts) => {
       if (args[0] === 'fetch') return '';
-      return execFileSync('git', args, { cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
+      return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
     await onboard({ path: repoPath, fork: 'myuser/has-upstream', _select: sharedSelect, _exec });

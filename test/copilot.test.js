@@ -191,6 +191,14 @@ describe('launchCopilot', () => {
     assert.strictEqual(captured.args[4], '--');
     assert.ok(captured.args.includes('--allow-all-tools'));
     assert.ok(captured.args.includes('-p'));
+    for (const tool of DENY_TOOLS) {
+      const denyIdx = captured.args.indexOf('--deny-tool');
+      assert.ok(denyIdx !== -1, `Expected sandbox args to include --deny-tool for ${tool}`);
+      assert.ok(
+        captured.args.some((a, i) => a === '--deny-tool' && captured.args[i + 1] === tool),
+        `Expected sandbox args to include --deny-tool ${tool}`
+      );
+    }
   });
 
   test('calls unref on child process', () => {

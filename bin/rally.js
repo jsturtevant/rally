@@ -144,9 +144,11 @@ dispatch
       if (!number) {
         const { pickRepo, pickIssue } = await import('../lib/picker.js');
         const project = opts.repo ? null : await pickRepo();
+        if (!opts.repo && !project) return;
         const repo = opts.repo || project.repo;
         resolved = resolveRepo({ repo });
         number = await pickIssue(repo);
+        if (!number) return;
       } else {
         resolved = resolveRepo({ repo: opts.repo });
       }
@@ -184,9 +186,11 @@ dispatch
       if (!number) {
         const { pickRepo, pickPr } = await import('../lib/picker.js');
         const project = opts.repo ? null : await pickRepo();
+        if (!opts.repo && !project) return;
         const repo = opts.repo || project.repo;
         resolved = resolveRepo({ repo });
         number = await pickPr(repo);
+        if (!number) return;
       } else {
         resolved = resolveRepo({ repo: opts.repo });
       }

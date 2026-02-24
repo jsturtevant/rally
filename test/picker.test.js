@@ -197,11 +197,27 @@ describe('pickRepo', () => {
     const result = await pickRepo({
       _readProjects: () => ({ projects }),
       _select: async (opts) => {
-        assert.strictEqual(opts.choices.length, 2);
+        assert.strictEqual(opts.choices.length, 3); // 2 repos + cancel
         return opts.choices[1].value; // select second repo
       },
     });
     assert.strictEqual(result.repo, 'jsturtevant/squad');
+  });
+
+  test('returns null when cancel is selected', async () => {
+    const projects = [
+      { name: 'rally', repo: 'jsturtevant/rally', path: '/tmp/rally' },
+      { name: 'squad', repo: 'jsturtevant/squad', path: '/tmp/squad' },
+    ];
+    const result = await pickRepo({
+      _readProjects: () => ({ projects }),
+      _select: async (opts) => {
+        const cancel = opts.choices[opts.choices.length - 1];
+        assert.strictEqual(cancel.name, '← Cancel');
+        return cancel.value;
+      },
+    });
+    assert.strictEqual(result, null);
   });
 });
 
@@ -218,11 +234,26 @@ describe('pickIssue', () => {
     const result = await pickIssue('owner/repo', {
       _exec: mockExec,
       _select: async (opts) => {
-        assert.strictEqual(opts.choices.length, 2);
+        assert.strictEqual(opts.choices.length, 3); // 2 issues + cancel
         return opts.choices[0].value;
       },
     });
     assert.strictEqual(result, 42);
+  });
+
+  test('returns null when cancel is selected', async () => {
+    const mockExec = () => JSON.stringify([
+      { number: 42, title: 'Fix bug', labels: [], state: 'OPEN' },
+    ]);
+    const result = await pickIssue('owner/repo', {
+      _exec: mockExec,
+      _select: async (opts) => {
+        const cancel = opts.choices[opts.choices.length - 1];
+        assert.strictEqual(cancel.name, '← Cancel');
+        return cancel.value;
+      },
+    });
+    assert.strictEqual(result, null);
   });
 
   test('throws when no open issues', async () => {
@@ -246,11 +277,26 @@ describe('pickPr', () => {
     const result = await pickPr('owner/repo', {
       _exec: mockExec,
       _select: async (opts) => {
-        assert.strictEqual(opts.choices.length, 1);
+        assert.strictEqual(opts.choices.length, 2); // 1 PR + cancel
         return opts.choices[0].value;
       },
     });
     assert.strictEqual(result, 15);
+  });
+
+  test('returns null when cancel is selected', async () => {
+    const mockExec = () => JSON.stringify([
+      { number: 15, title: 'Refactor auth', state: 'OPEN' },
+    ]);
+    const result = await pickPr('owner/repo', {
+      _exec: mockExec,
+      _select: async (opts) => {
+        const cancel = opts.choices[opts.choices.length - 1];
+        assert.strictEqual(cancel.name, '← Cancel');
+        return cancel.value;
+      },
+    });
+    assert.strictEqual(result, null);
   });
 
   test('throws when no open PRs', async () => {

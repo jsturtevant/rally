@@ -118,6 +118,7 @@ dispatch
   .option('--repo <owner/repo>', 'Target repository (owner/repo)')
   .option('--repo-path <path>', 'Path to local repo clone')
   .option('--team-dir <path>', 'Path to custom squad directory')
+  .option('--sandbox', 'Run Copilot inside a Docker sandbox microVM for host isolation')
   .action(async (number, opts) => {
     try {
       const { resolveRepo } = await import('../lib/dispatch.js');
@@ -128,6 +129,7 @@ dispatch
         repo: resolved.fullName,
         repoPath: opts.repoPath || resolved.project.path,
         teamDir: opts.teamDir,
+        sandbox: !!opts.sandbox,
       });
       console.log(`Dispatched issue #${number}: ${result.issue.title} → ${result.worktreePath}`);
     } catch (err) {
@@ -146,6 +148,7 @@ dispatch
   .option('--repo <owner/repo>', 'Target repository (owner/repo)')
   .option('--repo-path <path>', 'Path to local repo clone')
   .option('--team-dir <path>', 'Path to custom squad directory')
+  .option('--sandbox', 'Run Copilot inside a Docker sandbox microVM for host isolation')
   .action(async (number, opts) => {
     try {
       const { resolveRepo } = await import('../lib/dispatch.js');
@@ -156,6 +159,7 @@ dispatch
         repo: resolved.fullName,
         repoPath: opts.repoPath || resolved.project.path,
         teamDir: opts.teamDir,
+        sandbox: !!opts.sandbox,
       });
       console.log(`Dispatched PR #${number}: ${result.pr.title} → ${result.worktreePath}`);
     } catch (err) {

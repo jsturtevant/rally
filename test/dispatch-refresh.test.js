@@ -14,7 +14,7 @@ describe('isProcessRunning', () => {
 });
 
 describe('refreshDispatchStatuses', () => {
-  test('updates status to done when PID is not running', () => {
+  test('updates status to reviewing when PID is not running', () => {
     const dispatches = [
       { id: 'issue-42', status: 'planning', session_id: '99999', type: 'issue' },
     ];
@@ -28,10 +28,10 @@ describe('refreshDispatchStatuses', () => {
 
     assert.strictEqual(updates.length, 1);
     assert.strictEqual(updates[0].id, 'issue-42');
-    assert.strictEqual(updates[0].status, 'done');
+    assert.strictEqual(updates[0].status, 'reviewing');
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].id, 'issue-42');
-    assert.strictEqual(result[0].status, 'done');
+    assert.strictEqual(result[0].status, 'reviewing');
   });
 
   test('leaves status unchanged when PID is still running', () => {
@@ -84,7 +84,7 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result.length, 0);
   });
 
-  test('refreshes reviewing dispatches when process exits', () => {
+  test('skips reviewing dispatches (already at terminal auto-status)', () => {
     const dispatches = [
       { id: 'd2', status: 'reviewing', session_id: '222', type: 'pr' },
     ];
@@ -96,9 +96,8 @@ describe('refreshDispatchStatuses', () => {
       _isProcessRunning: () => false,
     });
 
-    assert.strictEqual(updates.length, 1);
-    assert.strictEqual(updates[0].id, 'd2');
-    assert.strictEqual(updates[0].status, 'done');
+    assert.strictEqual(updates.length, 0);
+    assert.strictEqual(result.length, 0);
   });
 
   test('handles no active dispatches', () => {

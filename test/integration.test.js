@@ -421,10 +421,10 @@ describe('Integration: dashboard data and rendering', () => {
     assert.strictEqual(data.dispatches[1].healthy, false);
     assert.strictEqual(data.dispatches[2].healthy, false);
 
-    // Summary: d1 = active (healthy+implementing), d2 = orphaned (unhealthy+reviewing), d3 = done
+    // Summary: d1 = active (healthy+implementing), d2 = done (reviewing), d3 = done
     assert.strictEqual(data.summary.active, 1);
-    assert.strictEqual(data.summary.orphaned, 1);
-    assert.strictEqual(data.summary.done, 1);
+    assert.strictEqual(data.summary.orphaned, 0);
+    assert.strictEqual(data.summary.done, 2);
   });
 
   test('computeSummary counts statuses correctly', () => {
@@ -437,8 +437,8 @@ describe('Integration: dashboard data and rendering', () => {
     ];
     const summary = computeSummary(dispatches);
     assert.strictEqual(summary.active, 2);
-    assert.strictEqual(summary.done, 2);
-    assert.strictEqual(summary.orphaned, 1);
+    assert.strictEqual(summary.done, 3);
+    assert.strictEqual(summary.orphaned, 0);
   });
 
   test('renderPlainDashboard outputs formatted text', () => {

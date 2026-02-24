@@ -15,17 +15,23 @@ function formatIssueRef(dispatch) {
   return `${prefix} #${dispatch.number}`;
 }
 
+const STATUS_LABELS = {
+  reviewing: 'ready for review',
+};
+
 function formatStatus(status) {
   const icon = STATUS_ICONS[status] ?? '?';
-  return `${icon} ${status}`;
+  const label = STATUS_LABELS[status] ?? status;
+  return `${icon} ${label}`;
 }
 
 const COLUMNS = [
-  { key: 'project', label: 'Project', width: 20 },
+  { key: 'project', label: 'Project', width: 18 },
   { key: 'issueRef', label: 'Issue/PR', width: 12 },
-  { key: 'branch', label: 'Branch', width: 28 },
+  { key: 'branch', label: 'Branch', width: 22 },
   { key: 'folder', label: 'Folder', width: 30 },
-  { key: 'status', label: 'Status', width: 16 },
+  { key: 'status', label: 'Status', width: 20 },
+  { key: 'changes', label: 'Changes', width: 10 },
   { key: 'age', label: 'Age', width: 6 },
 ];
 
@@ -56,6 +62,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
       branch: d.branch ?? '',
       folder: truncatedFolder,
       status: formatStatus(d.status),
+      changes: d.changes ?? '',
       age: formatAge(d.created ?? d.created_at),
     };
   });

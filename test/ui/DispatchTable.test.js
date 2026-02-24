@@ -40,8 +40,8 @@ describe('DispatchTable', () => {
     const output = lastFrame();
     assert.ok(output.includes('Project'), 'should include Project column');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR column');
-    assert.ok(output.includes('Branch'), 'should include Branch column');
-    assert.ok(output.includes('Folder'), 'should include Folder column');
+    assert.ok(!output.includes('Branch'), 'should not include Branch column');
+    assert.ok(!output.includes('Folder'), 'should not include Folder column');
     assert.ok(output.includes('Status'), 'should include Status column');
     assert.ok(output.includes('Age'), 'should include Age column');
   });
@@ -55,9 +55,8 @@ describe('DispatchTable', () => {
     assert.ok(output.includes('owner/repo-a'), 'should include repo name');
     assert.ok(output.includes('Issue #42'), 'should include issue ref');
     assert.ok(output.includes('PR #7'), 'should include PR ref');
-    assert.ok(output.includes('rally/42-fix-bug'), 'should include branch');
-    assert.ok(output.includes('rally/7-review'), 'should include branch');
-    assert.ok(output.includes('/home/user/projects'), 'should include folder path');
+    assert.ok(!output.includes('rally/42-fix-bug'), 'should not include branch');
+    assert.ok(!output.includes('/home/user/projects'), 'should not include folder path');
   });
 
   it('renders status icons for each status', () => {

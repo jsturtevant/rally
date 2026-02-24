@@ -219,6 +219,7 @@ describe('Dashboard component', () => {
     
     const output = instance.lastFrame();
     assert.ok(output.includes('Enter actions'), 'should show Enter actions hint');
+    assert.ok(output.includes('d details'), 'should show d shortcut hint');
     assert.ok(output.includes('v open'), 'should show v shortcut hint');
     assert.ok(output.includes('l logs'), 'should show l shortcut hint');
     assert.ok(output.includes('owner/repo-a'), 'should render dispatches');
@@ -355,7 +356,37 @@ describe('Dashboard component', () => {
     assert.ok(instance.lastFrame().includes('Rally Dashboard'), 'should stay on dashboard');
   });
 
-  it('d shortcut removes selected dispatch', async () => {
+  it('d shortcut shows detail view for selected dispatch', async () => {
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+      })
+    );
+    await delay();
+    instance.stdin.write('d');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Details for'), 'should show detail view title');
+    assert.ok(output.includes('Issue #42'), 'should show dispatch issue ref');
+    assert.ok(output.includes('rally/42-fix-bug'), 'should show branch in detail view');
+    assert.ok(output.includes('Esc back'), 'should show escape hint');
+  });
+
+  it('detail view Escape returns to dashboard', async () => {
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('d');
+    await delay();
+    assert.ok(instance.lastFrame().includes('Details for'), 'should show detail view');
+    instance.stdin.write('\x1B');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Rally Dashboard'), 'Escape should return to dashboard');
+  });
+
+  it('x shortcut removes selected dispatch', async () => {
     let removeCalled = false;
     let removeNumber;
     const mockDispatchRemove = async (number, opts) => {
@@ -370,9 +401,9 @@ describe('Dashboard component', () => {
       })
     );
     await delay();
-    instance.stdin.write('d');
+    instance.stdin.write('x');
     await delay();
-    assert.ok(removeCalled, 'd shortcut should call dispatchRemove');
+    assert.ok(removeCalled, 'x shortcut should call dispatchRemove');
     assert.equal(removeNumber, 42, 'should pass dispatch number');
   });
 
@@ -437,6 +468,19 @@ describe('Dashboard component', () => {
   });
 
   it('d shortcut does not quit the dashboard', async () => {
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+      })
+    );
+    await delay();
+    instance.stdin.write('d');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Details for'), 'detail view should be visible after d');
+  });
+
+  it('x shortcut does not quit the dashboard', async () => {
     let removeCalled = false;
     const mockDispatchRemove = async (number) => { removeCalled = true; };
 
@@ -447,10 +491,10 @@ describe('Dashboard component', () => {
       })
     );
     await delay();
-    instance.stdin.write('d');
+    instance.stdin.write('x');
     await delay();
-    assert.ok(removeCalled, 'd should call dispatchRemove');
+    assert.ok(removeCalled, 'x should call dispatchRemove');
     const output = instance.lastFrame();
-    assert.ok(output.includes('Rally Dashboard'), 'dashboard should still be visible after d');
+    assert.ok(output.includes('Rally Dashboard'), 'dashboard should still be visible after x');
   });
 });

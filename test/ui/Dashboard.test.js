@@ -500,4 +500,79 @@ describe('Dashboard component', () => {
     const output = instance.lastFrame();
     assert.ok(output.includes('Rally Dashboard'), 'dashboard should still be visible after x');
   });
+
+  it('c shortcut spawns both code and gh copilot when session is a UUID', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].session_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    const spawnedCmds = [];
+    const spawnMock = (cmd, args, opts) => {
+      spawnedCmds.push({ cmd, args });
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('c');
+    await delay();
+    assert.equal(spawnedCmds.length, 2, 'should spawn two processes');
+    assert.equal(spawnedCmds[0].cmd, 'code', 'first spawn should be VS Code');
+    assert.equal(spawnedCmds[1].cmd, 'gh', 'second spawn should be gh');
+    assert.ok(spawnedCmds[1].args.includes('copilot'), 'should include copilot arg');
+    assert.ok(spawnedCmds[1].args.includes('--resume'), 'should include --resume arg');
+    assert.ok(spawnedCmds[1].args.includes('a1b2c3d4-e5f6-7890-abcd-ef1234567890'), 'should include session ID');
+  });
+
+  it('c shortcut does nothing when session is not a UUID', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].session_id = '12345'; // PID, not UUID
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    let spawnCalled = false;
+    const spawnMock = () => {
+      spawnCalled = true;
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('c');
+    await delay();
+    assert.ok(!spawnCalled, 'should not spawn when session is a PID');
+  });
+
+  it('action menu shows Connect IDE only when session is a UUID', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].session_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Connect IDE session'), 'should show Connect IDE for UUID session');
+  });
+
+  it('action menu hides Connect IDE when session is not a UUID', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].session_id = 'not-a-uuid';
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(!output.includes('Connect IDE session'), 'should not show Connect IDE for non-UUID session');
+  });
 });

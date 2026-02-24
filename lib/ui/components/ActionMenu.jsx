@@ -1,8 +1,10 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
+import { UUID_RE } from '../../copilot.js';
 
 const ACTIONS = {
   OPEN_VSCODE: 'open-vscode',
+  CONNECT_IDE: 'connect-ide',
   VIEW_LOGS: 'view-logs',
   BACK: 'back',
 };
@@ -13,9 +15,14 @@ const ACTIONS = {
  */
 export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack }) {
   const hasLog = Boolean(dispatch.logPath);
+  const hasConnectableSession = dispatch.session_id &&
+    UUID_RE.test(dispatch.session_id);
 
   const actions = [
     { id: ACTIONS.OPEN_VSCODE, label: '(v) Open in VS Code' },
+    ...(hasConnectableSession
+      ? [{ id: ACTIONS.CONNECT_IDE, label: '(c) Connect IDE session' }]
+      : []),
     ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: '(l) View dispatch logs' }] : []),
     { id: ACTIONS.BACK, label: 'Back' },
   ];
@@ -23,6 +30,8 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
   useInput((input, key) => {
     if (input === 'v') {
       onSelect(ACTIONS.OPEN_VSCODE);
+    } else if (input === 'c' && hasConnectableSession) {
+      onSelect(ACTIONS.CONNECT_IDE);
     } else if (input === 'l' && hasLog) {
       onSelect(ACTIONS.VIEW_LOGS);
     } else if (key.upArrow) {

@@ -125,7 +125,7 @@ const dispatch = program
 dispatch
   .command('issue')
   .description('Dispatch Squad to a GitHub issue')
-  .argument('<number>', 'GitHub issue number', (v) => {
+  .argument('[number]', 'GitHub issue number (interactive picker if omitted)', (v) => {
     const n = parseInt(v, 10);
     if (isNaN(n) || n <= 0) throw new Error('Must be a positive integer');
     return n;
@@ -138,7 +138,16 @@ dispatch
     try {
       const { resolveRepo } = await import('../lib/dispatch.js');
       const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-      const resolved = resolveRepo({ repo: opts.repo });
+      let resolved;
+      if (!number) {
+        const { pickRepo, pickIssue } = await import('../lib/picker.js');
+        const project = opts.repo ? null : await pickRepo();
+        const repo = opts.repo || project.repo;
+        resolved = resolveRepo({ repo });
+        number = await pickIssue(repo);
+      } else {
+        resolved = resolveRepo({ repo: opts.repo });
+      }
       const result = await dispatchIssue({
         issueNumber: number,
         repo: resolved.fullName,
@@ -155,7 +164,7 @@ dispatch
 dispatch
   .command('pr')
   .description('Dispatch Squad to a GitHub PR review')
-  .argument('<number>', 'GitHub PR number', (v) => {
+  .argument('[number]', 'GitHub PR number (interactive picker if omitted)', (v) => {
     const n = parseInt(v, 10);
     if (isNaN(n) || n <= 0) throw new Error('Must be a positive integer');
     return n;
@@ -169,7 +178,16 @@ dispatch
     try {
       const { resolveRepo } = await import('../lib/dispatch.js');
       const { dispatchPr } = await import('../lib/dispatch-pr.js');
-      const resolved = resolveRepo({ repo: opts.repo });
+      let resolved;
+      if (!number) {
+        const { pickRepo, pickPr } = await import('../lib/picker.js');
+        const project = opts.repo ? null : await pickRepo();
+        const repo = opts.repo || project.repo;
+        resolved = resolveRepo({ repo });
+        number = await pickPr(repo);
+      } else {
+        resolved = resolveRepo({ repo: opts.repo });
+      }
       const result = await dispatchPr({
         prNumber: number,
         repo: resolved.fullName,

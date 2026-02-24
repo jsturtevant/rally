@@ -301,4 +301,81 @@ describe('resolveRepo', () => {
     assert.strictEqual(result.project.name, 'legacy-repo');
     assert.strictEqual(result.project.path, repoPath);
   });
+
+  // --- Fork scenarios: uses upstream repo field, not fork remote ---
+
+  test('cwd detection uses project.repo (upstream) instead of git remote for fork projects', () => {
+    const repoPath = createGitRepo('hyperlight-wasm');
+    // origin remote is the fork (jsturtevant), but project.repo is upstream (hyperlight-dev)
+    writeProjects([{
+      name: 'hyperlight-wasm',
+      repo: 'hyperlight-dev/hyperlight-wasm',
+      path: repoPath,
+      fork: 'jsturtevant/hyperlight-wasm',
+    }]);
+    process.chdir(repoPath);
+
+    const result = resolveRepo();
+    assert.strictEqual(result.owner, 'hyperlight-dev');
+    assert.strictEqual(result.repo, 'hyperlight-wasm');
+    assert.strictEqual(result.fullName, 'hyperlight-dev/hyperlight-wasm');
+  });
+
+  test('single-project fallback uses project.repo (upstream) for fork projects', () => {
+    const repoPath = createGitRepo('hyperlight-wasm');
+    writeProjects([{
+      name: 'hyperlight-wasm',
+      repo: 'hyperlight-dev/hyperlight-wasm',
+      path: repoPath,
+      fork: 'jsturtevant/hyperlight-wasm',
+    }]);
+    process.chdir(tempDir);
+
+    const result = resolveRepo();
+    assert.strictEqual(result.owner, 'hyperlight-dev');
+    assert.strictEqual(result.repo, 'hyperlight-wasm');
+    assert.strictEqual(result.fullName, 'hyperlight-dev/hyperlight-wasm');
+  });
+
+  test('fork project: git remote origin is NOT used when project.repo exists', () => {
+    const repoPath = createGitRepo('my-fork-project');
+    // git remote origin = testowner/my-fork-project (set by createGitRepo)
+    // project.repo = upstream-org/my-fork-project (the upstream)
+    writeProjects([{
+      name: 'my-fork-project',
+      repo: 'upstream-org/my-fork-project',
+      path: repoPath,
+      fork: 'testowner/my-fork-project',
+    }]);
+    process.chdir(repoPath);
+
+    const result = resolveRepo();
+    // Must resolve to upstream, NOT to testowner from git remote
+    assert.strictEqual(result.owner, 'upstream-org');
+    assert.strictEqual(result.repo, 'my-fork-project');
+  });
+
+  test('non-fork project with repo field still uses project.repo', () => {
+    const repoPath = createGitRepo('normal-project');
+    writeProjects([{
+      name: 'normal-project',
+      repo: 'org/normal-project',
+      path: repoPath,
+    }]);
+    process.chdir(repoPath);
+
+    const result = resolveRepo();
+    assert.strictEqual(result.owner, 'org');
+    assert.strictEqual(result.repo, 'normal-project');
+  });
+
+  test('legacy project without repo field falls back to git remote', () => {
+    const repoPath = createGitRepo('old-project');
+    writeProjects([{ name: 'old-project', path: repoPath }]);
+    process.chdir(repoPath);
+
+    const result = resolveRepo();
+    assert.strictEqual(result.owner, 'testowner');
+    assert.strictEqual(result.repo, 'old-project');
+  });
 });

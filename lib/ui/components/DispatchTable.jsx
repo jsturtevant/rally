@@ -4,7 +4,7 @@ import { formatAge } from '../dashboard-data.js';
 
 const STATUS_ICONS = {
   planning: '🔵',
-  implementing: '🟢',
+  implementing: '⏳',
   reviewing: '🟡',
   done: '✅',
   cleaned: '⚪',
@@ -16,6 +16,7 @@ function formatIssueRef(dispatch) {
 }
 
 const STATUS_LABELS = {
+  implementing: 'working',
   reviewing: 'ready for review',
 };
 

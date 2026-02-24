@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { fetchPrOrFail, dispatchPr } from '../lib/dispatch-pr.js';
+import { fetchPrOrFail, dispatchPr, buildReviewPrompt } from '../lib/dispatch-pr.js';
 
 // =====================================================
 // Helpers
@@ -481,5 +481,139 @@ describe('dispatchPr happy path', () => {
     );
 
     assert.ok(!existsSync(worktreePath), 'worktree should be removed after failure');
+  });
+});
+
+// =====================================================
+// buildReviewPrompt
+// =====================================================
+
+describe('buildReviewPrompt', () => {
+  test('mentions parallel sub-agents with specific models', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(prompt.toLowerCase().includes('opus'), 'should mention opus model');
+    assert.ok(prompt.toLowerCase().includes('gpt'), 'should mention gpt model');
+    assert.ok(prompt.toLowerCase().includes('gemini'), 'should mention gemini model');
+    assert.ok(prompt.includes('parallel'), 'should mention parallel execution');
+  });
+
+  test('mentions REVIEW.md as output file', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(prompt.includes('REVIEW.md'), 'should mention REVIEW.md output');
+  });
+
+  test('includes severity levels', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    for (const level of ['Critical', 'High', 'Medium', 'Low']) {
+      assert.ok(prompt.includes(level), `should mention ${level} severity`);
+    }
+  });
+
+  test('mentions line numbers', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(prompt.includes('line number'), 'should mention line numbers');
+  });
+
+  test('references dispatch-context.md', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(prompt.includes('dispatch-context.md'), 'should reference dispatch-context.md');
+  });
+
+  test('includes head and base branch info', () => {
+    const pr = makePr({ headRefName: 'feat/cool', baseRefName: 'develop' });
+    const prompt = buildReviewPrompt({ ...pr, number: 10 });
+    assert.ok(prompt.includes('feat/cool'), 'should include head branch');
+    assert.ok(prompt.includes('develop'), 'should include base branch');
+  });
+
+  test('instructs not to make code changes', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(
+      prompt.toLowerCase().includes('do not') || prompt.toLowerCase().includes("don't"),
+      'should instruct no code changes'
+    );
+  });
+});
+
+// =====================================================
+// dispatchPr — custom prompt file
+// =====================================================
+
+describe('dispatchPr with custom prompt file', () => {
+  test('uses custom prompt file when promptFile is provided', async () => {
+    setupRallyHome();
+    const pr = makePr();
+
+    // Write a custom prompt file
+    const promptPath = join(tempDir, 'custom-review.md');
+    writeFileSync(promptPath, 'My custom review instructions for PR');
+
+    // Capture the prompt passed to spawn (via -p flag)
+    let capturedPrompt = null;
+    const capturingSpawn = (cmd, args) => {
+      const pIdx = args.indexOf('-p');
+      if (pIdx >= 0) capturedPrompt = args[pIdx + 1];
+      return { pid: 12345, unref() {}, on() {} };
+    };
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
+        return JSON.stringify(pr);
+      }
+      if (cmd === 'gh' && args[0] === 'copilot') {
+        return '';
+      }
+      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
+        const cFlag = args.indexOf('-C');
+        const cwd = cFlag >= 0 ? args[cFlag + 1] : opts?.cwd;
+        return execFileSync('git', ['-C', cwd, 'fetch', 'origin', pr.headRefName], opts);
+      }
+      return execFileSync(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    const result = await dispatchPr({
+      prNumber: 42,
+      repo: 'owner/repo',
+      repoPath,
+      promptFile: promptPath,
+      _exec: exec,
+      _spawn: capturingSpawn,
+    });
+
+    assert.ok(result.worktreePath, 'should return worktree path');
+    assert.strictEqual(result.pr.number, 42);
+    assert.ok(capturedPrompt, 'should have captured prompt from spawn');
+    assert.ok(capturedPrompt.includes('My custom review instructions for PR'),
+      'prompt should contain custom file content');
+  });
+
+  test('throws when promptFile does not exist', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const exec = createExecWithPr(pr);
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchPr({
+        prNumber: 42,
+        repo: 'owner/repo',
+        repoPath,
+        promptFile: '/nonexistent/prompt.md',
+        _exec: exec,
+        _spawn: noopSpawn,
+      }),
+      (err) => {
+        assert.ok(err.message.includes('prompt file') || err.code === 'ENOENT');
+        return true;
+      }
+    );
   });
 });

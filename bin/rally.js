@@ -164,6 +164,7 @@ dispatch
   .option('--repo-path <path>', 'Path to local repo clone')
   .option('--team-dir <path>', 'Path to custom squad directory')
   .option('--sandbox', 'Run Copilot inside a Docker sandbox microVM for host isolation')
+  .option('--prompt <path>', 'Path to a custom review prompt file')
   .action(async (number, opts) => {
     try {
       const { resolveRepo } = await import('../lib/dispatch.js');
@@ -175,8 +176,10 @@ dispatch
         repoPath: opts.repoPath || resolved.project.path,
         teamDir: opts.teamDir,
         sandbox: !!opts.sandbox,
+        promptFile: opts.prompt,
       });
       console.log(`Dispatched PR #${number}: ${result.pr.title} → ${result.worktreePath}`);
+      console.log(`Review output → ${result.worktreePath}/REVIEW.md`);
     } catch (err) {
       handleError(err);
     }

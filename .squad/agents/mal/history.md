@@ -617,3 +617,31 @@ Facilitated critical retro on Phase 4–5 sprint (issues #23, #25, #26, #27, #28
 **Artifact:** `.squad/decisions/inbox/mal-full-project-retro.md`
 
 **Status:** Rally is production-ready. 29 issues closed, 321 tests, zero technical debt blockers. Clean main branch.
+
+### 2026-02-24 — Issue #151: Read-Only Copilot Research
+
+**Task:** Research two alternative approaches to restricting Copilot to read-only mode during dispatch, replacing the copilot-instructions.md approach from PR #141.
+
+**Findings:**
+1. **`--deny-tool` flags (Approach 1):** Copilot CLI supports `--deny-tool 'shell(git push)'`, `--deny-tool 'shell(gh pr)'`, etc. These are CLI-level enforcement — Copilot literally cannot use denied tools. Covers shell commands and MCP servers. Granularity is at first-level subcommand (e.g., can't allow `gh issue view` while denying `gh issue comment`).
+2. **`preToolUse` hooks (Approach 2):** Hooks in `.github/hooks/hooks.json` can intercept and deny tool calls via a bash script. Maximum granularity (can inspect full command string) but still writes files into worktrees and adds execution overhead.
+
+**Recommendation:** Use `--deny-tool` flags as primary enforcement in `launchCopilot()`. Keep copilot-instructions.md as defense-in-depth but fix the overwrite issue. Only add hooks if the loss of read-only `gh` commands proves problematic.
+
+**Deliverable:** Research comment posted on [issue #151](https://github.com/jsturtevant/rally/issues/151#issuecomment-3948109874).
+
+### 2026-02-24 — Issue #151: Read-Only Enforcement Implemented (Kaylee)
+
+**Status:** ✅ Implemented in PR #156 (Kaylee)
+
+Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-02-24 research) was executed by Kaylee Core Dev:
+
+**What was shipped:**
+- `--deny-tool` flags now passed to `gh copilot` in `launchCopilot()` in `lib/copilot.js`
+- Blocks write commands: `shell(git push)`, `shell(git commit)`, `shell(gh pr)`, `shell(gh issue)`, `shell(gh repo)`, `shell(gh api)`
+- Blocks MCP tools: `github-mcp-server`
+- Read-only policy embedded in prompt (not written to files)
+- Removed `lib/copilot-instructions.js` (file writing approach)
+- All 396 tests passing
+
+**Outcome:** Issue #151 resolved. Read-only enforcement is now CLI-level, requires zero file system side effects, and cannot be bypassed by the user.

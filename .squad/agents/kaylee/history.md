@@ -529,3 +529,23 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Dashboard 'd' shortcut:** Added `d` key shortcut in dashboard to remove the selected dispatch (calls `dispatchRemove`). Help text updated to include `d delete`.
 - **Injectable `_exec`:** `dispatchClean` accepts `_exec` param for testing branch deletion without real git repos, following the same DI pattern as `dispatchRemove`.
 - **Tests:** 12 unit tests (was 9) — added tests for "cleaned" status, branch deletion, and branch deletion failure resilience. All 390 tests pass.
+
+### 2026 — README Documentation Update (Issue #152, PR #153)
+
+- **Title redesign:** Changed from plain "# Rally" to linked title "# [Rally](https://bradygaster.github.io/squad/) your <sub>Squad</sub>" with "your" as a subscript (semantic styling for visual hierarchy)
+- **Added "Why Rally?" section:** Brief 3-sentence explanation of the problem Rally solves — automation of the Squad workflow, elimination of ~15 manual steps, and keeping shared repos clean. Content sourced from PRD §1.
+- **Complete command documentation:** Discovered and documented all 9 dispatch subcommands. README was missing `remove`, `log`, `clean`, and `refresh` subcommands. All options now current with latest `rally --help` output.
+- **Added "Future Work" section:** Extracted planned features from PRD (v1+ enhancements): smart worktree cleanup, team templates, PR creation automation, advanced team configuration, team snapshots/exports. Presented as brief bullet list.
+- **Process:** Ran all help commands (`rally --help`, `rally dispatch --help`, `rally dispatch {issue,pr,remove,log,clean,refresh} --help`, etc.) to sync documentation with actual CLI state. No tool/dependency changes needed — just docs.
+- **Branch & PR:** Created `docs/update-readme` branch, committed with Copilot co-author trailer, pushed, and opened PR #153 referencing issue #152.
+
+### 2026-02-24 — Deny-tool enforcement for read-only dispatch (#151 → PR #156)
+
+- **Replaced file-based approach:** Removed `copilot-instructions.md` file writing from PR #141. Per James's feedback, we can't modify user files in worktrees.
+- **CLI enforcement:** Added `--deny-tool` flags to `launchCopilot()` blocking `git push`, `git commit`, `gh pr/issue/repo/api`, and `github-mcp-server`.
+- **Prompt-based policy:** Read-only policy text now prepended to the Copilot prompt via `-p` instead of written to `.github/copilot-instructions.md`.
+- **`--allow-all-tools`:** Added so read tools work without prompting (deny flags take precedence).
+- **Exports:** `DENY_TOOLS` constant and `getReadOnlyPolicy()` exported from `lib/copilot.js` for testability.
+- **Deleted:** `lib/copilot-instructions.js`, `test/copilot-instructions.test.js`, dispatch-policy.md writing from setup.js.
+- **Test results:** 396 tests, 0 failures.
+- **Key learning:** `--deny-tool` flags are the proper CLI-level enforcement mechanism for restricting Copilot tool access. They take precedence over `--allow-all-tools`.

@@ -554,8 +554,13 @@ describe('dispatchPr with custom prompt file', () => {
     const promptPath = join(tempDir, 'custom-review.md');
     writeFileSync(promptPath, 'My custom review instructions for PR');
 
-    // Capture the copilotPrompt passed to setupDispatchWorktree
+    // Capture the prompt passed to spawn (via -p flag)
     let capturedPrompt = null;
+    const capturingSpawn = (cmd, args) => {
+      const pIdx = args.indexOf('-p');
+      if (pIdx >= 0) capturedPrompt = args[pIdx + 1];
+      return { pid: 12345, unref() {}, on() {} };
+    };
     const exec = (cmd, args, opts) => {
       if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
         return JSON.stringify(pr);
@@ -579,11 +584,14 @@ describe('dispatchPr with custom prompt file', () => {
       repoPath,
       promptFile: promptPath,
       _exec: exec,
-      _spawn: noopSpawn,
+      _spawn: capturingSpawn,
     });
 
     assert.ok(result.worktreePath, 'should return worktree path');
     assert.strictEqual(result.pr.number, 42);
+    assert.ok(capturedPrompt, 'should have captured prompt from spawn');
+    assert.ok(capturedPrompt.includes('My custom review instructions for PR'),
+      'prompt should contain custom file content');
   });
 
   test('throws when promptFile does not exist', async () => {

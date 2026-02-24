@@ -36,10 +36,11 @@ const onboardCmd = program
   .description('Onboard a repo to Rally (local path, GitHub URL, or owner/repo)')
   .argument('[path]', 'Path, GitHub URL, or owner/repo (defaults to current directory)')
   .option('--team <name>', 'Use a named team (skips interactive prompt)')
+  .option('--fork <owner/repo>', 'Set origin to your fork and upstream to the main repo')
   .hook('preAction', () => assertTools())
   .action(async (pathArg, opts) => {
     try {
-      await onboard({ path: pathArg, team: opts.team });
+      await onboard({ path: pathArg, team: opts.team, fork: opts.fork });
     } catch (err) {
       handleError(err);
     }

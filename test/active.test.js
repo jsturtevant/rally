@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -206,7 +206,7 @@ test('lock is released even when wrapped function throws', () => {
 test('stale lock by age is removed and addDispatch succeeds', () => {
   const lockDir = join(tempDir, '.active.lock');
   mkdirSync(lockDir);
-  const staleInfo = { pid: process.pid, timestamp: Date.now() - 6 * 60 * 1000 };
+  const staleInfo = { pid: 999999, timestamp: Date.now() - 6 * 60 * 1000 };
   writeFileSync(join(lockDir, 'info.json'), JSON.stringify(staleInfo), 'utf8');
 
   const result = addDispatch(makeRecord({ id: 'stale-age' }));
@@ -223,6 +223,36 @@ test('stale lock by dead pid is removed and addDispatch succeeds', () => {
   const result = addDispatch(makeRecord({ id: 'stale-pid' }));
   assert.strictEqual(result.id, 'stale-pid');
   assert.ok(!existsSync(lockDir), 'stale lock dir should be removed');
+});
+
+test('lock without info.json (legacy) uses mtime for stale detection', () => {
+  const lockDir = join(tempDir, '.active.lock');
+  mkdirSync(lockDir);
+  // Create lock dir but no info.json — simulate legacy or failed write
+  // Touch the dir to set mtime to 6 minutes ago
+  const staleTime = Date.now() - 6 * 60 * 1000;
+  utimesSync(lockDir, new Date(staleTime), new Date(staleTime));
+
+  const result = addDispatch(makeRecord({ id: 'legacy-lock' }));
+  assert.strictEqual(result.id, 'legacy-lock');
+  assert.ok(!existsSync(lockDir), 'legacy lock dir should be removed by mtime');
+});
+
+test('non-stale lock (alive PID, recent timestamp) is NOT removed', () => {
+  const lockDir = join(tempDir, '.active.lock');
+  mkdirSync(lockDir);
+  const validInfo = { pid: process.pid, timestamp: Date.now() };
+  writeFileSync(join(lockDir, 'info.json'), JSON.stringify(validInfo), 'utf8');
+
+  // Attempt to add dispatch should timeout waiting for this valid lock
+  const startTime = Date.now();
+  assert.throws(
+    () => addDispatch(makeRecord({ id: 'should-fail' })),
+    /Failed to acquire lock/
+  );
+  const elapsed = Date.now() - startTime;
+  assert.ok(elapsed >= 10000, 'should wait for lock timeout');
+  assert.ok(existsSync(lockDir), 'valid lock dir should NOT be removed');
 });
 
 test('updateDispatchField updates a single field', () => {

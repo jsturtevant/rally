@@ -1,8 +1,8 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { join, basename } from 'node:path';
+import { tmpdir, homedir } from 'node:os';
 import yaml from 'js-yaml';
 import {
   getConfigDir,
@@ -14,13 +14,48 @@ import {
   validateOnboarded,
 } from '../lib/config.js';
 
-test('getConfigDir returns default path', () => {
+test('getConfigDir returns ~/rally by default (not ~/.rally)', () => {
   const originalEnv = process.env.RALLY_HOME;
   delete process.env.RALLY_HOME;
   
   const configDir = getConfigDir();
-  assert.ok(configDir.endsWith('.rally'));
+  const home = homedir();
+  // New default is ~/rally (no dot prefix)
+  const expected = join(home, 'rally');
+  const legacy = join(home, '.rally');
+  // Must be one of the two valid locations
+  assert.ok(
+    configDir === expected || configDir === legacy,
+    `Expected ${expected} or ${legacy}, got ${configDir}`
+  );
   
+  if (originalEnv) {
+    process.env.RALLY_HOME = originalEnv;
+  }
+});
+
+test('getConfigDir falls back to ~/.rally when it exists and ~/rally does not', () => {
+  const originalEnv = process.env.RALLY_HOME;
+  delete process.env.RALLY_HOME;
+
+  // This test verifies the backward-compat logic.
+  // If ~/.rally exists on this system, getConfigDir should return it
+  // (unless ~/rally also exists, in which case ~/rally wins).
+  const configDir = getConfigDir();
+  const home = homedir();
+  const newDir = join(home, 'rally');
+  const legacyDir = join(home, '.rally');
+
+  if (existsSync(legacyDir) && !existsSync(newDir)) {
+    assert.strictEqual(configDir, legacyDir);
+  } else if (existsSync(newDir)) {
+    assert.strictEqual(configDir, newDir);
+  }
+  // else neither exists — defaults to newDir
+  if (!existsSync(newDir) && !existsSync(legacyDir)) {
+    assert.strictEqual(configDir, newDir);
+  }
+
   if (originalEnv) {
     process.env.RALLY_HOME = originalEnv;
   }

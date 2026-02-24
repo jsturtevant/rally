@@ -21,7 +21,7 @@ test('createSymlink creates valid symlink', () => {
     createSymlink(target, linkPath);
     
     assert.ok(existsSync(linkPath));
-    const actualTarget = readlinkSync(linkPath);
+    const actualTarget = readlinkSync(linkPath).replace(/[\\/]+$/, '');
     assert.strictEqual(actualTarget, target);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
@@ -129,7 +129,7 @@ test('createSymlink is idempotent when symlink exists with correct target', () =
     createSymlink(target, linkPath);
     
     assert.ok(existsSync(linkPath));
-    const actualTarget = readlinkSync(linkPath);
+    const actualTarget = readlinkSync(linkPath).replace(/[\\/]+$/, '');
     assert.strictEqual(actualTarget, target);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
@@ -153,10 +153,10 @@ test('createSymlink replaces symlink pointing to different target', () => {
     mkdirSync(target1);
     mkdirSync(target2);
     createSymlink(target1, linkPath);
-    assert.strictEqual(readlinkSync(linkPath), target1);
+    assert.strictEqual(readlinkSync(linkPath).replace(/[\\/]+$/, ''), target1);
     
     createSymlink(target2, linkPath);
-    assert.strictEqual(readlinkSync(linkPath), target2);
+    assert.strictEqual(readlinkSync(linkPath).replace(/[\\/]+$/, ''), target2);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

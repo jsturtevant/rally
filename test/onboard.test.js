@@ -72,7 +72,7 @@ describe('onboard', () => {
     assert.ok(existsSync(squadLink), '.squad should exist');
     const stats = lstatSync(squadLink);
     assert.ok(stats.isSymbolicLink(), '.squad should be a symlink');
-    assert.strictEqual(readlinkSync(squadLink), join(teamDir, '.squad'));
+    assert.strictEqual(readlinkSync(squadLink).replace(/[\\/]+$/, ''), join(teamDir, '.squad'));
   });
 
   test('creates .github/agents/squad.agent.md symlink', async () => {
@@ -238,7 +238,7 @@ describe('onboard', () => {
     assert.ok(existsSync(templatesLink), '.squad-templates should exist');
     const stats = lstatSync(templatesLink);
     assert.ok(stats.isSymbolicLink(), '.squad-templates should be a symlink');
-    assert.strictEqual(readlinkSync(templatesLink), join(teamDir, '.squad-templates'));
+    assert.strictEqual(readlinkSync(templatesLink).replace(/[\\/]+$/, ''), join(teamDir, '.squad-templates'));
   });
 
   // --- Empty projects.yaml (review issue #3) ---

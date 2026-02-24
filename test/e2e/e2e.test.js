@@ -26,7 +26,7 @@ function rally(args, opts = {}) {
     ...rest,
     env: {
       ...process.env,
-      RALLY_HOME: rallyHome || '/tmp/rally-e2e-test',
+      RALLY_HOME: rallyHome || join(tmpdir(), 'rally-e2e-test'),
       NO_COLOR: '1',
       GIT_TERMINAL_PROMPT: '0',
       ...extraEnv,

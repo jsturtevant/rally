@@ -241,7 +241,7 @@ describe('Dashboard component', () => {
 
   it('action menu shows View dispatch logs when logPath exists', async () => {
     const dispatches = makeSampleDispatches();
-    dispatches[0].logPath = '/tmp/test-log.txt';
+    dispatches[0].logPath = join(tmpdir(), 'test-log.txt');
     setupTestEnv(dispatches);
     mkdirSync(WORKTREE_DIR, { recursive: true });
 
@@ -321,8 +321,9 @@ describe('Dashboard component', () => {
 
   it('l shortcut shows inline log viewer for selected dispatch with logPath', async () => {
     const dispatches = makeSampleDispatches();
-    dispatches[0].logPath = '/tmp/test-log.txt';
-    writeFileSync(dispatches[0].logPath, 'line1\nline2\nline3', 'utf8');
+    const logFile = join(TEST_DIR, 'test-log.txt');
+    dispatches[0].logPath = logFile;
+    writeFileSync(logFile, 'line1\nline2\nline3', 'utf8');
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
     instance = render(
@@ -409,8 +410,9 @@ describe('Dashboard component', () => {
 
   it('action menu View logs opens inline log viewer', async () => {
     const dispatches = makeSampleDispatches();
-    dispatches[0].logPath = '/tmp/test-log.txt';
-    writeFileSync(dispatches[0].logPath, 'action-log-line', 'utf8');
+    const logFile = join(TEST_DIR, 'test-log.txt');
+    dispatches[0].logPath = logFile;
+    writeFileSync(logFile, 'action-log-line', 'utf8');
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
     instance = render(
@@ -432,8 +434,9 @@ describe('Dashboard component', () => {
 
   it('log viewer Escape returns to dashboard', async () => {
     const dispatches = makeSampleDispatches();
-    dispatches[0].logPath = '/tmp/test-log.txt';
-    writeFileSync(dispatches[0].logPath, 'escape-test-log', 'utf8');
+    const logFile = join(TEST_DIR, 'test-log.txt');
+    dispatches[0].logPath = logFile;
+    writeFileSync(logFile, 'escape-test-log', 'utf8');
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
     instance = render(

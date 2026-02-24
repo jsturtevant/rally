@@ -31,7 +31,7 @@ program
     }
   });
 
-program
+const onboardCmd = program
   .command('onboard')
   .description('Onboard a repo to Rally (local path, GitHub URL, or owner/repo)')
   .argument('[path]', 'Path, GitHub URL, or owner/repo (defaults to current directory)')
@@ -40,6 +40,20 @@ program
   .action(async (pathArg, opts) => {
     try {
       await onboard({ path: pathArg, team: opts.team });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+onboardCmd
+  .command('remove')
+  .description('Remove an onboarded project from Rally')
+  .argument('[project]', 'Project name to remove (interactive picker if omitted)')
+  .option('--yes', 'Skip confirmation prompt')
+  .action(async (project, opts) => {
+    try {
+      const { onboardRemove } = await import('../lib/onboard-remove.js');
+      await onboardRemove({ project, yes: opts.yes });
     } catch (err) {
       handleError(err);
     }

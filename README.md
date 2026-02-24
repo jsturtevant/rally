@@ -4,7 +4,7 @@ CLI tool for dispatching AI coding agents (Squad teams) to GitHub issues via git
 
 ## Why Rally?
 
-Rally automates the full Squad workflow — from GitHub issues to pull requests — without polluting your repository. It eliminates ~15 manual steps: creating branches, setting up worktrees, symlinking Squad state, and managing multiple parallel dispatches. Use Rally to parallelize work across issues and keep your shared repos clean.
+Rally is for individual developers using [Squad](https://bradygaster.github.io/squad/) on shared repos — solo devs, open source maintainers, or anyone on a codebase where committing `.squad/` files isn't appropriate. It automates the full Squad workflow — from GitHub issues to pull requests — without polluting your repository, eliminating ~15 manual steps: creating branches, setting up worktrees, symlinking Squad state, and managing multiple parallel dispatches.
 
 ## Requirements
 

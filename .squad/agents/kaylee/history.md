@@ -549,3 +549,10 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Deleted:** `lib/copilot-instructions.js`, `test/copilot-instructions.test.js`, dispatch-policy.md writing from setup.js.
 - **Test results:** 396 tests, 0 failures.
 - **Key learning:** `--deny-tool` flags are the proper CLI-level enforcement mechanism for restricting Copilot tool access. They take precedence over `--allow-all-tools`.
+
+### Auto Version Bump Workflow (#157 → PR #160)
+- **Created:** `.github/workflows/version-bump.yml` — auto-bumps patch version on every PR merge to main.
+- **Mechanism:** Triggers on `push` to `main`, runs `npm version patch --no-git-tag-version`, commits and pushes.
+- **Safeguards:** Skips if commit message starts with `chore: bump version` (prevents infinite loop). Includes `[skip ci]` to avoid unnecessary CI runs.
+- **Current version:** `0.1.0`. Each merged PR will increment patch (0.1.1, 0.1.2, etc.).
+- **Key learning:** GitHub Actions `GITHUB_TOKEN` has `contents: write` by default when explicitly granted via `permissions:` block. The `if` condition on the job level is the cleanest way to prevent recursive triggers.

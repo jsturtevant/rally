@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -18,6 +18,8 @@ describe('worktree', () => {
   beforeEach(() => {
     // Create a temporary directory for each test
     testDir = mkdtempSync(join(tmpdir(), 'worktree-test-'));
+    // Resolve short paths (e.g. RUNNER~1 on Windows) to canonical form
+    try { testDir = realpathSync(testDir); } catch {}
     repoPath = join(testDir, 'repo');
 
     // Initialize a git repository with an initial commit

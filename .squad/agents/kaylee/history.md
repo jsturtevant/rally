@@ -549,3 +549,33 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Deleted:** `lib/copilot-instructions.js`, `test/copilot-instructions.test.js`, dispatch-policy.md writing from setup.js.
 - **Test results:** 396 tests, 0 failures.
 - **Key learning:** `--deny-tool` flags are the proper CLI-level enforcement mechanism for restricting Copilot tool access. They take precedence over `--allow-all-tools`.
+
+### Issue #164 — Dispatch Connect: Status Transition & Copilot Stats
+
+**Sub-task 1: Change "done" to "ready for review" on copilot exit**
+- `lib/dispatch-refresh.js`: Auto-transition target changed from `'done'` to `'reviewing'`. Removed `reviewing` from the status filter since it's now the terminal auto-status (only `planning` and `implementing` get auto-transitioned).
+- `lib/ui/components/DispatchTable.jsx`: Added `STATUS_LABELS` map so `reviewing` displays as `🟡 ready for review` instead of `🟡 reviewing`.
+- `lib/dispatch-clean.js`: Added `reviewing` to the default clean filter alongside `done` and `cleaned`.
+- `lib/ui/dashboard-data.js`: `computeSummary` now counts `reviewing` in the `done` bucket.
+
+**Sub-task 2: Parse and display copilot output stats**
+- Created `lib/copilot-stats.js` with `parseCopilotStats(logContent)` and `formatStatsSummary(stats)`.
+- `parseCopilotStats` returns structured object with `premiumRequests` (number), `apiTime` (string), `sessionTime` (string), `codeChanges` ({additions, deletions}), `models` (array). Returns `null` if no stats found.
+- Time value validation: only accepts values matching `/^\d+[hms]/` to reject garbled input.
+- `lib/dispatch-log.js`: Shows stats summary line before raw log output.
+- `lib/ui/dashboard-data.js`: `enrichWithStats()` reads log files and populates `changes` field on dispatches.
+- `lib/ui/components/DispatchTable.jsx`: Added "Changes" column showing `+N -N` from stats.
+- Column widths adjusted: Project 18, Branch 22, Folder 30, Status 20, Changes 10 — fits within Ink's default rendering.
+
+**Key patterns:**
+- `STATUS_LABELS` map in DispatchTable for human-friendly status display names.
+- `enrichWithStats()` in dashboard-data.js reads log files best-effort (try/catch, skips missing files).
+- Time format validation prevents garbled regex matches from leaking into parsed stats.
+
+**Files modified:**
+- `lib/dispatch-refresh.js`, `lib/dispatch-clean.js`, `lib/dispatch-log.js`
+- `lib/copilot-stats.js` (new), `test/copilot-stats.test.js` (new)
+- `lib/ui/components/DispatchTable.jsx`, `lib/ui/dashboard-data.js`
+- `test/dispatch-refresh.test.js`, `test/integration.test.js`
+
+**Test results:** 415 pass, 0 failures from changes (2 pre-existing timeout issues in e2e).

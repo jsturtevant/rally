@@ -1809,3 +1809,226 @@ PR #141 attempted to enforce read-only dispatch by writing `.github/copilot-inst
 ## PR
 
 - #156: Implement deny-tool flags for read-only dispatch
+
+---
+
+# Decision: Issue #164 Decomposition — Session Reconnect & Dashboard Polish
+
+**Date:** 2026-02-24  
+**Author:** Mal (Lead)  
+**Issue:** https://github.com/jsturtevant/rally/issues/164  
+**Status:** Proposed
+
+## Summary
+
+Issue #164 bundles four sub-features. Decomposed into independent work items with scope decisions and feasibility calls.
+
+## Sub-feature A: Reconnect to Copilot Session
+
+### Feasibility Assessment
+
+**UPDATE:** User clarified that `gh copilot --resume <session_id>` IS supported. This changes feasibility from "impossible" to "possible."
+
+**Original assessment:** `gh copilot` does NOT support session reconnect. The CLI has no `--session`, `--resume`, or `--attach` flag. However, user provided technical clarification (2026-02-24T05:20:55Z) confirming `--resume` is available.
+
+### Decision: Launch NEW session in existing worktree (pending feasibility review)
+
+Instead of reconnecting via `--resume`, we launch a **new** `gh copilot` session in the same worktree. The worktree already has code changes, `.squad/dispatch-context.md`, and git history from prior session. A new Copilot session dropped into that worktree has full context.
+
+**Approach:**
+1. New command: `rally dispatch continue <number>` — launches fresh Copilot session in existing dispatch worktree
+2. Dashboard action: Add "(c) Continue with Copilot" to `ActionMenu` for dispatches in `done`/`reviewing` status
+3. On continue: update dispatch status back to `implementing`, launch Copilot with prompt "Review the existing changes and the user's follow-up instructions", update `session_id` with new PID, append to existing log file
+4. Accept optional `--prompt "fix the tests"` flag for inline instructions
+
+**Files to change:**
+- `lib/dispatch-continue.js` — NEW module. Core logic: validate dispatch exists and worktree is intact, launch new Copilot session, update active.yaml
+- `lib/copilot.js` — Add `appendLogPath` option to `launchCopilot()` so we open log file with `'a'` (append) instead of `'w'` (overwrite)
+- `lib/active.js` — Add `updateDispatchSession(id, sessionId, logPath)` to update session_id without changing status separately
+- `bin/rally.js` — Register `dispatch continue <number>` subcommand
+- `lib/ui/components/ActionMenu.jsx` + `.js` — Add "Continue with Copilot" action
+- `lib/ui/Dashboard.jsx` + `.js` — Wire up the continue action
+
+### Note on "reconnect" vs. "continue"
+
+The command is `continue`, not `reconnect` — because depending on user's intent, we may spawn a new session rather than reattach. Honest naming pending feasibility review with `--resume`.
+
+## Sub-feature B: Friendly Session Naming
+
+### Decision: NOT in scope for v1
+
+The `session_id` is currently a PID (placeholder). The user doesn't interact with session IDs directly — they use issue/PR numbers (`rally dispatch log 42`, dashboard shows `Issue #42`).
+
+**If we add friendly names later:** Use `<repo>-<type>-<number>` which we already generate as `dispatchId` (e.g., `rally-issue-42`). No need for adjective-noun generators.
+
+**Call:** Skip for now. The dispatch ID is already friendly.
+
+## Sub-feature C: "Ready for Review" instead of "Done"
+
+### Decision: Change auto-transition to `reviewing`, update display
+
+When a Copilot process exits, `dispatch-refresh.js` auto-transitions the dispatch status. Previously it went to `done`. Change this to `reviewing` ("ready for review").
+
+**Implementation:**
+- `reviewing` is now the terminal auto-transition status when Copilot process exits (was `done`)
+- `reviewing` dispatches are **skipped** by refresh logic — they don't auto-transition further
+- `dispatch-clean` accepts `reviewing` alongside `done` and `cleaned` for cleanup
+- `computeSummary` counts `reviewing` in the `done` bucket for dashboard summary
+
+**Rationale:** `done` should only be set manually by the user after reviewing Copilot's work. Auto-transition to `reviewing` signals "Copilot finished, human needs to look at this" — more accurate post-process state.
+
+### Files Changed
+- `lib/dispatch-refresh.js` — Status transition updated
+- `dispatch-clean` — Updated to accept `reviewing`
+- `computeSummary` — Updated to count `reviewing` in `done` bucket
+
+## Sub-feature D: Show Change Stats from Copilot Output
+
+### Decision: Parse stats from log, show in dashboard
+
+The copilot output log contains structured stats at the end:
+```
+Total usage est:        3 Premium requests
+API time spent:         2m 48s
+Total session time:     3m 6s
+Total code changes:     +164 -1
+```
+
+We parse these and surface them in the dashboard.
+
+**Implementation:**
+1. New module `lib/copilot-stats.js` — Parse `.copilot-output.log` file for stats using regex. Return structured `{ premiumRequests, apiTime, sessionTime, additions, deletions }` or null if not found/parseable.
+2. Show stats in dashboard: Add `changes` column to `DispatchTable` showing `+164 -1` when available.
+3. Show stats in `dispatch log` output: After printing raw log, print parsed summary line.
+4. Stats are parsed on-demand (not stored in active.yaml) — the log file is the source of truth.
+
+**Key regex patterns:**
+- `Total code changes:\s+\+(\d+)\s+-(\d+)` → additions/deletions
+- `Total usage est:\s+(\d+)\s+Premium requests` → premium requests
+- `Total session time:\s+(.+)` → session time
+
+### Malformed Input Behavior
+
+The parser handles malformed input asymmetrically:
+- **Numeric fields** (`premiumRequests`, `codeChanges`): Strict regex guards → return `null` on non-match
+- **Text fields** (`apiTime`, `sessionTime`): Loose capture → return raw garbled text
+
+This is acceptable because:
+1. The parser only consumes copilot output (trusted source)
+2. Downstream consumers should handle unexpected values anyway
+3. Adding format validation would be over-engineering for now
+
+If `apiTime`/`sessionTime` values are used for calculations (e.g., duration parsing), they'll need format validation. Tests are ready to catch that regression.
+
+### Files Changed
+- `lib/copilot-stats.js` — NEW module. `parseCopilotStats(logPath)` reads the log file and returns parsed stats or null.
+- `lib/ui/components/DispatchTable.jsx` + `.js` — Add `changes` column showing `+N -M` (green/red colored)
+- `lib/ui/dashboard-data.js` — Call `parseCopilotStats` for each dispatch that has a logPath, attach to dispatch data
+- `lib/dispatch-log.js` — After printing raw log, print parsed summary
+
+## Implementation Priority
+
+1. **Sub-feature C** (status transition) — Already implemented by Kaylee
+2. **Sub-feature D** (change stats) — In progress; implementation complete, awaiting dashboard integration
+3. **Sub-feature A** (continue command) — Largest, highest value. Deferred pending feasibility review with `--resume`.
+4. **Sub-feature B** (friendly naming) — Deferred. Not needed yet.
+
+## Work Assignment Recommendations
+
+- **Sub-feature C:** ✅ Kaylee (complete)
+- **Sub-feature D:** 🔄 Kaylee (implementation complete, dashboard integration pending)
+- **Sub-feature A:** 🟡 Pending user feedback on `--resume` feasibility
+- **Sub-feature B:** Deferred
+
+---
+
+# Decision: Status Transition to Reviewing (Issue #164, Sub-feature C)
+
+**Date:** 2026-02-24  
+**Author:** Kaylee (Core Dev)  
+**Issue:** #164  
+**Status:** Implemented
+
+## Context
+
+When a Copilot process exits, `dispatch-refresh.js` auto-transitions the dispatch status. Previously it went to `done`. The user wants it to go to `reviewing` ("ready for review") instead.
+
+## Decision
+
+- `reviewing` is now the terminal auto-transition status (was `done`)
+- `reviewing` dispatches are **skipped** by the refresh logic — they don't auto-transition further
+- `dispatch-clean` accepts `reviewing` alongside `done` and `cleaned` for cleanup
+- `computeSummary` counts `reviewing` in the `done` bucket for dashboard summary
+
+## Rationale
+
+`done` should only be set manually by the user after reviewing the Copilot's work. The auto-transition to `reviewing` signals "Copilot finished, human needs to look at this" — a more accurate status for the post-process state.
+
+## Implementation
+
+- `lib/dispatch-refresh.js` — Status transition logic updated
+- Tests written and passing
+
+## Impact
+
+- All 396 tests pass
+- No breaking changes; internal refactoring of status semantics
+
+---
+
+# Decision: Copilot Stats Parser Asymmetry (Issue #164, Sub-feature D)
+
+**Date:** 2026-02-24  
+**Author:** Jayne (Tester)  
+**Status:** Observation (for team awareness)
+
+## Context
+
+The `parseCopilotStats()` implementation handles malformed input asymmetrically:
+
+ return `null` on non-match
+- **Text fields** (`apiTime`, `sessionTime`): Loose capture → return raw garbled text
+
+## Decision
+
+This is acceptable because:
+1. The parser only consumes copilot output (trusted source)
+2. Downstream consumers should handle unexpected values anyway
+3. Adding format validation would be over-engineering for now
+
+## If this matters later
+
+If `apiTime`/`sessionTime` values are used for calculations (e.g., duration parsing), they'll need format validation. Tests are ready to catch that regression.
+
+---
+
+# Directive: Copilot Session Reconnect Capability (Issue #164, Sub-feature A)
+
+**Date:** 2026-02-24T05:20:55Z  
+**Source:** User (James Sturtevant via Copilot)  
+**Topic:** Session management  
+
+## What
+
+`gh copilot --resume <session_id>` enables reconnecting to an existing copilot session. This is the mechanism for issue #164's reconnect feature.
+
+## Why
+
+User provided technical detail — Mal's initial decomposition assumed reconnect was impossible, but it IS supported. This changes Sub-feature A's feasibility assessment and approach.
+
+---
+
+# Directive: No Anticipatory Tests (Issue #164)
+
+**Date:** 2026-02-24T05:02:21Z  
+**Source:** User (James Sturtevant via Copilot)  
+**Topic:** Testing practice  
+
+## What
+
+Never spawn anticipatory tests. Tests must always be written as part of the same PR as the implementation — not ahead of it.
+
+## Why
+
+User request — captured for team memory. Prevents test assumptions from diverging from actual implementation code.
+

@@ -31,30 +31,28 @@ describe('exit code constants', () => {
 });
 
 describe('fatal()', () => {
-  it('calls process.exit with the given code', () => {
-    const f = makeFakes();
-    fatal('boom', 3, f);
-    assert.deepEqual(f.exits, [3]);
+  it('throws RallyError with the given exit code', () => {
+    assert.throws(
+      () => fatal('boom', 3),
+      (err) => err instanceof RallyError && err.exitCode === 3 && err.message === 'boom'
+    );
   });
 
   it('defaults to exit code 1', () => {
-    const f = makeFakes();
-    fatal('boom', undefined, f);
-    assert.deepEqual(f.exits, [1]);
+    assert.throws(
+      () => fatal('boom'),
+      (err) => err instanceof RallyError && err.exitCode === 1
+    );
   });
 
-  it('logs message to stderr', () => {
-    const f = makeFakes();
-    fatal('something broke', 1, f);
-    assert.deepEqual(f.logs, ['Error: something broke']);
-  });
-
-  it('does not log stack traces', () => {
-    const f = makeFakes();
-    fatal('oops', 1, f);
-    for (const line of f.logs) {
-      assert.ok(!line.includes('at '), 'should not contain stack trace');
-      assert.ok(!line.includes('Error\n'), 'should not contain raw Error');
+  it('creates error with message', () => {
+    try {
+      fatal('something broke', 1);
+      assert.fail('should have thrown');
+    } catch (err) {
+      assert.ok(err instanceof RallyError);
+      assert.equal(err.message, 'something broke');
+      assert.equal(err.exitCode, 1);
     }
   });
 });
@@ -78,17 +76,21 @@ describe('RallyError', () => {
 });
 
 describe('handleError()', () => {
-  it('maps RallyError to its exitCode', () => {
-    const f = makeFakes();
-    handleError(new RallyError('git fail', EXIT_GIT), f);
-    assert.deepEqual(f.exits, [EXIT_GIT]);
-    assert.deepEqual(f.logs, ['Error: git fail']);
+  it('throws RallyError if given RallyError', () => {
+    const err = new RallyError('git fail', EXIT_GIT);
+    assert.throws(
+      () => handleError(err),
+      (thrown) => thrown === err && thrown.exitCode === EXIT_GIT
+    );
   });
 
-  it('maps generic Error to EXIT_GENERAL', () => {
-    const f = makeFakes();
-    handleError(new Error('unknown'), f);
-    assert.deepEqual(f.exits, [EXIT_GENERAL]);
-    assert.deepEqual(f.logs, ['Error: unknown']);
+  it('wraps generic Error in RallyError with EXIT_GENERAL', () => {
+    const err = new Error('unknown');
+    assert.throws(
+      () => handleError(err),
+      (thrown) => thrown instanceof RallyError && 
+                  thrown.exitCode === EXIT_GENERAL && 
+                  thrown.message === 'unknown'
+    );
   });
 });

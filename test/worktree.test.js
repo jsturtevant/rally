@@ -21,7 +21,13 @@ describe('worktree', () => {
     // Resolve short paths (e.g. RUNNER~1 on Windows) to canonical form
     try {
       testDir = realpathSync.native(testDir);
-      if (testDir.startsWith('\\\\?\\')) testDir = testDir.slice(4);
+      if (testDir.startsWith('\\\\?\\UNC\\')) {
+        // Convert extended-length UNC path (\\?\UNC\server\share\...) to standard UNC (\\server\share\...)
+        testDir = '\\\\' + testDir.slice(8);
+      } else if (testDir.startsWith('\\\\?\\')) {
+        // Strip extended-length prefix for drive-letter paths (e.g. \\?\C:\...)
+        testDir = testDir.slice(4);
+      }
     } catch {}
     repoPath = join(testDir, 'repo');
 

@@ -318,29 +318,24 @@ describe('Dashboard component', () => {
     assert.equal(spawnArgs.cmd, 'code');
   });
 
-  it('l shortcut views logs for selected dispatch with logPath', async () => {
-    let logCalled = false;
-    let logNumber;
-    const mockDispatchLog = async (number, opts) => {
-      logCalled = true;
-      logNumber = number;
-    };
-
+  it('l shortcut shows inline log viewer for selected dispatch with logPath', async () => {
     const dispatches = makeSampleDispatches();
     dispatches[0].logPath = '/tmp/test-log.txt';
+    writeFileSync(dispatches[0].logPath, 'line1\nline2\nline3', 'utf8');
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
     instance = render(
       React.createElement(Dashboard, {
         refreshInterval: 0,
-        _dispatchLog: mockDispatchLog,
       })
     );
     await delay();
     instance.stdin.write('l');
     await delay();
-    assert.ok(logCalled, 'l shortcut should call dispatchLog');
-    assert.equal(logNumber, 42, 'should pass dispatch number');
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Logs for'), 'should show log viewer title');
+    assert.ok(output.includes('Issue #42'), 'should show dispatch ref');
+    assert.ok(output.includes('Esc back'), 'should show escape hint');
   });
 
   it('l shortcut does nothing when no logPath', async () => {
@@ -381,22 +376,15 @@ describe('Dashboard component', () => {
     assert.equal(removeNumber, 42, 'should pass dispatch number');
   });
 
-  it('action menu View logs calls dispatchLog', async () => {
-    let logCalled = false;
-    let logNumber;
-    const mockDispatchLog = async (number, opts) => {
-      logCalled = true;
-      logNumber = number;
-    };
-
+  it('action menu View logs opens inline log viewer', async () => {
     const dispatches = makeSampleDispatches();
     dispatches[0].logPath = '/tmp/test-log.txt';
+    writeFileSync(dispatches[0].logPath, 'action-log-line', 'utf8');
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
     instance = render(
       React.createElement(Dashboard, {
         refreshInterval: 0,
-        _dispatchLog: mockDispatchLog,
       })
     );
     await delay();
@@ -406,7 +394,63 @@ describe('Dashboard component', () => {
     await delay();
     instance.stdin.write('\r');
     await delay();
-    assert.ok(logCalled, 'should have called dispatchLog');
-    assert.equal(logNumber, 42, 'should pass dispatch number');
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Logs for'), 'should show log viewer');
+    assert.ok(output.includes('Issue #42'), 'should show dispatch ref');
+  });
+
+  it('log viewer Escape returns to dashboard', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].logPath = '/tmp/test-log.txt';
+    writeFileSync(dispatches[0].logPath, 'escape-test-log', 'utf8');
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('l');
+    await delay();
+    assert.ok(instance.lastFrame().includes('Logs for'), 'should show log viewer');
+    instance.stdin.write('\x1B');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Rally Dashboard'), 'Escape should return to dashboard');
+  });
+
+  it('v shortcut does not quit the dashboard', async () => {
+    let spawnCalled = false;
+    const spawnMock = (cmd, args) => {
+      spawnCalled = true;
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('v');
+    await delay();
+    assert.ok(spawnCalled, 'should have called spawn');
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Rally Dashboard'), 'dashboard should still be visible after v');
+  });
+
+  it('d shortcut does not quit the dashboard', async () => {
+    let removeCalled = false;
+    const mockDispatchRemove = async (number) => { removeCalled = true; };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _dispatchRemove: mockDispatchRemove,
+      })
+    );
+    await delay();
+    instance.stdin.write('d');
+    await delay();
+    assert.ok(removeCalled, 'd should call dispatchRemove');
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Rally Dashboard'), 'dashboard should still be visible after d');
   });
 });

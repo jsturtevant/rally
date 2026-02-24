@@ -3,8 +3,8 @@ import { Box, Text, useInput, useApp } from 'ink';
 import { spawn as defaultSpawn } from 'node:child_process';
 import DispatchTable from './components/DispatchTable.jsx';
 import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
+import LogViewer from './components/LogViewer.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
-import { dispatchLog as defaultDispatchLog } from '../dispatch-log.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 
 export { computeSummary, getDashboardData, renderPlainDashboard };
@@ -31,12 +31,13 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchLog = defaultDispatchLog, _dispatchRemove = defaultDispatchRemove }) {
+export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove }) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0); // eslint-disable-line -- state setter triggers re-render to refresh data
   const [actionDispatch, setActionDispatch] = useState(null);
   const [actionIndex, setActionIndex] = useState(0);
+  const [logViewDispatch, setLogViewDispatch] = useState(null);
 
   let data;
   let error;
@@ -59,14 +60,14 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     : [];
   const actionCount = actions.length;
 
-  // Auto-refresh at the configured interval (pause during action menu)
+  // Auto-refresh at the configured interval (pause during action menu or log view)
   useEffect(() => {
-    if (!refreshInterval || actionDispatch) return;
+    if (!refreshInterval || actionDispatch || logViewDispatch) return;
     const timer = setInterval(() => {
       setRefreshKey(k => k + 1);
     }, refreshInterval);
     return () => clearInterval(timer);
-  }, [refreshInterval, actionDispatch]);
+  }, [refreshInterval, actionDispatch, logViewDispatch]);
 
   // Clamp selectedIndex when dispatch count changes
   useEffect(() => {
@@ -86,21 +87,22 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
         console.error(`Failed to launch VS Code: ${err.message}`);
       });
     }
-    exit();
   }
 
   function viewLogs(dispatch) {
-    exit();
-    _dispatchLog(dispatch.number, { repo: dispatch.repo }).catch((err) => {
-      console.error(`Failed to view logs: ${err.message}`);
-    });
+    if (dispatch.logPath) {
+      setLogViewDispatch(dispatch);
+      setActionDispatch(null);
+      setActionIndex(0);
+    }
   }
 
   function removeSelectedDispatch(dispatch) {
-    exit();
-    _dispatchRemove(dispatch.number, { repo: dispatch.repo }).catch((err) => {
-      console.error(`Failed to remove dispatch: ${err.message}`);
-    });
+    _dispatchRemove(dispatch.number, { repo: dispatch.repo })
+      .then(() => setRefreshKey(k => k + 1))
+      .catch((err) => {
+        console.error(`Failed to remove dispatch: ${err.message}`);
+      });
   }
 
   function handleActionSelect(direction) {
@@ -131,8 +133,8 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
   }
 
   useInput((input, key) => {
-    // When action menu is open, it handles its own input
-    if (actionDispatch) return;
+    // Log view and action menu handle their own input
+    if (logViewDispatch || actionDispatch) return;
 
     if (key.upArrow) {
       setSelectedIndex(i => (i > 0 ? i - 1 : 0));
@@ -145,10 +147,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     } else if (input === 'v' && count > 0) {
       openInVSCode(data.dispatches[selectedIndex]);
     } else if (input === 'l' && count > 0) {
-      const selected = data.dispatches[selectedIndex];
-      if (selected.logPath) {
-        viewLogs(selected);
-      }
+      viewLogs(data.dispatches[selectedIndex]);
     } else if (input === 'r') {
       setRefreshKey(k => k + 1);
     } else if (input === 'd' && count > 0) {
@@ -163,6 +162,15 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <Box flexDirection="column">
         <Text color="red">✗ {error}</Text>
       </Box>
+    );
+  }
+
+  if (logViewDispatch) {
+    return (
+      <LogViewer
+        dispatch={logViewDispatch}
+        onBack={() => setLogViewDispatch(null)}
+      />
     );
   }
 

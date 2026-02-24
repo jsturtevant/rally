@@ -1,6 +1,22 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkCopilotAvailable, launchCopilot, DENY_TOOLS, getReadOnlyPolicy } from '../lib/copilot.js';
+import { checkCopilotAvailable, checkDockerSandboxAvailable, launchCopilot, DENY_TOOLS, getReadOnlyPolicy } from '../lib/copilot.js';
+
+// =====================================================
+// checkDockerSandboxAvailable
+// =====================================================
+
+describe('checkDockerSandboxAvailable', () => {
+  test('returns true when docker sandbox --help succeeds', () => {
+    const exec = () => 'docker sandbox help output';
+    assert.strictEqual(checkDockerSandboxAvailable({ _exec: exec }), true);
+  });
+
+  test('returns false when docker sandbox --help fails', () => {
+    const exec = () => { throw new Error('unknown command "sandbox"'); };
+    assert.strictEqual(checkDockerSandboxAvailable({ _exec: exec }), false);
+  });
+});
 
 // =====================================================
 // checkCopilotAvailable
@@ -156,6 +172,25 @@ describe('launchCopilot', () => {
       () => launchCopilot('/wt', 'prompt', { _spawn: mockSpawn }),
       { message: 'permission denied' }
     );
+  });
+
+  test('spawns docker sandbox when sandbox option is true', () => {
+    let captured;
+    const mockSpawn = (cmd, args, opts) => {
+      captured = { cmd, args, opts };
+      return { pid: 42, unref() {} };
+    };
+
+    launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn, sandbox: true });
+
+    assert.strictEqual(captured.cmd, 'docker');
+    assert.strictEqual(captured.args[0], 'sandbox');
+    assert.strictEqual(captured.args[1], 'run');
+    assert.strictEqual(captured.args[2], 'copilot');
+    assert.strictEqual(captured.args[3], '/path/to/worktree');
+    assert.strictEqual(captured.args[4], '--');
+    assert.ok(captured.args.includes('--allow-all-tools'));
+    assert.ok(captured.args.includes('-p'));
   });
 
   test('calls unref on child process', () => {

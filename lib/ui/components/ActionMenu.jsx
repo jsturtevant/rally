@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
+import { UUID_RE } from '../../copilot.js';
 
 const ACTIONS = {
   OPEN_VSCODE: 'open-vscode',
@@ -15,7 +16,7 @@ const ACTIONS = {
 export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack }) {
   const hasLog = Boolean(dispatch.logPath);
   const hasConnectableSession = dispatch.session_id &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dispatch.session_id);
+    UUID_RE.test(dispatch.session_id);
 
   const actions = [
     { id: ACTIONS.OPEN_VSCODE, label: '(v) Open in VS Code' },

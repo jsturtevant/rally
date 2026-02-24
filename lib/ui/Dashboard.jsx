@@ -7,7 +7,7 @@ import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
-import { parseSessionIdFromLog as defaultParseSessionId } from '../copilot.js';
+import { parseSessionIdFromLog as defaultParseSessionId, UUID_RE } from '../copilot.js';
 
 export { computeSummary, getDashboardData, renderPlainDashboard };
 
@@ -56,7 +56,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
 
   // A session ID is connectable if it looks like a UUID (not a PID or 'pending')
   const hasConnectableSession = actionDispatch?.session_id &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(actionDispatch.session_id);
+    UUID_RE.test(actionDispatch.session_id);
 
   // Derive the action list once — used for both count and selection
   const actions = actionDispatch
@@ -113,11 +113,13 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     // Open VS Code at the worktree path
     const codeChild = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
     codeChild.unref();
-    codeChild.on('error', () => {});
+    codeChild.on('error', (err) => {
+      console.error(`Failed to launch VS Code: ${err.message}`);
+    });
 
-    // Bridge the session to VS Code via copilot --resume + /ide
-    const copilotChild = _spawn('copilot', [
-      '--resume', sessionId,
+    // Bridge the session to VS Code via gh copilot --resume + /ide
+    const copilotChild = _spawn('gh', [
+      'copilot', '--resume', sessionId,
       '-p', '/ide',
       '--allow-all',
     ], {
@@ -126,7 +128,9 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       stdio: 'ignore',
     });
     copilotChild.unref();
-    copilotChild.on('error', () => {});
+    copilotChild.on('error', (err) => {
+      console.error(`Failed to launch copilot session bridge: ${err.message}`);
+    });
   }
 
   function viewLogs(dispatch) {
@@ -193,7 +197,10 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     } else if (input === 'v' && count > 0) {
       openInVSCode(data.dispatches[selectedIndex]);
     } else if (input === 'c' && count > 0) {
-      connectIDE(data.dispatches[selectedIndex]);
+      const selected = data.dispatches[selectedIndex];
+      if (selected.session_id && UUID_RE.test(selected.session_id)) {
+        connectIDE(selected);
+      }
     } else if (input === 'l' && count > 0) {
       viewLogs(data.dispatches[selectedIndex]);
     } else if (input === 'r') {

@@ -96,11 +96,12 @@ const dispatch = program
   .description('Dispatch Squad to a GitHub issue or PR')
   .hook('preAction', () => assertTools())
   .action(() => {
-    console.log('Usage: rally dispatch <issue|pr|remove|log> <number> [options]\n');
+    console.log('Usage: rally dispatch <issue|pr|remove|continue|log> <number> [options]\n');
     console.log('Examples:');
     console.log('  rally dispatch issue 42          Dispatch to GitHub issue #42');
     console.log('  rally dispatch pr 15             Dispatch to GitHub PR #15');
     console.log('  rally dispatch remove 42         Remove dispatch for issue/PR #42');
+    console.log('  rally dispatch continue 42       Reconnect to Copilot session for #42');
     console.log('  rally dispatch log 42            View Copilot output log for #42');
     console.log('  rally dispatch clean             Clean done dispatches');
     console.log('  rally dispatch issue 42 --repo owner/repo');
@@ -233,6 +234,25 @@ dispatch
     try {
       const { dispatchClean } = await import('../lib/dispatch-clean.js');
       await dispatchClean({ all: opts.all, yes: opts.yes });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+dispatch
+  .command('continue')
+  .description('Reconnect to Copilot session for an active dispatch')
+  .argument('<number>', 'Issue or PR number', (v) => {
+    const n = parseInt(v, 10);
+    if (isNaN(n) || n <= 0) throw new Error('Must be a positive integer');
+    return n;
+  })
+  .option('--repo <owner/repo>', 'Target repository (owner/repo)')
+  .option('-m, --message <text>', 'Additional instructions for Copilot on reconnect')
+  .action(async (number, opts) => {
+    try {
+      const { dispatchContinue } = await import('../lib/dispatch-continue.js');
+      await dispatchContinue(number, { repo: opts.repo, message: opts.message });
     } catch (err) {
       handleError(err);
     }

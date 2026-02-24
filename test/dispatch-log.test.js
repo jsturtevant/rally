@@ -209,4 +209,84 @@ describe('dispatchLog', () => {
       console.log = originalLog;
     }
   });
+
+  test('shows stats summary when log contains copilot stats', async () => {
+    const logContent = [
+      'Some copilot output...',
+      'Total code changes:     +164 -1',
+      'Total session time:     3m 6s',
+      'API time spent:         2m 48s',
+      'Total usage est:        3 Premium requests',
+    ].join('\n');
+
+    const mockGetActive = () => [
+      {
+        id: 'issue-42',
+        repo: 'owner/repo',
+        number: 42,
+        type: 'issue',
+        logPath: '/worktree/.copilot-output.log',
+      },
+    ];
+
+    let output = [];
+    const originalLog = console.log;
+    console.log = (...args) => output.push(args.join(' '));
+
+    try {
+      await dispatchLog(42, {
+        _getActiveDispatches: mockGetActive,
+        _readFile: () => logContent,
+        _existsSync: () => true,
+        _chalk: {
+          yellow: (s) => s,
+          dim: (s) => s,
+          bold: (s) => `[bold]${s}`,
+        },
+      });
+
+      assert.ok(output.some((line) => line.includes('[bold]Stats:')));
+      assert.ok(output.some((line) => line.includes('+164 -1')));
+      assert.ok(output.some((line) => line.includes('Premium requests: 3')));
+    } finally {
+      console.log = originalLog;
+    }
+  });
+
+  test('shows log normally when no stats present', async () => {
+    const logContent = 'Just regular output\nNo stats here\n';
+
+    const mockGetActive = () => [
+      {
+        id: 'issue-42',
+        repo: 'owner/repo',
+        number: 42,
+        type: 'issue',
+        logPath: '/worktree/.copilot-output.log',
+      },
+    ];
+
+    let output = [];
+    const originalLog = console.log;
+    console.log = (...args) => output.push(args.join(' '));
+
+    try {
+      await dispatchLog(42, {
+        _getActiveDispatches: mockGetActive,
+        _readFile: () => logContent,
+        _existsSync: () => true,
+        _chalk: {
+          yellow: (s) => s,
+          dim: (s) => s,
+          bold: (s) => `[bold]${s}`,
+        },
+      });
+
+      assert.ok(!output.some((line) => line.includes('[bold]Stats:')));
+      assert.strictEqual(output.length, 1);
+      assert.strictEqual(output[0], logContent);
+    } finally {
+      console.log = originalLog;
+    }
+  });
 });

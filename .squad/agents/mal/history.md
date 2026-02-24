@@ -645,3 +645,25 @@ Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-0
 - All 396 tests passing
 
 **Outcome:** Issue #151 resolved. Read-only enforcement is now CLI-level, requires zero file system side effects, and cannot be bypassed by the user.
+
+### 2025-07-24 — Issue #164 Decomposition: Session Reconnect & Dashboard Polish
+
+**Issue:** https://github.com/jsturtevant/rally/issues/164 — four sub-features requested.
+
+**Key findings:**
+- `gh copilot` CLI has NO session reconnect capability. No `--session`, `--resume`, or `--attach` flags exist. Session IDs are PID placeholders (`lib/copilot.js:158-160`).
+  **Update:** `gh copilot --resume <session_id>` is now supported. Rally uses this via `rally dispatch continue`.
+- The feasible alternative is launching a NEW Copilot session in the existing worktree (`rally dispatch continue <number>`). The worktree preserves all context from the prior session.
+- "Friendly naming" is already handled by dispatch IDs (`<repo>-<type>-<number>`). Deferred — not user-facing.
+- "Ready for review" is a display-only change: map `done` status → "ready for review 📋" in `DispatchTable` and `dashboard-data.js`.
+- Change stats are parseable from `.copilot-output.log` via regex. New `lib/copilot-stats.js` module.
+
+**Decomposition written to:** `.squad/decisions/inbox/mal-issue-164-decomposition.md`
+
+**Priority order:** C (display label) → D (stats parsing) → A (continue command) → B (deferred).
+
+**Architecture decisions:**
+- `continue` not `reconnect` — honest naming for what it does
+- Stats parsed on-demand from log files, not stored in active.yaml
+- Log append mode for continue sessions (one log per dispatch)
+- Display-only change for "ready for review" (no new status in state machine)

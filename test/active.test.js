@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import {
   addDispatch,
   updateDispatchStatus,
+  updateDispatchField,
   removeDispatch,
   getActiveDispatches,
   VALID_STATUSES,
@@ -200,6 +201,28 @@ test('lock is released even when wrapped function throws', () => {
   );
   // Lock should be released after error
   assert.ok(!existsSync(lockDir), 'lock dir should be removed after error');
+});
+
+test('updateDispatchField updates a single field', () => {
+  addDispatch(makeRecord({ id: 'field-test' }));
+  const updated = updateDispatchField('field-test', 'session_id', 'abc-123');
+  assert.strictEqual(updated.session_id, 'abc-123');
+  const dispatches = getActiveDispatches();
+  assert.strictEqual(dispatches[0].session_id, 'abc-123');
+});
+
+test('updateDispatchField throws on unknown id', () => {
+  assert.throws(() => {
+    updateDispatchField('nonexistent', 'session_id', 'abc');
+  }, /not found/);
+});
+
+test('updateDispatchField preserves other fields', () => {
+  addDispatch(makeRecord({ id: 'preserve-test' }));
+  updateDispatchField('preserve-test', 'session_id', 'new-session');
+  const dispatches = getActiveDispatches();
+  assert.strictEqual(dispatches[0].repo, 'jsturtevant/rally');
+  assert.strictEqual(dispatches[0].session_id, 'new-session');
 });
 
 test('concurrent addDispatch calls do not lose records', () => {

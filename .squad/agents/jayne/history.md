@@ -608,3 +608,27 @@ Created 7 real subprocess tests invoking `bin/rally.js` via `execFileSync`. All 
 4. Test cleanup patterns matter for CI reliability — Ink render resources must be freed
 
 **Status:** All 26 code review findings have test coverage or edge-case tests. E2E suite in CI. Dashboard now correct.
+
+### Issue #164 — Tests for status transition and copilot-stats parser
+
+**Changes made:**
+
+1. **test/dispatch-refresh.test.js** — Updated existing tests to match Kaylee's code changes:
+   - Exited processes now transition to 'reviewing' (not 'done')
+   - 'reviewing' status is now skipped by refresh (terminal auto-state)
+   - Added explicit test: "implementing dispatch transitions to reviewing, not done"
+   - Updated mixed-state test to assert 'reviewing' status in results
+   - 11 tests, all passing
+
+2. **test/copilot-stats.test.js** — New test file for `parseCopilotStats()`:
+   - 5 error/edge path tests (null, undefined, empty, whitespace, no stats)
+   - Malformed input: regex-guarded fields (premiumRequests, codeChanges) return null; raw text fields (apiTime, sessionTime) pass through garbled values
+   - Partial stats: extracts available fields, nulls for missing
+   - Full stats block with all fields and model breakdown
+   - Number format variations: large numbers, zeros, singular "request"
+   - Stats embedded in larger output
+   - Time format variations: seconds-only, hours-minutes-seconds
+   - Multiple model breakdown entries
+   - 20 tests, all passing
+
+**Key observation:** Kaylee's implementation uses regex-based extraction. Time fields (`apiTime`, `sessionTime`) don't validate format — they return raw captured text. Numeric fields (`premiumRequests`, `codeChanges`) are guarded by strict regex patterns and return null on non-match. This is a reasonable design: the parser trusts the copilot output format.

@@ -103,6 +103,16 @@ describe('computeSummary', () => {
     assert.equal(summary.done, 0);
     assert.equal(summary.orphaned, 0);
   });
+
+  it('counts pushed dispatches in done bucket', () => {
+    const dispatches = [
+      { status: 'pushed', healthy: true },
+      { status: 'implementing', healthy: true },
+    ];
+    const summary = computeSummary(dispatches);
+    assert.equal(summary.done, 1, 'pushed should count as done');
+    assert.equal(summary.active, 1);
+  });
 });
 
 describe('getDashboardData', () => {
@@ -574,5 +584,53 @@ describe('Dashboard component', () => {
     await delay();
     const output = instance.lastFrame();
     assert.ok(!output.includes('Connect IDE session'), 'should not show Connect IDE for non-UUID session');
+  });
+
+  it('p shortcut marks reviewing dispatch as pushed', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].status = 'reviewing';
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    let updatedId;
+    let updatedStatus;
+    const mockUpdateStatus = (id, status) => {
+      updatedId = id;
+      updatedStatus = status;
+      return { id, status };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _updateDispatchStatus: mockUpdateStatus,
+      })
+    );
+    await delay();
+    instance.stdin.write('p');
+    await delay();
+    assert.equal(updatedId, 'd1', 'should update the selected dispatch');
+    assert.equal(updatedStatus, 'pushed', 'should set status to pushed');
+  });
+
+  it('p shortcut does nothing when dispatch is not reviewing', async () => {
+    let updateCalled = false;
+    const mockUpdateStatus = () => { updateCalled = true; return {}; };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _updateDispatchStatus: mockUpdateStatus,
+      })
+    );
+    await delay();
+    instance.stdin.write('p');
+    await delay();
+    assert.ok(!updateCalled, 'p shortcut should not update non-reviewing dispatch');
+  });
+
+  it('help text includes p pushed shortcut', () => {
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
+    assert.ok(output.includes('p pushed'), 'should show p pushed shortcut hint');
   });
 });

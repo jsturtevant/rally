@@ -191,7 +191,7 @@ test('removeDispatch removes only the target record', () => {
 });
 
 test('VALID_STATUSES contains expected values', () => {
-  assert.deepEqual(VALID_STATUSES, ['planning', 'implementing', 'reviewing', 'done', 'cleaned']);
+  assert.deepEqual(VALID_STATUSES, ['planning', 'implementing', 'reviewing', 'pushed', 'done', 'cleaned']);
 });
 
 test('lock is released even when wrapped function throws', () => {

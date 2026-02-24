@@ -6,6 +6,7 @@ const STATUS_ICONS = {
   planning: '🔵',
   implementing: '⏳',
   reviewing: '🟡',
+  pushed: '🟣',
   done: '✅',
   cleaned: '⚪',
 };
@@ -18,6 +19,7 @@ function formatIssueRef(dispatch) {
 const STATUS_LABELS = {
   implementing: 'working',
   reviewing: 'ready for review',
+  pushed: 'pushed',
 };
 
 function formatStatus(status) {

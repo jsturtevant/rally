@@ -324,3 +324,17 @@ test('dispatchClean continues when PID termination fails', async () => {
   // Should still clean despite termination error
   assert.strictEqual(result.cleaned.length, 1);
 });
+
+test('dispatchClean includes pushed status in default filter', async () => {
+  addDispatch(makeRecord({ id: 'd1', status: 'pushed' }));
+
+  const result = await dispatchClean({
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+
+  assert.strictEqual(result.cleaned.length, 1, 'should clean dispatch with pushed status');
+});

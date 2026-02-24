@@ -60,7 +60,7 @@ describe('DispatchTable', () => {
   });
 
   it('renders status icons for each status', () => {
-    const statuses = ['planning', 'implementing', 'reviewing', 'done', 'cleaned'];
+    const statuses = ['planning', 'implementing', 'reviewing', 'pushed', 'done', 'cleaned'];
     const dispatches = statuses.map((status, i) => ({
       repo: 'o/r',
       type: 'issue',

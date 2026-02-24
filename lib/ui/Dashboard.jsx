@@ -7,6 +7,7 @@ import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
+import { updateDispatchStatus as defaultUpdateDispatchStatus } from '../active.js';
 import { parseSessionIdFromLog as defaultParseSessionId, UUID_RE } from '../copilot.js';
 
 export { computeSummary, getDashboardData, renderPlainDashboard };
@@ -33,7 +34,7 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId }) {
+export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -149,6 +150,16 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       });
   }
 
+  function markAsPushed(dispatch) {
+    if (dispatch.status !== 'reviewing') return;
+    try {
+      _updateDispatchStatus(dispatch.id, 'pushed');
+      setRefreshKey(k => k + 1);
+    } catch (err) {
+      console.error(`Failed to mark dispatch as pushed: ${err.message}`);
+    }
+  }
+
   function handleActionSelect(direction) {
     if (direction === 'up') {
       setActionIndex(i => (i > 0 ? i - 1 : 0));
@@ -207,6 +218,8 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       setRefreshKey(k => k + 1);
     } else if (input === 'x' && count > 0) {
       removeSelectedDispatch(data.dispatches[selectedIndex]);
+    } else if (input === 'p' && count > 0) {
+      markAsPushed(data.dispatches[selectedIndex]);
     } else if (input === 'q') {
       exit();
     }
@@ -257,7 +270,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · c connect IDE · l logs · x delete · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · c connect IDE · l logs · p pushed · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

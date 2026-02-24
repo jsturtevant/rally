@@ -1,4 +1,4 @@
-# [Rally](https://bradygaster.github.io/squad/) your <sub>Squad</sub>
+# Rally <sub>your</sub> [Squad](https://bradygaster.github.io/squad/)
 
 CLI tool for dispatching AI coding agents (Squad teams) to GitHub issues via git worktrees.
 

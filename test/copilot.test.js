@@ -202,8 +202,8 @@ describe('launchCopilot', () => {
     assert.strictEqual(captured.cmd, 'docker');
     assert.deepStrictEqual(captured.args, [
       'sandbox', 'run',
-      '--workdir', '/path/to/worktree',
-      'gh', 'copilot', '-p', 'workspace fix the bug',
+      'copilot', '/path/to/worktree',
+      '--', '-p', 'workspace fix the bug',
     ]);
     assert.strictEqual(captured.opts.cwd, '/path/to/worktree');
     assert.strictEqual(captured.opts.detached, true);

@@ -12,6 +12,31 @@ Rally is for individual developers using [Squad](https://bradygaster.github.io/s
 - [git](https://git-scm.com/)
 - [GitHub CLI (`gh`)](https://cli.github.com/)
 
+### Docker Sandbox (optional)
+
+To run Copilot inside an isolated [Docker sandbox](https://docs.docker.com/ai/sandboxes/) microVM using `--sandbox`:
+
+- [Docker Desktop 4.58+](https://docs.docker.com/desktop/release-notes/#4580) (macOS or Windows)
+- A GitHub token with Copilot access set globally in your shell config:
+
+  ```bash
+  # Add to ~/.bashrc or ~/.zshrc (not just current session)
+  export GH_TOKEN=your_github_token
+  ```
+
+  Then source the file and **restart Docker Desktop** so the daemon picks up the token:
+
+  ```bash
+  source ~/.bashrc   # or ~/.zshrc
+  # Restart Docker Desktop via the menu
+  ```
+
+- *(Optional)* Trust the sandbox workspace path to avoid repeated confirmation prompts. Add `/workspace` to `~/.copilot/config.json`:
+
+  ```json
+  { "trusted_folders": ["/workspace"] }
+  ```
+
 ## Installation
 
 ```bash
@@ -33,6 +58,13 @@ rally dispatch issue 42  # Dispatch Squad to an issue
 rally dispatch pr 10     # Dispatch Squad to a PR review
 rally dashboard          # View active dispatches
 rally dashboard clean    # Remove completed dispatches
+```
+
+Use `--sandbox` to run Copilot in an isolated [Docker sandbox](https://docs.docker.com/ai/sandboxes/) microVM:
+
+```bash
+rally dispatch issue 42 --sandbox
+rally dispatch pr 10 --sandbox
 ```
 
 ## Commands
@@ -115,6 +147,7 @@ Options:
   --repo <owner/repo>    Target repository (owner/repo)
   --repo-path <path>     Path to local repo clone
   --team-dir <path>      Path to custom squad directory
+  --sandbox              Run Copilot inside a Docker sandbox microVM for host isolation
   -h, --help             display help for command
 ```
 
@@ -134,6 +167,7 @@ Options:
   --repo <owner/repo>    Target repository (owner/repo)
   --repo-path <path>     Path to local repo clone
   --team-dir <path>      Path to custom squad directory
+  --sandbox              Run Copilot inside a Docker sandbox microVM for host isolation
   -h, --help             display help for command
 ```
 

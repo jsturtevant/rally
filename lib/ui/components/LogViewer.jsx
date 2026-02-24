@@ -7,8 +7,6 @@ import { readFileSync, existsSync } from 'node:fs';
  * ↑/↓ to scroll, Escape to return to the dashboard.
  */
 export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFile = readFileSync, _existsSync = existsSync }) {
-  const [scrollOffset, setScrollOffset] = useState(0);
-
   const lines = useMemo(() => {
     if (!dispatch.logPath || !_existsSync(dispatch.logPath)) {
       return ['No log file available.'];
@@ -22,6 +20,8 @@ export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFi
   }, [dispatch.logPath, _readFile, _existsSync]);
 
   const maxOffset = Math.max(0, lines.length - visibleLines);
+  // Lazy initializer — only evaluated on mount so scroll starts at the bottom
+  const [scrollOffset, setScrollOffset] = useState(() => maxOffset);
 
   useInput((input, key) => {
     if (key.escape) {

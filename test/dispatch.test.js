@@ -306,7 +306,8 @@ describe('resolveRepo', () => {
 
   test('cwd detection uses project.repo (upstream) instead of git remote for fork projects', () => {
     const repoPath = createGitRepo('hyperlight-wasm');
-    // origin remote is the fork (jsturtevant), but project.repo is upstream (hyperlight-dev)
+    // git remote origin = testowner/hyperlight-wasm (set by createGitRepo),
+    // but project.repo is the upstream (hyperlight-dev) — resolveProjectRepo should prefer it
     writeProjects([{
       name: 'hyperlight-wasm',
       repo: 'hyperlight-dev/hyperlight-wasm',
@@ -377,5 +378,19 @@ describe('resolveRepo', () => {
     const result = resolveRepo();
     assert.strictEqual(result.owner, 'testowner');
     assert.strictEqual(result.repo, 'old-project');
+  });
+
+  test('malformed project.repo throws descriptive error', () => {
+    const repoPath = createGitRepo('bad-repo-format');
+    writeProjects([{
+      name: 'bad-repo-format',
+      repo: 'not-a-valid-repo-format',
+      path: repoPath,
+    }]);
+    process.chdir(repoPath);
+
+    assert.throws(() => resolveRepo(), {
+      message: /Invalid repo format.*not-a-valid-repo-format.*projects\.yaml/,
+    });
   });
 });

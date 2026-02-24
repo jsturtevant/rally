@@ -35,25 +35,25 @@ describe('checkWorktreeHealth', () => {
     const dispatches = [{ id: 'd1', worktreePath }];
     const result = checkWorktreeHealth(dispatches);
     
-    assert.equal(result.length, 1);
-    assert.equal(result[0].healthy, true);
-    assert.equal(result[0].id, 'd1');
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].healthy, true);
+    assert.strictEqual(result[0].id, 'd1');
   });
 
   test('marks dispatch as unhealthy when worktreePath does not exist', () => {
     const dispatches = [{ id: 'd1', worktreePath: '/nonexistent/path' }];
     const result = checkWorktreeHealth(dispatches);
     
-    assert.equal(result.length, 1);
-    assert.equal(result[0].healthy, false);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].healthy, false);
   });
 
   test('marks dispatch as unhealthy when worktreePath is missing', () => {
     const dispatches = [{ id: 'd1' }];
     const result = checkWorktreeHealth(dispatches);
     
-    assert.equal(result.length, 1);
-    assert.equal(result[0].healthy, false);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].healthy, false);
   });
 
   test('handles multiple dispatches with mixed health status', () => {
@@ -67,10 +67,10 @@ describe('checkWorktreeHealth', () => {
     ];
     const result = checkWorktreeHealth(dispatches);
     
-    assert.equal(result.length, 3);
-    assert.equal(result[0].healthy, true);
-    assert.equal(result[1].healthy, false);
-    assert.equal(result[2].healthy, false);
+    assert.strictEqual(result.length, 3);
+    assert.strictEqual(result[0].healthy, true);
+    assert.strictEqual(result[1].healthy, false);
+    assert.strictEqual(result[2].healthy, false);
   });
 
   test('preserves all original dispatch properties', () => {
@@ -85,15 +85,15 @@ describe('checkWorktreeHealth', () => {
     ];
     const result = checkWorktreeHealth(dispatches);
     
-    assert.equal(result[0].id, 'd1');
-    assert.equal(result[0].repo, 'owner/repo');
-    assert.equal(result[0].branch, 'main');
-    assert.equal(result[0].status, 'implementing');
+    assert.strictEqual(result[0].id, 'd1');
+    assert.strictEqual(result[0].repo, 'owner/repo');
+    assert.strictEqual(result[0].branch, 'main');
+    assert.strictEqual(result[0].status, 'implementing');
   });
 
   test('returns empty array for empty input', () => {
     const result = checkWorktreeHealth([]);
-    assert.equal(result.length, 0);
+    assert.strictEqual(result.length, 0);
   });
 });
 
@@ -113,8 +113,8 @@ describe('enrichWithStats', () => {
     const dispatches = [{ id: 'd1', status: 'done', logPath }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result.length, 1);
-    assert.equal(result[0].changes, '+42 -7');
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].changes, '+42 -7');
   });
 
   test('enriches dispatch with stats for reviewing status', () => {
@@ -124,7 +124,7 @@ describe('enrichWithStats', () => {
     const dispatches = [{ id: 'd1', status: 'reviewing', logPath }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].changes, '+100 -50');
+    assert.strictEqual(result[0].changes, '+100 -50');
   });
 
   test('enriches dispatch with stats for cleaned status', () => {
@@ -134,7 +134,7 @@ describe('enrichWithStats', () => {
     const dispatches = [{ id: 'd1', status: 'cleaned', logPath }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].changes, '+20 -10');
+    assert.strictEqual(result[0].changes, '+20 -10');
   });
 
   test('does not enrich dispatch with non-terminal status', () => {
@@ -144,29 +144,29 @@ describe('enrichWithStats', () => {
     const dispatches = [{ id: 'd1', status: 'implementing', logPath }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].changes, undefined);
+    assert.strictEqual(result[0].changes, undefined);
   });
 
   test('does not enrich when logPath is missing', () => {
     const dispatches = [{ id: 'd1', status: 'done' }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].changes, undefined);
+    assert.strictEqual(result[0].changes, undefined);
   });
 
   test('does not enrich when log file does not exist', () => {
     const dispatches = [{ id: 'd1', status: 'done', logPath: '/nonexistent/log.txt' }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].changes, undefined);
+    assert.strictEqual(result[0].changes, undefined);
   });
 
   test('handles log file read errors gracefully', () => {
     const dispatches = [{ id: 'd1', status: 'done', logPath: '/nonexistent/log.txt' }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result.length, 1);
-    assert.equal(result[0].changes, undefined);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].changes, undefined);
   });
 
   test('handles log files without stats gracefully', () => {
@@ -176,7 +176,7 @@ describe('enrichWithStats', () => {
     const dispatches = [{ id: 'd1', status: 'done', logPath }];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].changes, null);
+    assert.strictEqual(result[0].changes, null);
   });
 
   test('accepts injectable readFile function for testing', () => {
@@ -187,7 +187,7 @@ describe('enrichWithStats', () => {
     
     const result = enrichWithStats(dispatches, mockReadFile);
     
-    assert.equal(result[0].changes, '+99 -11');
+    assert.strictEqual(result[0].changes, '+99 -11');
   });
 
   test('preserves all original dispatch properties', () => {
@@ -206,12 +206,12 @@ describe('enrichWithStats', () => {
     ];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].id, 'd1');
-    assert.equal(result[0].repo, 'owner/repo');
-    assert.equal(result[0].branch, 'main');
-    assert.equal(result[0].status, 'done');
-    assert.equal(result[0].session_id, 'abc123');
-    assert.equal(result[0].changes, '+5 -3');
+    assert.strictEqual(result[0].id, 'd1');
+    assert.strictEqual(result[0].repo, 'owner/repo');
+    assert.strictEqual(result[0].branch, 'main');
+    assert.strictEqual(result[0].status, 'done');
+    assert.strictEqual(result[0].session_id, 'abc123');
+    assert.strictEqual(result[0].changes, '+5 -3');
   });
 
   test('handles multiple dispatches correctly', () => {
@@ -227,13 +227,13 @@ describe('enrichWithStats', () => {
     ];
     const result = enrichWithStats(dispatches);
     
-    assert.equal(result[0].changes, '+10 -5');
-    assert.equal(result[1].changes, undefined);
-    assert.equal(result[2].changes, '+20 -15');
+    assert.strictEqual(result[0].changes, '+10 -5');
+    assert.strictEqual(result[1].changes, undefined);
+    assert.strictEqual(result[2].changes, '+20 -15');
   });
 
   test('returns empty array for empty input', () => {
     const result = enrichWithStats([]);
-    assert.equal(result.length, 0);
+    assert.strictEqual(result.length, 0);
   });
 });

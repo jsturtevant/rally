@@ -167,3 +167,37 @@ test('dispatchRemove handles branch deletion failure gracefully', async () => {
   assert.strictEqual(result.number, 42);
   assert.strictEqual(removedId, 'rally-issue-42');
 });
+
+test('dispatchRemove terminates tracked PID before cleanup', async () => {
+  addDispatch(makeRecord({ pid: 67890 }));
+  
+  let terminatedPids = [];
+  const result = await dispatchRemove(42, {
+    _terminatePid: (pid) => { terminatedPids.push(pid); },
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+  
+  assert.strictEqual(result.number, 42);
+  assert.deepStrictEqual(terminatedPids, [67890]);
+});
+
+test('dispatchRemove skips PID termination when PID is null', async () => {
+  addDispatch(makeRecord({ pid: null }));
+  
+  let terminateCalled = false;
+  const result = await dispatchRemove(42, {
+    _terminatePid: () => { terminateCalled = true; },
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+  
+  assert.strictEqual(result.number, 42);
+  assert.strictEqual(terminateCalled, false);
+});

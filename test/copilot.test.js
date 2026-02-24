@@ -133,14 +133,16 @@ describe('launchCopilot', () => {
       },
     });
     assert.strictEqual(result.sessionId, '98765');
+    assert.strictEqual(result.pid, 98765);
     assert.ok(result.process);
     assert.strictEqual(result.logPath, '/wt/.copilot-output.log');
   });
 
-  test('returns null sessionId when PID is falsy', () => {
+  test('returns null sessionId and pid when PID is falsy', () => {
     const mockSpawn = () => ({ pid: 0, unref() {} });
     const result = launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
     assert.strictEqual(result.sessionId, null);
+    assert.strictEqual(result.pid, null);
     assert.strictEqual(result.logPath, null);
   });
 
@@ -150,6 +152,7 @@ describe('launchCopilot', () => {
     };
     const result = launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
     assert.strictEqual(result.sessionId, null);
+    assert.strictEqual(result.pid, null);
     assert.strictEqual(result.process, null);
     assert.strictEqual(result.logPath, null);
   });
@@ -160,6 +163,7 @@ describe('launchCopilot', () => {
     };
     const result = launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
     assert.strictEqual(result.sessionId, null);
+    assert.strictEqual(result.pid, null);
     assert.strictEqual(result.process, null);
     assert.strictEqual(result.logPath, null);
   });

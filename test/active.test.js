@@ -9,6 +9,7 @@ import {
   updateDispatchField,
   removeDispatch,
   getActiveDispatches,
+  terminatePid,
   VALID_STATUSES,
 } from '../lib/active.js';
 
@@ -285,4 +286,63 @@ test('concurrent addDispatch calls do not lose records', () => {
   assert.strictEqual(dispatches.length, 2);
   assert.ok(dispatches.some(d => d.id === 'concurrent-1'));
   assert.ok(dispatches.some(d => d.id === 'concurrent-2'));
+});
+
+
+test('terminatePid returns false when PID is null', () => {
+  const result = terminatePid(null);
+  assert.strictEqual(result, false);
+});
+
+test('terminatePid returns false when PID is not a number', () => {
+  const result = terminatePid('not-a-number');
+  assert.strictEqual(result, false);
+});
+
+test('terminatePid returns false for negative PID', () => {
+  const result = terminatePid(-1);
+  assert.strictEqual(result, false);
+});
+
+test('terminatePid returns false for zero PID', () => {
+  const result = terminatePid(0);
+  assert.strictEqual(result, false);
+});
+
+test('terminatePid returns false for float PID', () => {
+  const result = terminatePid(123.45);
+  assert.strictEqual(result, false);
+});
+
+test('terminatePid calls process.kill with SIGTERM', () => {
+  let captured;
+  const mockKill = (pid, signal) => {
+    captured = { pid, signal };
+  };
+  const result = terminatePid(12345, mockKill);
+  assert.strictEqual(result, true);
+  assert.deepStrictEqual(captured, { pid: 12345, signal: 'SIGTERM' });
+});
+
+test('terminatePid returns false when kill throws (best-effort)', () => {
+  const mockKill = () => {
+    throw new Error('No such process');
+  };
+  const result = terminatePid(99999, mockKill);
+  assert.strictEqual(result, false);
+});
+
+test('addDispatch stores PID field', () => {
+  const record = makeRecord({ pid: 54321 });
+  const result = addDispatch(record);
+  assert.strictEqual(result.pid, 54321);
+  
+  const dispatches = getActiveDispatches();
+  assert.strictEqual(dispatches[0].pid, 54321);
+});
+
+test('addDispatch allows null PID field', () => {
+  const record = makeRecord({ pid: null });
+  const result = addDispatch(record);
+  assert.strictEqual(result.pid, null);
 });

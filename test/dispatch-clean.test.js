@@ -274,3 +274,53 @@ test('dispatchClean handles missing project gracefully', async () => {
   assert.strictEqual(result.cleaned.length, 1);
   assert.strictEqual(worktreeRemoveCalled, false);
 });
+
+test('dispatchClean terminates tracked PIDs before cleanup', async () => {
+  addDispatch(makeRecord({ id: 'd1', status: 'done', pid: 12345 }));
+  
+  let terminatedPids = [];
+  const result = await dispatchClean({
+    _terminatePid: (pid) => { terminatedPids.push(pid); },
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+  
+  assert.strictEqual(result.cleaned.length, 1);
+  assert.deepStrictEqual(terminatedPids, [12345]);
+});
+
+test('dispatchClean skips PID termination when PID is null', async () => {
+  addDispatch(makeRecord({ id: 'd1', status: 'done', pid: null }));
+  
+  let terminateCalled = false;
+  const result = await dispatchClean({
+    _terminatePid: () => { terminateCalled = true; },
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+  
+  assert.strictEqual(result.cleaned.length, 1);
+  assert.strictEqual(terminateCalled, false);
+});
+
+test('dispatchClean continues when PID termination fails', async () => {
+  addDispatch(makeRecord({ id: 'd1', status: 'done', pid: 99999 }));
+  
+  const result = await dispatchClean({
+    _terminatePid: () => { throw new Error('Process termination failed'); },
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+  
+  // Should still clean despite termination error
+  assert.strictEqual(result.cleaned.length, 1);
+});

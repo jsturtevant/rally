@@ -7,6 +7,9 @@ import {
   formatIssueChoice,
   formatPrChoice,
   listOnboardedRepos,
+  pickRepo,
+  pickIssue,
+  pickPr,
 } from '../lib/picker.js';
 
 // =====================================================
@@ -162,5 +165,99 @@ describe('formatPrChoice', () => {
     const choice = formatPrChoice({ number: 15, title: 'Refactor auth' });
     assert.strictEqual(choice.name, '#15 - Refactor auth');
     assert.strictEqual(choice.value, 15);
+  });
+});
+
+// =====================================================
+// pickRepo
+// =====================================================
+
+describe('pickRepo', () => {
+  test('auto-selects when only one repo', async () => {
+    const result = await pickRepo({
+      _readProjects: () => ({
+        projects: [{ name: 'rally', repo: 'jsturtevant/rally', path: '/tmp/rally' }],
+      }),
+    });
+    assert.strictEqual(result.repo, 'jsturtevant/rally');
+  });
+
+  test('throws when no repos onboarded', async () => {
+    await assert.rejects(
+      () => pickRepo({ _readProjects: () => ({ projects: [] }) }),
+      (err) => err.message.includes('No projects onboarded'),
+    );
+  });
+
+  test('calls select when multiple repos', async () => {
+    const projects = [
+      { name: 'rally', repo: 'jsturtevant/rally', path: '/tmp/rally' },
+      { name: 'squad', repo: 'jsturtevant/squad', path: '/tmp/squad' },
+    ];
+    const result = await pickRepo({
+      _readProjects: () => ({ projects }),
+      _select: async (opts) => {
+        assert.strictEqual(opts.choices.length, 2);
+        return opts.choices[1].value; // select second repo
+      },
+    });
+    assert.strictEqual(result.repo, 'jsturtevant/squad');
+  });
+});
+
+// =====================================================
+// pickIssue
+// =====================================================
+
+describe('pickIssue', () => {
+  test('returns selected issue number', async () => {
+    const mockExec = () => JSON.stringify([
+      { number: 42, title: 'Fix bug', labels: [], state: 'OPEN' },
+      { number: 10, title: 'Add docs', labels: [], state: 'OPEN' },
+    ]);
+    const result = await pickIssue('owner/repo', {
+      _exec: mockExec,
+      _select: async (opts) => {
+        assert.strictEqual(opts.choices.length, 2);
+        return opts.choices[0].value;
+      },
+    });
+    assert.strictEqual(result, 42);
+  });
+
+  test('throws when no open issues', async () => {
+    const mockExec = () => '[]';
+    await assert.rejects(
+      () => pickIssue('owner/repo', { _exec: mockExec }),
+      (err) => err.message.includes('No open issues'),
+    );
+  });
+});
+
+// =====================================================
+// pickPr
+// =====================================================
+
+describe('pickPr', () => {
+  test('returns selected PR number', async () => {
+    const mockExec = () => JSON.stringify([
+      { number: 15, title: 'Refactor auth', state: 'OPEN' },
+    ]);
+    const result = await pickPr('owner/repo', {
+      _exec: mockExec,
+      _select: async (opts) => {
+        assert.strictEqual(opts.choices.length, 1);
+        return opts.choices[0].value;
+      },
+    });
+    assert.strictEqual(result, 15);
+  });
+
+  test('throws when no open PRs', async () => {
+    const mockExec = () => '[]';
+    await assert.rejects(
+      () => pickPr('owner/repo', { _exec: mockExec }),
+      (err) => err.message.includes('No open PRs'),
+    );
   });
 });

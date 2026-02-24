@@ -231,6 +231,29 @@ describe('onboard remove', () => {
     assert.strictEqual(result.name, 'my-repo');
   });
 
+  // --- Interactive picker: cancel ---
+
+  test('returns null when cancel is selected in interactive picker', async () => {
+    const repoPath = createRepo(join(tempDir, 'my-repo'));
+    const entry = setupOnboardedProject('my-repo', repoPath);
+    writeProjectsYaml([entry]);
+
+    const mockSelect = async ({ choices }) => {
+      const cancel = choices[choices.length - 1];
+      assert.strictEqual(cancel.name, '← Cancel');
+      return cancel.value;
+    };
+
+    const result = await onboardRemove({
+      _select: mockSelect,
+      _chalk: silentChalk,
+    });
+
+    assert.strictEqual(result, null);
+    const data = readProjectsYaml();
+    assert.strictEqual(data.projects.length, 1, 'project should still exist');
+  });
+
   // --- Handles missing project path gracefully ---
 
   test('succeeds even if project path no longer exists', async () => {

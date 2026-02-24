@@ -279,7 +279,7 @@ describe('onboard URL cloning', () => {
     );
   });
 
-  test('allows reuse when directory exists with matching owner', async () => {
+  test('allows reuse when directory exists with matching owner (HTTPS)', async () => {
     const { rallyHome } = setupTeam();
     const projectsDir = join(rallyHome, 'projects');
     mkdirSync(projectsDir, { recursive: true });
@@ -291,6 +291,25 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['-C', targetDir, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
     execFileSync('git', ['-C', targetDir, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
     execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'https://github.com/octocat/my-repo.git'], { stdio: 'ignore' });
+
+    // Try to onboard octocat/my-repo — should succeed (reuse existing directory)
+    await onboard({ path: 'octocat/my-repo', _select: sharedSelect });
+
+    assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
+  });
+
+  test('allows reuse when directory exists with matching owner (SSH)', async () => {
+    const { rallyHome } = setupTeam();
+    const projectsDir = join(rallyHome, 'projects');
+    mkdirSync(projectsDir, { recursive: true });
+
+    // Create a mock repo with SSH remote URL
+    const targetDir = join(projectsDir, 'my-repo');
+    mkdirSync(targetDir, { recursive: true });
+    execFileSync('git', ['init', targetDir], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
+    execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'git@github.com:octocat/my-repo.git'], { stdio: 'ignore' });
 
     // Try to onboard octocat/my-repo — should succeed (reuse existing directory)
     await onboard({ path: 'octocat/my-repo', _select: sharedSelect });

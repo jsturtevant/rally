@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { addDispatch, getActiveDispatches } from '../lib/active.js';
 import { createWorktree } from '../lib/worktree.js';
-import { dashboardClean } from '../lib/dashboard-clean.js';
+import { dispatchClean } from '../lib/dispatch-clean.js';
 
 function makeRecord(overrides = {}) {
   return {
@@ -52,8 +52,8 @@ afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-test('dashboardClean with no dispatches returns empty result', async () => {
-  const result = await dashboardClean({
+test('dispatchClean with no dispatches returns empty result', async () => {
+  const result = await dispatchClean({
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -62,14 +62,15 @@ test('dashboardClean with no dispatches returns empty result', async () => {
   assert.deepEqual(result.errors, []);
 });
 
-test('dashboardClean cleans done dispatches', async () => {
+test('dispatchClean cleans done dispatches', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
 
   let removedWorktrees = [];
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     _removeWorktree: (repo, wt) => { removedWorktrees.push(wt); },
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -83,13 +84,30 @@ test('dashboardClean cleans done dispatches', async () => {
   assert.strictEqual(remaining[0].id, 'd2');
 });
 
-test('dashboardClean skips non-done dispatches without --all', async () => {
+test('dispatchClean also cleans dispatches with status "cleaned"', async () => {
+  addDispatch(makeRecord({ id: 'd1', status: 'cleaned' }));
+  addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
+
+  const result = await dispatchClean({
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+
+  assert.strictEqual(result.cleaned.length, 1);
+  assert.strictEqual(result.cleaned[0].id, 'd1');
+});
+
+test('dispatchClean skips non-done dispatches without --all', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'planning' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
 
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -99,16 +117,17 @@ test('dashboardClean skips non-done dispatches without --all', async () => {
   assert.strictEqual(remaining.length, 2);
 });
 
-test('dashboardClean --all cleans all dispatches with --yes', async () => {
+test('dispatchClean --all cleans all dispatches with --yes', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
   addDispatch(makeRecord({ id: 'd3', status: 'planning' }));
 
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     all: true,
     yes: true,
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -118,15 +137,16 @@ test('dashboardClean --all cleans all dispatches with --yes', async () => {
   assert.strictEqual(remaining.length, 0);
 });
 
-test('dashboardClean --all prompts for confirmation', async () => {
+test('dispatchClean --all prompts for confirmation', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done' }));
 
   let confirmCalled = false;
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     all: true,
     _confirm: async () => { confirmCalled = true; return false; },
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -138,15 +158,16 @@ test('dashboardClean --all prompts for confirmation', async () => {
   assert.strictEqual(remaining.length, 1);
 });
 
-test('dashboardClean --all with confirmation accepted cleans all', async () => {
+test('dispatchClean --all with confirmation accepted cleans all', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
 
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     all: true,
     _confirm: async () => true,
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -154,13 +175,14 @@ test('dashboardClean --all with confirmation accepted cleans all', async () => {
   assert.strictEqual(result.cleaned.length, 2);
 });
 
-test('dashboardClean removes worktree via project path lookup', async () => {
+test('dispatchClean removes worktree via project path lookup', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done', worktreePath: '/tmp/wt-1' }));
 
   let removedArgs = null;
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     _removeWorktree: (repo, wt) => { removedArgs = { repo, wt }; },
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/projects/rally' }] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -169,12 +191,13 @@ test('dashboardClean removes worktree via project path lookup', async () => {
   assert.deepEqual(removedArgs, { repo: '/projects/rally', wt: '/tmp/wt-1' });
 });
 
-test('dashboardClean continues when worktree removal fails', async () => {
+test('dispatchClean continues when worktree removal fails', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done' }));
 
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     _removeWorktree: () => { throw new Error('worktree gone'); },
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });
@@ -185,7 +208,7 @@ test('dashboardClean continues when worktree removal fails', async () => {
   assert.strictEqual(remaining.length, 0);
 });
 
-test('dashboardClean preserves branches (does not delete them)', async () => {
+test('dispatchClean deletes branches', async () => {
   // Set up a real git repo with a worktree
   const repoDir = join(tempDir, 'repo');
   mkdirSync(repoDir);
@@ -206,7 +229,7 @@ test('dashboardClean preserves branches (does not delete them)', async () => {
     branch: 'rally/99-test-branch',
   }));
 
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     _readProjects: () => ({ projects: [{ name: 'rally', path: repoDir }] }),
     _ora: silentOra,
     _chalk: silentChalk,
@@ -214,18 +237,35 @@ test('dashboardClean preserves branches (does not delete them)', async () => {
 
   assert.strictEqual(result.cleaned.length, 1);
 
-  // Branch should still exist
+  // Branch should be deleted
   const branches = execFileSync('git', ['branch'], { cwd: repoDir, encoding: 'utf8' });
-  assert.ok(branches.includes('rally/99-test-branch'), 'Branch should be preserved after clean');
+  assert.ok(!branches.includes('rally/99-test-branch'), 'Branch should be deleted after clean');
 });
 
-test('dashboardClean handles missing project gracefully', async () => {
+test('dispatchClean continues when branch deletion fails', async () => {
+  addDispatch(makeRecord({ id: 'd1', status: 'done', branch: 'rally/nonexistent' }));
+
+  let execCalls = [];
+  const result = await dispatchClean({
+    _removeWorktree: () => {},
+    _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
+    _exec: () => { throw new Error('branch not found'); },
+    _ora: silentOra,
+    _chalk: silentChalk,
+  });
+
+  // Should still clean the dispatch even if branch deletion fails
+  assert.strictEqual(result.cleaned.length, 1);
+});
+
+test('dispatchClean handles missing project gracefully', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done' }));
 
   let worktreeRemoveCalled = false;
-  const result = await dashboardClean({
+  const result = await dispatchClean({
     _removeWorktree: () => { worktreeRemoveCalled = true; },
     _readProjects: () => ({ projects: [] }),
+    _exec: () => {},
     _ora: silentOra,
     _chalk: silentChalk,
   });

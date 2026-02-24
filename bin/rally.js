@@ -91,20 +91,6 @@ const dashboard = program
     }
   });
 
-dashboard
-  .command('clean')
-  .description('Clean done dispatches (remove worktrees, preserve branches)')
-  .option('--all', 'Clean all dispatches, not just done ones')
-  .option('--yes', 'Skip confirmation prompt for --all')
-  .action(async (opts) => {
-    try {
-      const { dashboardClean } = await import('../lib/dashboard-clean.js');
-      await dashboardClean({ all: opts.all, yes: opts.yes });
-    } catch (err) {
-      handleError(err);
-    }
-  });
-
 const dispatch = program
   .command('dispatch')
   .description('Dispatch Squad to a GitHub issue or PR')
@@ -116,6 +102,7 @@ const dispatch = program
     console.log('  rally dispatch pr 15             Dispatch to GitHub PR #15');
     console.log('  rally dispatch remove 42         Remove dispatch for issue/PR #42');
     console.log('  rally dispatch log 42            View Copilot output log for #42');
+    console.log('  rally dispatch clean             Clean done dispatches');
     console.log('  rally dispatch issue 42 --repo owner/repo');
     dispatch.help();
   });
@@ -228,6 +215,20 @@ dispatch
     try {
       const { dispatchLog } = await import('../lib/dispatch-log.js');
       await dispatchLog(number, { repo: opts.repo, follow: opts.follow });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+dispatch
+  .command('clean')
+  .description('Clean done dispatches (remove worktrees and branches)')
+  .option('--all', 'Clean all dispatches, not just done ones')
+  .option('--yes', 'Skip confirmation prompt for --all')
+  .action(async (opts) => {
+    try {
+      const { dispatchClean } = await import('../lib/dispatch-clean.js');
+      await dispatchClean({ all: opts.all, yes: opts.yes });
     } catch (err) {
       handleError(err);
     }

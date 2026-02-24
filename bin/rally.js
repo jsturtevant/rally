@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import { setup } from '../lib/setup.js';
 import { onboard } from '../lib/onboard.js';
 import { getStatus, formatStatus } from '../lib/status.js';
-import { handleError } from '../lib/errors.js';
+import { handleError, RallyError } from '../lib/errors.js';
 import { assertTools } from '../lib/tools.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -312,4 +312,12 @@ dispatch
     }
   });
 
-program.parse();
+try {
+  program.parse();
+} catch (err) {
+  if (err instanceof RallyError) {
+    console.error(`Error: ${err.message}`);
+    process.exit(err.exitCode);
+  }
+  throw err;
+}

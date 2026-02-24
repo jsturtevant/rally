@@ -20,6 +20,8 @@ const SAMPLE_DISPATCH = {
   logPath: '/tmp/test.log',
 };
 
+const delay = () => new Promise(r => setImmediate(r));
+
 describe('DetailView', () => {
   it('renders detail header with issue ref', () => {
     const { lastFrame, cleanup } = render(
@@ -76,9 +78,9 @@ describe('DetailView', () => {
       React.createElement(DetailView, { dispatch: SAMPLE_DISPATCH, onBack: () => { backCalled = true; } })
     );
     lastCleanup = cleanup;
-    await new Promise(r => setTimeout(r, 100));
+    await delay();
     stdin.write('\x1B');
-    await new Promise(r => setTimeout(r, 100));
+    await delay();
     assert.ok(backCalled, 'should call onBack on Escape');
   });
 

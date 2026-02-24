@@ -5,4 +5,5 @@ lib/ui/Dashboard.js
 lib/ui/components/ActionMenu.js
 lib/ui/components/StatusMessage.js
 lib/ui/components/DispatchBox.js
+lib/ui/components/DetailView.js
 lib/ui/components/DispatchTable.js

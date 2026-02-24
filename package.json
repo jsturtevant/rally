@@ -1,8 +1,12 @@
 {
-  "name": "rally",
+  "name": "squad-rally",
   "version": "0.1.0",
   "description": "CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jsturtevant/rally.git"
+  },
   "bin": {
     "rally": "./bin/rally.js"
   },

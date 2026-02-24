@@ -519,3 +519,13 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **ActionMenu labels:** Updated to show shortcut hints — `(v) Open in VS Code`, `(l) View dispatch logs` — so users discover shortcuts from the menu too.
 - **Help text pattern:** Dashboard footer now reads `↑/↓ navigate · Enter actions · v open · l logs · r refresh · q quit`.
 - **Tests:** 3 new tests covering `v` spawn, `l` with logPath, `l` without logPath (no-op). All 43 UI tests pass.
+
+### 2026 — Move Clean to Dispatch, Add Branch Deletion (#146, PR #150)
+
+- **Command move:** `rally dashboard clean` → `rally dispatch clean`. Clean is a dispatch lifecycle operation, not a dashboard concern.
+- **Branch deletion:** Clean now runs `git branch -D` on each dispatch's branch, matching the pattern from `dispatch-remove.js`. Previously branches were preserved.
+- **Status filter:** Clean now targets dispatches with status `done` OR `cleaned` (was only `done`).
+- **File rename:** `lib/dashboard-clean.js` → `lib/dispatch-clean.js`, `test/dashboard-clean.test.js` → `test/dispatch-clean.test.js`.
+- **Dashboard 'd' shortcut:** Added `d` key shortcut in dashboard to remove the selected dispatch (calls `dispatchRemove`). Help text updated to include `d delete`.
+- **Injectable `_exec`:** `dispatchClean` accepts `_exec` param for testing branch deletion without real git repos, following the same DI pattern as `dispatchRemove`.
+- **Tests:** 12 unit tests (was 9) — added tests for "cleaned" status, branch deletion, and branch deletion failure resilience. All 390 tests pass.

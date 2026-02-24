@@ -19,7 +19,10 @@ describe('worktree', () => {
     // Create a temporary directory for each test
     testDir = mkdtempSync(join(tmpdir(), 'worktree-test-'));
     // Resolve short paths (e.g. RUNNER~1 on Windows) to canonical form
-    try { testDir = realpathSync(testDir); } catch {}
+    try {
+      testDir = realpathSync.native(testDir);
+      if (testDir.startsWith('\\\\?\\')) testDir = testDir.slice(4);
+    } catch {}
     repoPath = join(testDir, 'repo');
 
     // Initialize a git repository with an initial commit

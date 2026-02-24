@@ -187,7 +187,7 @@ describe('team selection', () => {
       assert.ok(existsSync(squadLink), '.squad should exist');
       assert.ok(lstatSync(squadLink).isSymbolicLink(), '.squad should be a symlink');
       assert.strictEqual(
-        readlinkSync(squadLink),
+        readlinkSync(squadLink).replace(/[\\/]+$/, ''),
         join(expectedTeamDir, '.squad')
       );
     });

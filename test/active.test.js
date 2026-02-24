@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -201,6 +201,28 @@ test('lock is released even when wrapped function throws', () => {
   );
   // Lock should be released after error
   assert.ok(!existsSync(lockDir), 'lock dir should be removed after error');
+});
+
+test('stale lock by age is removed and addDispatch succeeds', () => {
+  const lockDir = join(tempDir, '.active.lock');
+  mkdirSync(lockDir);
+  const staleInfo = { pid: process.pid, timestamp: Date.now() - 6 * 60 * 1000 };
+  writeFileSync(join(lockDir, 'info.json'), JSON.stringify(staleInfo), 'utf8');
+
+  const result = addDispatch(makeRecord({ id: 'stale-age' }));
+  assert.strictEqual(result.id, 'stale-age');
+  assert.ok(!existsSync(lockDir), 'stale lock dir should be removed');
+});
+
+test('stale lock by dead pid is removed and addDispatch succeeds', () => {
+  const lockDir = join(tempDir, '.active.lock');
+  mkdirSync(lockDir);
+  const staleInfo = { pid: 999999, timestamp: Date.now() };
+  writeFileSync(join(lockDir, 'info.json'), JSON.stringify(staleInfo), 'utf8');
+
+  const result = addDispatch(makeRecord({ id: 'stale-pid' }));
+  assert.strictEqual(result.id, 'stale-pid');
+  assert.ok(!existsSync(lockDir), 'stale lock dir should be removed');
 });
 
 test('updateDispatchField updates a single field', () => {

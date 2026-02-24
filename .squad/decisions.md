@@ -1921,7 +1921,7 @@ This is acceptable because:
 If `apiTime`/`sessionTime` values are used for calculations (e.g., duration parsing), they'll need format validation. Tests are ready to catch that regression.
 
 ### Files Changed
-- `lib/copilot-stats.js` — NEW module. `parseCopilotStats(logPath)` reads the log file and returns parsed stats or null.
+- `lib/copilot-stats.js` — NEW module. `parseCopilotStats(logContent)` takes log content as a string and returns parsed stats or null. Time fields (`apiTime`, `sessionTime`) use strict format validation.
 - `lib/ui/components/DispatchTable.jsx` + `.js` — Add `changes` column showing `+N -M` (green/red colored)
 - `lib/ui/dashboard-data.js` — Call `parseCopilotStats` for each dispatch that has a logPath, attach to dispatch data
 - `lib/dispatch-log.js` — After printing raw log, print parsed summary

@@ -652,6 +652,7 @@ Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-0
 
 **Key findings:**
 - `gh copilot` CLI has NO session reconnect capability. No `--session`, `--resume`, or `--attach` flags exist. Session IDs are PID placeholders (`lib/copilot.js:158-160`).
+  **Update:** `gh copilot --resume <session_id>` is now supported. Rally uses this via `rally dispatch continue`.
 - The feasible alternative is launching a NEW Copilot session in the existing worktree (`rally dispatch continue <number>`). The worktree preserves all context from the prior session.
 - "Friendly naming" is already handled by dispatch IDs (`<repo>-<type>-<number>`). Deferred — not user-facing.
 - "Ready for review" is a display-only change: map `done` status → "ready for review 📋" in `DispatchTable` and `dashboard-data.js`.

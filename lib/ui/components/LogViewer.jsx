@@ -20,7 +20,8 @@ export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFi
   }, [dispatch.logPath, _readFile, _existsSync]);
 
   const maxOffset = Math.max(0, lines.length - visibleLines);
-  const [scrollOffset, setScrollOffset] = useState(maxOffset);
+  // Lazy initializer — only evaluated on mount so scroll starts at the bottom
+  const [scrollOffset, setScrollOffset] = useState(() => maxOffset);
 
   useInput((input, key) => {
     if (key.escape) {

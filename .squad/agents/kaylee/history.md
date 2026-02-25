@@ -595,3 +595,16 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - `test/dispatch-pr.test.js`, `test/integration.test.js` (test updates)
 
 **Test results:** 724 pass, 0 failures.
+
+### 2026 — Decompose onboard() monolith (#292)
+
+- **Refactored `lib/onboard.js`:** Decomposed the 200+ line `onboard()` function into 5 focused private helpers:
+  - `cloneOrValidateExisting(parsed, options)` — clone logic + existing directory validation
+  - `resolveGitDir(projectPath)` — git repo verification + git dir resolution
+  - `resolveFullRepoName(parsed, projectPath)` — owner/repo from parsed URL or git remote
+  - `setupSymlinks(projectPath, teamDir)` — symlink creation with idempotency checks
+  - `registerProject({...})` — exclude management + projects.yaml registration
+- **Replaced inline regex** in repo name resolution with the already-imported `parseGitHubRemoteUrl()` — eliminates duplication
+- **Pure refactor:** All 70 onboard tests pass unmodified, all 82 full suite tests pass
+- **Exported API unchanged:** `onboard()` and `onboardRemove()` signatures identical
+- **Helpers are private (not exported)** — kept in the same file since they're small and tightly coupled to the onboard flow

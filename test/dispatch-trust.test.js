@@ -60,13 +60,17 @@ describe('getItemAuthor', () => {
 // =====================================================
 
 describe('checkOrgMembership', () => {
-  test('returns true when user is a member', () => {
-    const exec = () => '{}';
+  test('returns true when user is a member of an org', () => {
+    const exec = (cmd, args) => {
+      if (args[1].startsWith('users/')) return 'Organization';
+      return '{}'; // member check succeeds
+    };
     assert.strictEqual(checkOrgMembership('myorg/repo', 'alice', exec), true);
   });
 
-  test('returns false when API returns 404', () => {
-    const exec = () => {
+  test('returns false when API returns 404 for org member check', () => {
+    const exec = (cmd, args) => {
+      if (args[1].startsWith('users/')) return 'Organization';
       const err = new Error('HTTP 404');
       err.stderr = 'HTTP 404: Not Found';
       throw err;
@@ -75,7 +79,8 @@ describe('checkOrgMembership', () => {
   });
 
   test('returns null when API returns other error', () => {
-    const exec = () => {
+    const exec = (cmd, args) => {
+      if (args[1].startsWith('users/')) return 'Organization';
       const err = new Error('HTTP 500');
       err.stderr = 'HTTP 500: Internal Server Error';
       throw err;
@@ -85,6 +90,14 @@ describe('checkOrgMembership', () => {
 
   test('returns null when username is empty', () => {
     assert.strictEqual(checkOrgMembership('owner/repo', '', () => {}), null);
+  });
+
+  test('returns null for user-owned repo (not an org)', () => {
+    const exec = (cmd, args) => {
+      if (args[1].startsWith('users/')) return 'User';
+      throw new Error('should not reach member check');
+    };
+    assert.strictEqual(checkOrgMembership('someuser/repo', 'alice', exec), null);
   });
 });
 
@@ -170,6 +183,7 @@ describe('checkDispatchTrust', () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'issue' && args[1] === 'view') return 'alice\n';
+      if (args[0] === 'api' && args[1].startsWith('users/')) return 'Organization';
       if (args[0] === 'api' && args[1].startsWith('orgs/')) {
         const err = new Error('HTTP 404');
         err.stderr = 'HTTP 404: Not Found';
@@ -191,6 +205,7 @@ describe('checkDispatchTrust', () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'issue' && args[1] === 'view') return 'mallory\n';
+      if (args[0] === 'api' && args[1].startsWith('users/')) return 'Organization';
       if (args[0] === 'api' && args[1].startsWith('orgs/')) {
         const err = new Error('HTTP 404');
         err.stderr = 'HTTP 404: Not Found';

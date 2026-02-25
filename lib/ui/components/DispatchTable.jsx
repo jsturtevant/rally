@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text, useStdout } from 'ink';
-import { formatAge } from '../dashboard-data.js';
+import { formatAge, groupByProject } from '../dashboard-data.js';
 
 const STATUS_ICONS = {
   planning: '🔵',
@@ -28,10 +28,9 @@ function formatStatus(status) {
   return `${icon} ${label}`;
 }
 
-// Minimum widths per column; Project is flexible and gets remaining space
+// Minimum widths per column; issueRef is flexible and gets remaining space
 const COLUMN_DEFS = [
-  { key: 'project', label: 'Project', minWidth: 18, flex: true },
-  { key: 'issueRef', label: 'Issue/PR', minWidth: 12 },
+  { key: 'issueRef', label: 'Issue/PR', minWidth: 12, flex: true },
   { key: 'status', label: 'Status', minWidth: 20 },
   { key: 'changes', label: 'Changes', minWidth: 10 },
   { key: 'age', label: 'Age', minWidth: 6 },
@@ -73,20 +72,21 @@ function TableRow({ cells, columns, selected }) {
   );
 }
 
+function ProjectHeader({ project }) {
+  return (
+    <Box>
+      <Box width={SELECTOR_WIDTH}><Text> </Text></Box>
+      <Text bold color="yellow">{project}</Text>
+    </Box>
+  );
+}
+
 export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
   const { stdout } = useStdout();
   const terminalWidth = stdout?.columns ?? DEFAULT_WIDTH;
   const columns = computeColumnWidths(terminalWidth);
 
-  const rows = dispatches.map((d) => {
-    return {
-      project: d.repo ?? '',
-      issueRef: formatIssueRef(d),
-      status: formatStatus(d.status),
-      changes: d.changes ?? '',
-      age: formatAge(d.created ?? d.created_at),
-    };
-  });
+  const groups = groupByProject(dispatches);
 
   return (
     <Box flexDirection="column" width={terminalWidth}>
@@ -100,15 +100,32 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
         ))}
       </Box>
 
-      {/* Data rows */}
-      {rows.length === 0 ? (
+      {/* Data rows grouped by project */}
+      {dispatches.length === 0 ? (
         <Box>
           <Text dimColor>No active dispatches</Text>
         </Box>
       ) : (
-        rows.map((row, i) => (
-          <TableRow key={dispatches[i].id ?? i} cells={row} columns={columns} selected={i === selectedIndex} />
-        ))
+        (() => {
+          let flatIndex = 0;
+          return groups.map((group) => (
+            <Box key={group.project} flexDirection="column">
+              <ProjectHeader project={group.project} />
+              {group.dispatches.map((d) => {
+                const idx = flatIndex++;
+                const row = {
+                  issueRef: formatIssueRef(d),
+                  status: formatStatus(d.status),
+                  changes: d.changes ?? '',
+                  age: formatAge(d.created ?? d.created_at),
+                };
+                return (
+                  <TableRow key={d.id ?? idx} cells={row} columns={columns} selected={idx === selectedIndex} />
+                );
+              })}
+            </Box>
+          ));
+        })()
       )}
     </Box>
   );

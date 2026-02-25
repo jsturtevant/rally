@@ -178,6 +178,13 @@ describe('launchCopilot', () => {
     );
   });
 
+  test('rejects relative worktree path', () => {
+    assert.throws(
+      () => launchCopilot('relative/path', 'prompt', {}),
+      /worktreePath must be an absolute path/
+    );
+  });
+
   test('spawns docker sandbox when sandbox option is true', () => {
     let captured;
     const mockSpawn = (cmd, args, opts) => {
@@ -406,5 +413,12 @@ describe('resumeCopilot', () => {
     const mockSpawnSync = () => ({ status: 42 });
     const result = resumeCopilot('/tmp/wt', 'sess-1', { _spawnSync: mockSpawnSync });
     assert.strictEqual(result.status, 42);
+  });
+
+  test('rejects relative worktree path', () => {
+    assert.throws(
+      () => resumeCopilot('relative/path', 'sess-1', {}),
+      /worktreePath must be an absolute path/
+    );
   });
 });

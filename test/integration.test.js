@@ -244,7 +244,7 @@ describe('Integration: PR dispatch workflow', () => {
     const dashData = getDashboardData();
     assert.strictEqual(dashData.dispatches.length, 1);
     assert.strictEqual(dashData.dispatches[0].type, 'pr');
-    assert.strictEqual(dashData.dispatches[0].status, 'reviewing');
+    assert.strictEqual(dashData.dispatches[0].status, 'implementing');
 
     // Clean
     removeDispatch('repo-pr-10');

@@ -17,7 +17,7 @@ function formatIssueRef(dispatch) {
 }
 
 const STATUS_LABELS = {
-  implementing: 'working',
+  implementing: 'copilot working',
   reviewing: 'ready for review',
   pushed: 'pushed',
 };

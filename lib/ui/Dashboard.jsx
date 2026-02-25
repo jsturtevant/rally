@@ -34,7 +34,7 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus }) {
+export default function Dashboard({ project, onSelect, onAttachSession, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -64,6 +64,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     ? [
         ACTIONS.OPEN_VSCODE,
         ...(hasConnectableSession ? [ACTIONS.CONNECT_IDE] : []),
+        ...(actionDispatch.worktreePath ? [ACTIONS.ATTACH_SESSION] : []),
         ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
         ACTIONS.BACK,
       ]
@@ -160,6 +161,14 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
     }
   }
 
+  function attachToSession(dispatch) {
+    if (!dispatch.worktreePath) return;
+    if (onAttachSession) {
+      onAttachSession(dispatch);
+    }
+    exit();
+  }
+
   function handleActionSelect(direction) {
     if (direction === 'up') {
       setActionIndex(i => (i > 0 ? i - 1 : 0));
@@ -169,6 +178,8 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       openInVSCode(actionDispatch);
     } else if (direction === ACTIONS.CONNECT_IDE) {
       connectIDE(actionDispatch);
+    } else if (direction === ACTIONS.ATTACH_SESSION) {
+      attachToSession(actionDispatch);
     } else if (direction === ACTIONS.VIEW_LOGS) {
       viewLogs(actionDispatch);
     } else if (direction === 'confirm') {
@@ -177,6 +188,8 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
         openInVSCode(actionDispatch);
       } else if (selectedAction === ACTIONS.CONNECT_IDE) {
         connectIDE(actionDispatch);
+      } else if (selectedAction === ACTIONS.ATTACH_SESSION) {
+        attachToSession(actionDispatch);
       } else if (selectedAction === ACTIONS.VIEW_LOGS) {
         viewLogs(actionDispatch);
       } else {
@@ -211,6 +224,11 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       const selected = data.dispatches[selectedIndex];
       if (selected.session_id && UUID_RE.test(selected.session_id)) {
         connectIDE(selected);
+      }
+    } else if (input === 'a' && count > 0) {
+      const selected = data.dispatches[selectedIndex];
+      if (selected.worktreePath) {
+        attachToSession(selected);
       }
     } else if (input === 'l' && count > 0) {
       viewLogs(data.dispatches[selectedIndex]);
@@ -270,7 +288,7 @@ export default function Dashboard({ project, onSelect, refreshInterval = 5000, _
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · c connect IDE · l logs · p pushed · x delete · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · a attach · c connect IDE · l logs · p pushed · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

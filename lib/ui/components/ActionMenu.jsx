@@ -5,6 +5,7 @@ import { UUID_RE } from '../../copilot.js';
 const ACTIONS = {
   OPEN_VSCODE: 'open-vscode',
   CONNECT_IDE: 'connect-ide',
+  ATTACH_SESSION: 'attach-session',
   VIEW_LOGS: 'view-logs',
   BACK: 'back',
 };
@@ -15,6 +16,7 @@ const ACTIONS = {
  */
 export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack }) {
   const hasLog = Boolean(dispatch.logPath);
+  const hasWorktree = Boolean(dispatch.worktreePath);
   const hasConnectableSession = dispatch.session_id &&
     UUID_RE.test(dispatch.session_id);
 
@@ -22,6 +24,9 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
     { id: ACTIONS.OPEN_VSCODE, label: '(v) Open in VS Code' },
     ...(hasConnectableSession
       ? [{ id: ACTIONS.CONNECT_IDE, label: '(c) Connect IDE session' }]
+      : []),
+    ...(hasWorktree
+      ? [{ id: ACTIONS.ATTACH_SESSION, label: '(a) Attach to session' }]
       : []),
     ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: '(l) View dispatch logs' }] : []),
     { id: ACTIONS.BACK, label: 'Back' },
@@ -32,6 +37,8 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
       onSelect(ACTIONS.OPEN_VSCODE);
     } else if (input === 'c' && hasConnectableSession) {
       onSelect(ACTIONS.CONNECT_IDE);
+    } else if (input === 'a' && hasWorktree) {
+      onSelect(ACTIONS.ATTACH_SESSION);
     } else if (input === 'l' && hasLog) {
       onSelect(ACTIONS.VIEW_LOGS);
     } else if (key.upArrow) {
@@ -61,7 +68,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter confirm · v/l shortcut · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter confirm · v/a/l shortcut · Esc back</Text>
       </Box>
     </Box>
   );

@@ -97,7 +97,7 @@ The dashboard is the primary way to use Rally day-to-day:
 5. **Review:** Press `o` to open the PR in your browser, or `v` to open in VS Code
 6. **Attach:** Press `a` to attach to a running Copilot session if it needs guidance
 
-### For agents (CLI workflow)
+### CLI Workflows
 
 Agents and scripts should use CLI commands directly:
 
@@ -130,7 +130,7 @@ rally dispatch issue 42
 
 ## Dashboard
 
-The dashboard (`rally` or `rally dashboard`) is the primary interface for Rally. It supports interactive (TTY) and plain-text (piped) output.
+The dashboard (`rally dashboard`) is the primary interface for Rally. It supports interactive (TTY) and plain-text (piped) output.
 
 ```
 $ rally dashboard [options]

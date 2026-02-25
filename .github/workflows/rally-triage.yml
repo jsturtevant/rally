@@ -235,7 +235,7 @@ jobs:
             const comment = [
               `### 🏗️ Squad Triage — ${lead.name} (${lead.role})`,
               '',
-              `**Issue:** #${issue.number} — ${issue.title}`,
+              `**Issue:** #${issue.number} — \`${issue.title.replace(/`/g, "'")}\``,
               `**Assigned to:** ${assignedMember.name} (${assignedMember.role})`,
               `**Reason:** ${triageReason}`,
               copilotTier === 'needs-review' ? `\n⚠️ **PR review recommended** — a squad member should review @copilot's work on this one.` : '',

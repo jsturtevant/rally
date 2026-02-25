@@ -83,7 +83,7 @@ jobs:
               comment = [
                 `### 🤖 Routed to @copilot (Coding Agent)`,
                 '',
-                `**Issue:** #${issue.number} — ${issue.title}`,
+                `**Issue:** #${issue.number} — \`${issue.title.replace(/`/g, "'")}\``,
                 '',
                 `@copilot has been assigned and will pick this up automatically.`,
                 '',
@@ -94,7 +94,7 @@ jobs:
               comment = [
                 `### 📋 Assigned to ${assignedMember.name} (${assignedMember.role})`,
                 '',
-                `**Issue:** #${issue.number} — ${issue.title}`,
+                `**Issue:** #${issue.number} — \`${issue.title.replace(/`/g, "'")}\``,
                 '',
                 `${assignedMember.name} will pick this up in the next Copilot session.`,
                 '',

@@ -99,6 +99,16 @@ describe('checkOrgMembership', () => {
     };
     assert.strictEqual(checkOrgMembership('someuser/repo', 'alice', exec), null);
   });
+
+  test('returns null when owner contains path traversal characters', () => {
+    const exec = () => { throw new Error('should not call API'); };
+    assert.strictEqual(checkOrgMembership('../etc/passwd/repo', 'alice', exec), null);
+  });
+
+  test('returns null when username contains unsafe characters', () => {
+    const exec = () => { throw new Error('should not call API'); };
+    assert.strictEqual(checkOrgMembership('myorg/repo', 'alice/../../admin', exec), null);
+  });
 });
 
 // =====================================================

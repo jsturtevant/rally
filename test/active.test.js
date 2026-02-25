@@ -231,8 +231,9 @@ test('lock without info.json (legacy) uses mtime for stale detection', () => {
 test('non-stale lock (alive PID, recent timestamp) is NOT removed', () => {
   // Set reduced timeout for this test
   const origTimeout = process.env.RALLY_LOCK_TIMEOUT_MS;
-  process.env.RALLY_LOCK_TIMEOUT_MS = '200';
-  
+  const testTimeoutMs = 200;
+  process.env.RALLY_LOCK_TIMEOUT_MS = String(testTimeoutMs);
+
   try {
     const lockDir = join(tempDir, '.active.lock');
     mkdirSync(lockDir);
@@ -246,7 +247,7 @@ test('non-stale lock (alive PID, recent timestamp) is NOT removed', () => {
       /Failed to acquire lock/
     );
     const elapsed = Date.now() - startTime;
-    assert.ok(elapsed >= 150, 'should wait for lock timeout (200ms)');
+    assert.ok(elapsed >= testTimeoutMs * 0.75, `should wait for lock timeout (${testTimeoutMs}ms)`);
     assert.ok(existsSync(lockDir), 'valid lock dir should NOT be removed');
   } finally {
     // Restore original timeout

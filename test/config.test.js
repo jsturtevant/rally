@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
@@ -12,6 +12,7 @@ import {
   writeProjects,
   readActive,
   validateOnboarded,
+  atomicWrite,
 } from '../lib/config.js';
 
 test('getConfigDir returns ~/rally by default on fresh install', () => {
@@ -387,5 +388,30 @@ describe('validateOnboarded', () => {
     const data = { projects: [] };
     writeFileSync(join(tempDir, 'projects.yaml'), yaml.dump(data), 'utf8');
     assert.throws(() => validateOnboarded('owner/missing'), /not onboarded/);
+  });
+});
+
+describe('atomicWrite', () => {
+  let tempDir;
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'rally-atomic-'));
+  });
+  afterEach(() => rmSync(tempDir, { recursive: true, force: true }));
+
+  test('writes file with restricted permissions', () => {
+    const fp = join(tempDir, 'secret.yaml');
+    atomicWrite(fp, 'hello');
+    assert.equal(readFileSync(fp, 'utf8'), 'hello');
+    if (process.platform !== 'win32') {
+      const mode = statSync(fp).mode & 0o777;
+      assert.equal(mode, 0o600);
+    }
+  });
+
+  test('cleans up temp file on write failure', () => {
+    const badDir = join(tempDir, 'noexist', 'deep');
+    assert.throws(() => atomicWrite(join(badDir, 'file'), 'x'));
+    const tmps = readdirSync(tempDir).filter(f => f.endsWith('.tmp'));
+    assert.equal(tmps.length, 0);
   });
 });

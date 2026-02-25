@@ -306,6 +306,29 @@ describe('dispatchPr error paths', () => {
     const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
     assert.strictEqual(result.existing, true);
   });
+
+  test('handles TOCTOU race: worktree created between check and create', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
+
+    // Mock _exec that creates the worktree during gh pr view (simulating concurrent dispatch)
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
+        // Simulate race: another dispatch creates the worktree while we fetch the PR
+        execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-race-winner'], { cwd: repoPath, stdio: 'ignore' });
+        return JSON.stringify(pr);
+      }
+      if (cmd === 'gh' && args[0] === 'copilot') return '';
+      return execFileSync(cmd, args, opts);
+    };
+
+    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    assert.strictEqual(result.existing, true);
+    assert.ok(result.worktreePath.includes('rally-pr-42'));
+    assert.strictEqual(result.sessionId, null);
+  });
 });
 
 // =====================================================

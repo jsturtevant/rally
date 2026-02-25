@@ -100,7 +100,21 @@ describe('worktree', () => {
     assert.equal(worktreeExists(repoPath, worktreePath), false);
   });
 
-  it('should throw when creating worktree with existing branch', () => {
+  it('should throw with WORKTREE_EXISTS code when path already exists', () => {
+    const worktreePath = join(testDir, 'worktree-dup');
+    createWorktree(repoPath, worktreePath, 'branch-first');
+
+    assert.throws(
+      () => createWorktree(repoPath, worktreePath, 'branch-second'),
+      (error) => {
+        assert.ok(error.message.includes('already exists'));
+        assert.strictEqual(error.code, 'WORKTREE_EXISTS');
+        return true;
+      }
+    );
+  });
+
+  it('should throw with WORKTREE_EXISTS code when branch already exists', () => {
     const worktreePath1 = join(testDir, 'worktree-6');
     const worktreePath2 = join(testDir, 'worktree-7');
     const branchName = 'duplicate-branch';
@@ -110,7 +124,8 @@ describe('worktree', () => {
     assert.throws(
       () => createWorktree(repoPath, worktreePath2, branchName),
       (error) => {
-        assert.ok(error.message.includes('Failed to create worktree'));
+        assert.ok(error.message.includes('already exists'));
+        assert.strictEqual(error.code, 'WORKTREE_EXISTS');
         return true;
       }
     );

@@ -210,6 +210,29 @@ describe('dispatchIssue error paths', () => {
     assert.ok(result.worktreePath.includes('rally-42'));
   });
 
+  test('handles TOCTOU race: worktree created between check and create', async () => {
+    setupRallyHome();
+    const issue = makeIssue();
+    const wtPath = join(repoPath, '.worktrees', 'rally-42');
+
+    // Mock _exec that creates the worktree during gh issue view (simulating concurrent dispatch)
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
+      if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+        // Simulate race: another dispatch creates the worktree while we fetch the issue
+        execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-race-winner'], { cwd: repoPath, stdio: 'ignore' });
+        return JSON.stringify(issue);
+      }
+      if (cmd === 'gh' && args[0] === 'copilot') return '';
+      return execFileSync(cmd, args, opts);
+    };
+
+    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    assert.strictEqual(result.existing, true);
+    assert.ok(result.worktreePath.includes('rally-42'));
+    assert.strictEqual(result.sessionId, null);
+  });
+
   test('throws when repo is not onboarded', async () => {
     const rallyHome = process.env.RALLY_HOME;
     mkdirSync(rallyHome, { recursive: true });

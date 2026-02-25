@@ -233,7 +233,7 @@ The bundled GitHub Actions workflows use one optional repository secret:
 |--------|----------|-------|---------|
 | `COPILOT_ASSIGN_TOKEN` | Optional | `issues:write` (fine-grained PAT on this repo only) | `rally-issue-assign.yml`, `rally-heartbeat.yml` |
 
-`COPILOT_ASSIGN_TOKEN` is needed to assign the Copilot coding agent to triaged issues. If missing, assignment falls back to `GITHUB_TOKEN` which may lack the required scope.
+`COPILOT_ASSIGN_TOKEN` is needed to assign the Copilot coding agent to triaged issues. In `rally-issue-assign.yml`, the step fails if the secret is not set. In `rally-heartbeat.yml`, it falls back to `GITHUB_TOKEN` which may lack the required scope.
 
 ## Future Work
 

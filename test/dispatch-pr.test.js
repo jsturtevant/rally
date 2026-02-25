@@ -466,7 +466,7 @@ describe('dispatchPr happy path', () => {
     assert.strictEqual(dispatch.number, 42);
     assert.strictEqual(dispatch.type, 'pr');
     assert.strictEqual(dispatch.branch, 'rally/pr-42-fix-login-validation');
-    assert.strictEqual(dispatch.status, 'reviewing');
+    assert.strictEqual(dispatch.status, 'implementing');
   });
 
   test('creates branch with correct naming pattern', async () => {

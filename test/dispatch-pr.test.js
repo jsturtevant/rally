@@ -298,14 +298,12 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const pr = makePr();
     const fetchError = new Error('Could not resolve ref refs/pull/42/head');
+    const base = createExecWithPr(pr);
     const exec = (cmd, args, opts) => {
-      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
-      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') return JSON.stringify(pr);
-      if (cmd === 'gh' && args[0] === 'copilot') return '';
       if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
         throw fetchError;
       }
-      return execFileSync(cmd, args, opts);
+      return base(cmd, args, opts);
     };
 
     mkdirSync(join(repoPath, '.squad'), { recursive: true });
@@ -330,21 +328,12 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const pr = makePr();
     const resetError = new Error('Failed to read object FETCH_HEAD');
+    const base = createExecWithPr(pr);
     const exec = (cmd, args, opts) => {
-      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
-      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') return JSON.stringify(pr);
-      if (cmd === 'gh' && args[0] === 'copilot') return '';
-      // Allow fetch to succeed (redirect to real branch)
-      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
-        const idx = args.indexOf('-C');
-        const cwd = idx !== -1 ? args[idx + 1] : opts?.cwd;
-        return execFileSync('git', ['-C', cwd, 'fetch', 'origin', pr.headRefName], opts);
-      }
-      // Fail on reset --hard FETCH_HEAD
       if (cmd === 'git' && args.includes('reset') && args.includes('--hard') && args.includes('FETCH_HEAD')) {
         throw resetError;
       }
-      return execFileSync(cmd, args, opts);
+      return base(cmd, args, opts);
     };
 
     mkdirSync(join(repoPath, '.squad'), { recursive: true });
@@ -369,14 +358,12 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const pr = makePr();
     const originalMsg = 'network timeout after 30000ms';
+    const base = createExecWithPr(pr);
     const exec = (cmd, args, opts) => {
-      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
-      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') return JSON.stringify(pr);
-      if (cmd === 'gh' && args[0] === 'copilot') return '';
       if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
         throw new Error(originalMsg);
       }
-      return execFileSync(cmd, args, opts);
+      return base(cmd, args, opts);
     };
 
     mkdirSync(join(repoPath, '.squad'), { recursive: true });

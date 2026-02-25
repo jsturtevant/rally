@@ -77,7 +77,7 @@ describe('renderPlainDashboard (non-TTY)', () => {
 
   it('includes table headers', () => {
     const output = renderPlainDashboard();
-    assert.ok(output.includes('Project'), 'should include Project header');
+    assert.ok(output.includes('owner/repo-a'), 'should include project as group header');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR header');
     assert.ok(output.includes('Branch'), 'should include Branch header');
     assert.ok(output.includes('Folder'), 'should include Folder header');

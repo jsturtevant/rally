@@ -75,6 +75,7 @@ function TableRow({ cells, columns, selected }) {
 function ProjectHeader({ project }) {
   return (
     <Box>
+      <Box width={SELECTOR_WIDTH}><Text> </Text></Box>
       <Text bold color="yellow">{project}</Text>
     </Box>
   );

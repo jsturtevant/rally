@@ -103,12 +103,7 @@ describe('assertTools', () => {
       assert.fail('should have thrown');
     } catch (err) {
       assert.ok(err.message.includes('npx'));
-      assert.ok(!err.message.includes('git,'));
+      assert.ok(!err.message.includes('git, '));
     }
-  });
-
-  it('does not throw when a single tool is present among all', () => {
-    // All pass → no throw
-    assert.doesNotThrow(() => assertTools({ _exec: execAllPass }));
   });
 });

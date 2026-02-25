@@ -1,10 +1,8 @@
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { addDispatch, getActiveDispatches } from '../lib/active.js';
 import { dispatchRemove } from '../lib/dispatch-remove.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 function makeRecord(overrides = {}) {
   return {
@@ -31,22 +29,10 @@ const silentChalk = {
   dim: (s) => s,
 };
 
-let originalEnv;
 let tempDir;
 
-beforeEach(() => {
-  originalEnv = process.env.RALLY_HOME;
-  tempDir = mkdtempSync(join(tmpdir(), 'rally-remove-test-'));
-  process.env.RALLY_HOME = tempDir;
-});
-
-afterEach(() => {
-  if (originalEnv) {
-    process.env.RALLY_HOME = originalEnv;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
-  rmSync(tempDir, { recursive: true, force: true });
+beforeEach((t) => {
+  tempDir = withTempRallyHome(t);
 });
 
 test('dispatchRemove removes dispatch by number', async () => {

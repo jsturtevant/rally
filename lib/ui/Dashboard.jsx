@@ -67,6 +67,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   const actions = actionDispatch
     ? [
         ACTIONS.OPEN_VSCODE,
+        ACTIONS.OPEN_BROWSER,
         ...(hasConnectableSession ? [ACTIONS.CONNECT_IDE] : []),
         ...(actionDispatch.worktreePath ? [ACTIONS.ATTACH_SESSION] : []),
         ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
@@ -102,6 +103,15 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         console.error(`Failed to launch VS Code: ${err.message}`);
       });
     }
+  }
+
+  function openInBrowser(dispatch) {
+    const ghCmd = dispatch.type === 'pr' ? 'pr' : 'issue';
+    const child = _spawn('gh', [ghCmd, 'view', String(dispatch.number), '--repo', dispatch.repo, '--web'], { detached: true, stdio: 'ignore' });
+    child.unref();
+    child.on('error', (err) => {
+      console.error(`Failed to open in browser: ${err.message}`);
+    });
   }
 
   function connectIDE(dispatch) {
@@ -180,6 +190,8 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       setActionIndex(i => (i < actionCount - 1 ? i + 1 : i));
     } else if (direction === ACTIONS.OPEN_VSCODE) {
       openInVSCode(actionDispatch);
+    } else if (direction === ACTIONS.OPEN_BROWSER) {
+      openInBrowser(actionDispatch);
     } else if (direction === ACTIONS.CONNECT_IDE) {
       connectIDE(actionDispatch);
     } else if (direction === ACTIONS.ATTACH_SESSION) {
@@ -190,6 +202,8 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       const selectedAction = actions[actionIndex];
       if (selectedAction === ACTIONS.OPEN_VSCODE) {
         openInVSCode(actionDispatch);
+      } else if (selectedAction === ACTIONS.OPEN_BROWSER) {
+        openInBrowser(actionDispatch);
       } else if (selectedAction === ACTIONS.CONNECT_IDE) {
         connectIDE(actionDispatch);
       } else if (selectedAction === ACTIONS.ATTACH_SESSION) {
@@ -224,6 +238,8 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       setDetailViewDispatch(data.dispatches[selectedIndex]);
     } else if (input === 'v' && count > 0) {
       openInVSCode(data.dispatches[selectedIndex]);
+    } else if (input === 'o' && count > 0) {
+      openInBrowser(data.dispatches[selectedIndex]);
     } else if (input === 'c' && count > 0) {
       const selected = data.dispatches[selectedIndex];
       if (selected.session_id && UUID_RE.test(selected.session_id)) {
@@ -333,7 +349,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · a attach · c connect IDE · l logs · n new dispatch · p pushed · x delete · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · o browser · a attach · c connect IDE · l logs · n new dispatch · p pushed · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

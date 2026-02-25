@@ -420,6 +420,8 @@ describe('Dashboard component', () => {
     await delay();
     instance.stdin.write('\x1B[B');
     await delay();
+    instance.stdin.write('\x1B[B');
+    await delay();
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
@@ -715,6 +717,101 @@ describe('Dashboard component', () => {
     // is immune to terminal-width line wrapping.
     const plain = output.replace(/\u001b\[[0-9;]*m/g, '').replace(/\n\s*/g, ' ');
     assert.ok(plain.includes('n new dispatch'), 'should show n new dispatch shortcut hint');
+  });
+
+  it('help text includes o browser shortcut', () => {
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
+    const plain = output.replace(/\u001b\[[0-9;]*m/g, '').replace(/\n\s*/g, ' ');
+    assert.ok(plain.includes('o browser'), 'should show o browser shortcut hint');
+  });
+
+  it('o shortcut opens issue in browser via gh cli', async () => {
+    let spawnArgs;
+    const spawnMock = (cmd, args, opts) => {
+      spawnArgs = { cmd, args };
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('o');
+    await delay();
+    assert.ok(spawnArgs, 'o shortcut should spawn gh');
+    assert.equal(spawnArgs.cmd, 'gh');
+    assert.deepEqual(spawnArgs.args, ['issue', 'view', '42', '--repo', 'owner/repo-a', '--web']);
+  });
+
+  it('o shortcut opens PR in browser via gh cli', async () => {
+    const dispatches = makeSampleDispatches();
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    let spawnArgs;
+    const spawnMock = (cmd, args, opts) => {
+      spawnArgs = { cmd, args };
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    // Navigate down to the PR dispatch (index 1)
+    instance.stdin.write('\x1B[B');
+    await delay();
+    instance.stdin.write('o');
+    await delay();
+    assert.ok(spawnArgs, 'o shortcut should spawn gh for PR');
+    assert.equal(spawnArgs.cmd, 'gh');
+    assert.deepEqual(spawnArgs.args, ['pr', 'view', '7', '--repo', 'owner/repo-b', '--web']);
+  });
+
+  it('o shortcut does not quit the dashboard', async () => {
+    const spawnMock = (cmd, args, opts) => {
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('o');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Rally Dashboard'), 'dashboard should still be visible after o');
+  });
+
+  it('action menu shows Open in browser option', async () => {
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('(o) Open in browser'), 'should show Open in browser option');
+  });
+
+  it('action menu o shortcut opens in browser', async () => {
+    let spawnArgs;
+    const spawnMock = (cmd, args, opts) => {
+      spawnArgs = { cmd, args };
+      return { unref: () => {}, on: () => {} };
+    };
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    instance.stdin.write('o');
+    await delay();
+    assert.ok(spawnArgs, 'action menu o shortcut should spawn gh');
+    assert.equal(spawnArgs.cmd, 'gh');
+    assert.deepEqual(spawnArgs.args, ['issue', 'view', '42', '--repo', 'owner/repo-a', '--web']);
   });
 
   it('n shortcut opens project browser', async () => {

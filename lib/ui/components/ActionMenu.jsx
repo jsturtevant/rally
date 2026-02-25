@@ -4,6 +4,7 @@ import { UUID_RE } from '../../copilot.js';
 
 const ACTIONS = {
   OPEN_VSCODE: 'open-vscode',
+  OPEN_BROWSER: 'open-browser',
   CONNECT_IDE: 'connect-ide',
   ATTACH_SESSION: 'attach-session',
   VIEW_LOGS: 'view-logs',
@@ -22,6 +23,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
 
   const actions = [
     { id: ACTIONS.OPEN_VSCODE, label: '(v) Open in VS Code' },
+    { id: ACTIONS.OPEN_BROWSER, label: '(o) Open in browser' },
     ...(hasConnectableSession
       ? [{ id: ACTIONS.CONNECT_IDE, label: '(c) Connect IDE session' }]
       : []),
@@ -35,6 +37,8 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
   useInput((input, key) => {
     if (input === 'v') {
       onSelect(ACTIONS.OPEN_VSCODE);
+    } else if (input === 'o') {
+      onSelect(ACTIONS.OPEN_BROWSER);
     } else if (input === 'c' && hasConnectableSession) {
       onSelect(ACTIONS.CONNECT_IDE);
     } else if (input === 'a' && hasWorktree) {
@@ -68,7 +72,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter confirm · v/a/l shortcut · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter confirm · v/o/a/l shortcut · Esc back</Text>
       </Box>
     </Box>
   );

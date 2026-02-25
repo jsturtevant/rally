@@ -423,3 +423,37 @@ test('addDispatch allows null PID field', () => {
 test('cleanupLock does not throw when no lock exists', () => {
   assert.doesNotThrow(() => cleanupLock());
 });
+
+test('cleanupLock removes lock owned by current process', () => {
+  const configDir = join(tempDir, 'cleanup-own');
+  mkdirSync(configDir, { recursive: true });
+  const lockDir = join(configDir, '.active.lock');
+  mkdirSync(lockDir);
+  writeFileSync(join(lockDir, 'info.json'), JSON.stringify({ pid: process.pid, timestamp: Date.now() }));
+  const origEnv = process.env.RALLY_HOME;
+  process.env.RALLY_HOME = configDir;
+  try {
+    cleanupLock();
+    assert.ok(!existsSync(lockDir), 'lock should be removed');
+  } finally {
+    if (origEnv !== undefined) process.env.RALLY_HOME = origEnv;
+    else delete process.env.RALLY_HOME;
+  }
+});
+
+test('cleanupLock does not remove lock owned by another process', () => {
+  const configDir = join(tempDir, 'cleanup-other');
+  mkdirSync(configDir, { recursive: true });
+  const lockDir = join(configDir, '.active.lock');
+  mkdirSync(lockDir);
+  writeFileSync(join(lockDir, 'info.json'), JSON.stringify({ pid: 999999, timestamp: Date.now() }));
+  const origEnv = process.env.RALLY_HOME;
+  process.env.RALLY_HOME = configDir;
+  try {
+    cleanupLock();
+    assert.ok(existsSync(lockDir), 'lock should remain');
+  } finally {
+    if (origEnv !== undefined) process.env.RALLY_HOME = origEnv;
+    else delete process.env.RALLY_HOME;
+  }
+});

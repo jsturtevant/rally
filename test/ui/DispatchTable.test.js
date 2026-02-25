@@ -38,12 +38,37 @@ describe('DispatchTable', () => {
     );
     lastCleanup = cleanup;
     const output = lastFrame();
-    assert.ok(output.includes('Project'), 'should include Project column');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR column');
     assert.ok(!output.includes('Branch'), 'should not include Branch column');
     assert.ok(!output.includes('Folder'), 'should not include Folder column');
     assert.ok(output.includes('Status'), 'should include Status column');
     assert.ok(output.includes('Age'), 'should include Age column');
+  });
+
+  it('renders project group headers', () => {
+    const { lastFrame, cleanup } = render(
+      React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
+    );
+    lastCleanup = cleanup;
+    const output = lastFrame();
+    assert.ok(output.includes('owner/repo-a'), 'should include first project header');
+    assert.ok(output.includes('owner/repo-b'), 'should include second project header');
+  });
+
+  it('groups dispatches from same project together', () => {
+    const dispatches = [
+      { repo: 'owner/repo-a', type: 'issue', number: 1, status: 'planning', created: new Date().toISOString() },
+      { repo: 'owner/repo-b', type: 'pr', number: 2, status: 'implementing', created: new Date().toISOString() },
+      { repo: 'owner/repo-a', type: 'issue', number: 3, status: 'done', created: new Date().toISOString() },
+    ];
+    const { lastFrame, cleanup } = render(
+      React.createElement(DispatchTable, { dispatches })
+    );
+    lastCleanup = cleanup;
+    const output = lastFrame();
+    const lines = output.split('\n');
+    const repoALines = lines.filter(l => l.includes('owner/repo-a') || l.includes('Issue #1') || l.includes('Issue #3'));
+    assert.ok(repoALines.length >= 3, 'repo-a header and both issues should render');
   });
 
   it('renders dispatch data rows', () => {

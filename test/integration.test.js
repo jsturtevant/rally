@@ -466,9 +466,7 @@ describe('Integration: dashboard data and rendering', () => {
 
     // Check structure
     assert.ok(output.includes('Rally Dashboard'), 'should include title');
-    assert.ok(output.includes('Project'), 'should include headers');
-    assert.ok(output.includes('Issue/PR'), 'should include headers');
-    assert.ok(output.includes('owner/repo'), 'should include repo');
+    assert.ok(output.includes('owner/repo'), 'should include project group header');
     assert.ok(output.includes('Issue #5'), 'should include issue ref');
     assert.ok(output.includes('rally/5-feature'), 'should include branch');
     assert.ok(output.includes('planning'), 'should include status');

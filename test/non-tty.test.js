@@ -75,14 +75,10 @@ describe('renderPlainDashboard (non-TTY)', () => {
     assert.ok(output.includes('Rally Dashboard'), 'should include title');
   });
 
-  it('includes table headers', () => {
+  it('includes grouped project headers and data columns', () => {
     const output = renderPlainDashboard();
-    assert.ok(output.includes('Project'), 'should include Project header');
-    assert.ok(output.includes('Issue/PR'), 'should include Issue/PR header');
-    assert.ok(output.includes('Branch'), 'should include Branch header');
-    assert.ok(output.includes('Folder'), 'should include Folder header');
-    assert.ok(output.includes('Status'), 'should include Status header');
-    assert.ok(output.includes('Age'), 'should include Age header');
+    assert.ok(output.includes('owner/repo-a'), 'should include project group header');
+    assert.ok(output.includes('Issue #42'), 'should include issue ref');
   });
 
   it('includes dispatch data', () => {

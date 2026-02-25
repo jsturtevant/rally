@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
-import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.js';
+import Dashboard, { getDashboardData, computeSummary, groupByProject } from '../../lib/ui/Dashboard.js';
 
 let TEST_DIR;
 let WORKTREE_DIR;
@@ -112,6 +112,60 @@ describe('computeSummary', () => {
     const summary = computeSummary(dispatches);
     assert.equal(summary.done, 1, 'pushed should count as done');
     assert.equal(summary.active, 1);
+  });
+});
+
+describe('groupByProject', () => {
+  it('groups dispatches by repo name', () => {
+    const dispatches = [
+      { repo: 'owner/repo-a', number: 1 },
+      { repo: 'owner/repo-b', number: 2 },
+      { repo: 'owner/repo-a', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 2);
+    assert.equal(groups[0].project, 'owner/repo-a');
+    assert.equal(groups[0].dispatches.length, 2);
+    assert.equal(groups[1].project, 'owner/repo-b');
+    assert.equal(groups[1].dispatches.length, 1);
+  });
+
+  it('preserves order within groups', () => {
+    const dispatches = [
+      { repo: 'owner/repo-a', number: 1 },
+      { repo: 'owner/repo-a', number: 5 },
+      { repo: 'owner/repo-a', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 1);
+    assert.deepEqual(
+      groups[0].dispatches.map(d => d.number),
+      [1, 5, 3]
+    );
+  });
+
+  it('returns empty array for empty dispatches', () => {
+    const groups = groupByProject([]);
+    assert.equal(groups.length, 0);
+  });
+
+  it('uses unknown for dispatches without repo', () => {
+    const dispatches = [{ number: 1 }, { repo: null, number: 2 }];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].project, 'unknown');
+    assert.equal(groups[0].dispatches.length, 2);
+  });
+
+  it('preserves group order based on first appearance', () => {
+    const dispatches = [
+      { repo: 'owner/repo-b', number: 1 },
+      { repo: 'owner/repo-a', number: 2 },
+      { repo: 'owner/repo-b', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups[0].project, 'owner/repo-b', 'first seen project should come first');
+    assert.equal(groups[1].project, 'owner/repo-a');
   });
 });
 

@@ -5,12 +5,12 @@ import DispatchTable from './components/DispatchTable.jsx';
 import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
 import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
-import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
+import { computeSummary, getDashboardData, renderPlainDashboard, groupByProject } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 import { updateDispatchStatus as defaultUpdateDispatchStatus } from '../active.js';
 import { parseSessionIdFromLog as defaultParseSessionId, UUID_RE } from '../copilot.js';
 
-export { computeSummary, getDashboardData, renderPlainDashboard };
+export { computeSummary, getDashboardData, renderPlainDashboard, groupByProject };
 
 /**
  * Summary line component.

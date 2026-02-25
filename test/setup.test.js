@@ -94,7 +94,7 @@ describe('setup', () => {
     const configPath = join(tempDir, 'config.yaml');
     assert.ok(existsSync(configPath), 'config.yaml should exist');
 
-    const config = yaml.load(readFileSync(configPath, 'utf8'));
+    const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(config.teamDir, teamDir);
     assert.strictEqual(config.projectsDir, join(tempDir, 'projects'));
     assert.strictEqual(config.version, '0.1.0');
@@ -108,7 +108,7 @@ describe('setup', () => {
     await setup({ dir: customDir });
 
     const configPath = join(tempDir, 'config.yaml');
-    const config = yaml.load(readFileSync(configPath, 'utf8'));
+    const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(config.teamDir, customDir);
   });
 
@@ -123,11 +123,11 @@ describe('setup', () => {
     await setup();
 
     const configPath = join(tempDir, 'config.yaml');
-    const firstConfig = yaml.load(readFileSync(configPath, 'utf8'));
+    const firstConfig = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
 
     // Second run — should not throw
     await setup();
-    const secondConfig = yaml.load(readFileSync(configPath, 'utf8'));
+    const secondConfig = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
 
     assert.deepStrictEqual(firstConfig, secondConfig);
     assert.ok(existsSync(teamDir));

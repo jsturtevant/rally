@@ -204,7 +204,7 @@ describe('onboard --fork integration', () => {
     await onboard({ path: repoPath, fork: 'myuser/my-repo', _select: sharedSelect, _exec });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects[0].fork, 'myuser/my-repo');
   });
 
@@ -248,7 +248,7 @@ describe('onboard --fork integration', () => {
     await onboard({ path: repoPath, _select: sharedSelect });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects[0].fork, undefined);
   });
 
@@ -329,7 +329,7 @@ describe('onboard --fork integration', () => {
 
     // Project should be registered with fork info
     const projectsPath = join(rallyHome, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects[0].repo, 'upstream-org/my-project');
     assert.strictEqual(projects.projects[0].fork, 'testuser/my-project');
   });

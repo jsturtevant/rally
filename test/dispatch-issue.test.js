@@ -276,7 +276,7 @@ describe('dispatchIssue happy path', () => {
     // Verify active.yaml was updated
     const activePath = join(rallyHome, 'active.yaml');
     assert.ok(existsSync(activePath), 'active.yaml should exist');
-    const active = yaml.load(readFileSync(activePath, 'utf8'));
+    const active = yaml.load(readFileSync(activePath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.ok(active.dispatches.length === 1);
     const dispatch = active.dispatches[0];
     assert.strictEqual(dispatch.id, 'repo-issue-42');
@@ -374,7 +374,7 @@ describe('dispatchIssue happy path', () => {
 
     // Verify session_id is persisted to active.yaml
     const activePath = join(process.env.RALLY_HOME, 'active.yaml');
-    const active = yaml.load(readFileSync(activePath, 'utf8'));
+    const active = yaml.load(readFileSync(activePath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(active.dispatches[0].session_id, '98765');
   });
 

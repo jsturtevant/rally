@@ -190,7 +190,7 @@ describe('onboard URL cloning', () => {
     await onboard({ path: 'octocat/my-project', _select: sharedSelect });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects.length, 1);
     assert.strictEqual(projects.projects[0].name, 'my-project');
   });
@@ -228,7 +228,7 @@ describe('onboard URL cloning', () => {
 
     // Verify registered in projects.yaml
     const projectsPath = join(rallyHome, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects[0].name, 'flow-test');
     assert.strictEqual(projects.projects[0].team, 'shared');
   });

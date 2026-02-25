@@ -137,7 +137,7 @@ describe('e2e: setup & onboard (config seeding)', () => {
     seedConfig(tempDir, REPO_ROOT);
 
     // Verify config was written correctly
-    const config = yaml.load(readFileSync(join(tempDir, 'config.yaml'), 'utf8'));
+    const config = yaml.load(readFileSync(join(tempDir, 'config.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.equal(config.version, '0.1.0');
     assert.ok(existsSync(config.teamDir), 'teamDir should exist');
     assert.ok(existsSync(config.projectsDir), 'projectsDir should exist');
@@ -245,7 +245,7 @@ describe('e2e: dispatch issue 54 (library)', () => {
     assert.ok(contextContent.includes('#54') || contextContent.includes('54'), 'context should reference issue 54');
 
     // active.yaml should have the dispatch
-    const active = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'));
+    const active = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.ok(active.dispatches.length >= 1, 'should have at least one dispatch');
     const dispatch = active.dispatches.find(d => d.number === 54);
     assert.ok(dispatch, 'dispatch for issue 54 should exist');
@@ -322,7 +322,7 @@ describe('e2e: dispatch clean', () => {
       assert.equal(result.cleaned[0].id, 'rally-issue-99');
 
       // active.yaml should now be empty
-      const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'));
+      const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
       assert.equal(afterActive.dispatches.length, 0, 'active.yaml should have no dispatches');
     } finally {
       if (origHome !== undefined) {
@@ -367,7 +367,7 @@ describe('e2e: dispatch clean', () => {
       assert.equal(result.cleaned.length, 0, 'should clean nothing');
 
       // Dispatch should still be present
-      const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'));
+      const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
       assert.equal(afterActive.dispatches.length, 1, 'dispatch should remain');
     } finally {
       if (origHome !== undefined) {

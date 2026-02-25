@@ -17,7 +17,19 @@ Rally is a CLI tool that dispatches AI agents (via GitHub Copilot CLI) to work o
 Install Rally globally:
 
 ```bash
-npm install -g squad-rally
+npm install -g github:jsturtevant/rally
+```
+
+Or run directly with npx:
+
+```bash
+npx github:jsturtevant/rally
+```
+
+For a specific version:
+
+```bash
+npx github:jsturtevant/rally#v0.1.0
 ```
 
 ## First-Time Setup

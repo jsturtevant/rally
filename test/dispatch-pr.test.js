@@ -700,6 +700,54 @@ describe('buildReviewPrompt', () => {
     const prompt = buildReviewPrompt({ ...pr, number: 1 });
     assert.ok(typeof prompt === 'string', 'should not throw');
   });
+
+  test('includes inline file comment template with REVIEW ISSUE format', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(prompt.includes('// # REVIEW ISSUE #N [SEVERITY]: Brief description'), 'should include inline comment template');
+    assert.ok(prompt.includes('CRITICAL'), 'should mention CRITICAL severity in template');
+  });
+
+  test('instructs to leave inline comments unstaged', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(prompt.includes('unstaged'), 'should instruct to leave files unstaged');
+    assert.ok(prompt.includes('git diff'), 'should mention git diff for comments');
+  });
+
+  test('includes REVIEW.md template with all required sections', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    const requiredSections = [
+      '## Summary',
+      '## Issues Summary',
+      '## Critical Issues',
+      '## High Issues',
+      '## Medium Issues',
+      '## Low Issues',
+      '## Reviewer Agreement Matrix',
+      '## Recommendations',
+      '## Files Changed',
+      '## Issue Index',
+    ];
+    for (const section of requiredSections) {
+      assert.ok(prompt.includes(section), `should include "${section}" section`);
+    }
+  });
+
+  test('REVIEW.md template includes structured issue format fields', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    for (const field of ['**File:**', '**Reported By:**', '**Problem:**', '**Evidence:**', '**Suggested Fix:**']) {
+      assert.ok(prompt.includes(field), `should include ${field} in issue format`);
+    }
+  });
+
+  test('includes PR number in REVIEW.md template header', () => {
+    const pr = makePr();
+    const prompt = buildReviewPrompt({ ...pr, number: 42 });
+    assert.ok(prompt.includes('# Code Review: PR #42'), 'should embed PR number in template header');
+  });
 });
 
 // =====================================================

@@ -278,6 +278,40 @@ test('updateDispatchField preserves other fields', () => {
   assert.strictEqual(dispatches[0].session_id, 'new-session');
 });
 
+test('updateDispatchField rejects disallowed field names', () => {
+  addDispatch(makeRecord({ id: 'allowlist-test' }));
+  assert.throws(() => {
+    updateDispatchField('allowlist-test', '__proto__', {});
+  }, /Cannot update field/);
+  assert.throws(() => {
+    updateDispatchField('allowlist-test', 'constructor', {});
+  }, /Cannot update field/);
+  assert.throws(() => {
+    updateDispatchField('allowlist-test', 'arbitrary_field', 'value');
+  }, /Cannot update field/);
+});
+
+test('updateDispatchField allows all permitted fields', () => {
+  addDispatch(makeRecord({ id: 'all-fields-test' }));
+  updateDispatchField('all-fields-test', 'session_id', 'sess-1');
+  updateDispatchField('all-fields-test', 'status', 'reviewing');
+  updateDispatchField('all-fields-test', 'logPath', '/tmp/log');
+  updateDispatchField('all-fields-test', 'pid', 9999);
+  const dispatches = getActiveDispatches();
+  const d = dispatches.find(r => r.id === 'all-fields-test');
+  assert.strictEqual(d.session_id, 'sess-1');
+  assert.strictEqual(d.status, 'reviewing');
+  assert.strictEqual(d.logPath, '/tmp/log');
+  assert.strictEqual(d.pid, 9999);
+});
+
+test('updateDispatchField validates status values', () => {
+  addDispatch(makeRecord({ id: 'status-validate-test' }));
+  assert.throws(() => {
+    updateDispatchField('status-validate-test', 'status', 'invalid-status');
+  }, /Invalid dispatch status/);
+});
+
 test('concurrent addDispatch calls do not lose records', () => {
   // Simulate by calling addDispatch twice in sequence (same-process concurrency test)
   addDispatch(makeRecord({ id: 'concurrent-1' }));

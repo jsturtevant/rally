@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { resolveRepo, parseRepoFlag, getRemoteRepo } from '../lib/dispatch.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 describe('parseRepoFlag', () => {
   test('parses valid owner/repo', () => {
@@ -80,24 +81,16 @@ describe('getRemoteRepo', () => {
 
 describe('resolveRepo', () => {
   let tempDir;
-  let originalEnv;
   let originalCwd;
 
-  beforeEach(() => {
+  beforeEach((t) => {
     tempDir = mkdtempSync(join(tmpdir(), 'rally-dispatch-test-'));
-    originalEnv = process.env.RALLY_HOME;
     originalCwd = process.cwd();
-    process.env.RALLY_HOME = join(tempDir, 'rally-home');
-    mkdirSync(process.env.RALLY_HOME, { recursive: true });
+    withTempRallyHome(t);
   });
 
   afterEach(() => {
     process.chdir(originalCwd);
-    if (originalEnv) {
-      process.env.RALLY_HOME = originalEnv;
-    } else {
-      delete process.env.RALLY_HOME;
-    }
     rmSync(tempDir, { recursive: true, force: true });
   });
 

@@ -13,6 +13,7 @@ import { dispatchIssue } from '../lib/dispatch-issue.js';
 import { dispatchPr } from '../lib/dispatch-pr.js';
 import { getActiveDispatches, removeDispatch } from '../lib/active.js';
 import { getDashboardData, computeSummary, renderPlainDashboard } from '../lib/ui/dashboard-data.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 // =====================================================
 // Helpers
@@ -20,13 +21,11 @@ import { getDashboardData, computeSummary, renderPlainDashboard } from '../lib/u
 
 let tempDir;
 let repoPath;
-let originalEnv;
 
-function createTestRepo() {
+function createTestRepo(t) {
   tempDir = mkdtempSync(join(tmpdir(), 'rally-integration-'));
   repoPath = join(tempDir, 'repo');
-  originalEnv = process.env.RALLY_HOME;
-  process.env.RALLY_HOME = join(tempDir, 'rally-home');
+  withTempRallyHome(t);
 
   mkdirSync(repoPath, { recursive: true });
   execFileSync('git', ['init'], { cwd: repoPath, stdio: 'ignore' });
@@ -52,11 +51,6 @@ function setupRallyHome() {
 }
 
 function cleanup() {
-  if (originalEnv !== undefined) {
-    process.env.RALLY_HOME = originalEnv;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
   if (tempDir) {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -138,8 +132,8 @@ function noopSpawn() {
 // =====================================================
 
 describe('Integration: issue dispatch → dashboard → clean', () => {
-  beforeEach(() => {
-    createTestRepo();
+  beforeEach((t) => {
+    createTestRepo(t);
     setupRallyHome();
   });
   afterEach(cleanup);
@@ -207,8 +201,8 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
 // =====================================================
 
 describe('Integration: PR dispatch workflow', () => {
-  beforeEach(() => {
-    createTestRepo();
+  beforeEach((t) => {
+    createTestRepo(t);
     setupRallyHome();
 
     // Create a PR head ref branch for fetch/checkout
@@ -263,8 +257,8 @@ describe('Integration: PR dispatch workflow', () => {
 // =====================================================
 
 describe('Integration: error cases', () => {
-  beforeEach(() => {
-    createTestRepo();
+  beforeEach((t) => {
+    createTestRepo(t);
   });
   afterEach(cleanup);
 
@@ -380,8 +374,8 @@ describe('Integration: error cases', () => {
 // =====================================================
 
 describe('Integration: dashboard data and rendering', () => {
-  beforeEach(() => {
-    createTestRepo();
+  beforeEach((t) => {
+    createTestRepo(t);
     setupRallyHome();
   });
   afterEach(cleanup);
@@ -540,8 +534,8 @@ describe('Integration: dashboard data and rendering', () => {
 // =====================================================
 
 describe('Integration: multiple dispatches', () => {
-  beforeEach(() => {
-    createTestRepo();
+  beforeEach((t) => {
+    createTestRepo(t);
     setupRallyHome();
   });
   afterEach(cleanup);

@@ -41,7 +41,10 @@ const SELECTOR_WIDTH = 2;
 const DEFAULT_WIDTH = 80;
 
 function computeColumnWidths(terminalWidth) {
-  const width = terminalWidth || DEFAULT_WIDTH;
+  const width =
+    Number.isFinite(terminalWidth) && terminalWidth > 0
+      ? terminalWidth
+      : DEFAULT_WIDTH;
   const fixedTotal = COLUMN_DEFS.reduce(
     (sum, col) => sum + (col.flex ? 0 : col.minWidth),
     0,
@@ -72,7 +75,8 @@ function TableRow({ cells, columns, selected }) {
 
 export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
   const { stdout } = useStdout();
-  const columns = computeColumnWidths(stdout?.columns);
+  const terminalWidth = stdout?.columns ?? DEFAULT_WIDTH;
+  const columns = computeColumnWidths(terminalWidth);
 
   const rows = dispatches.map((d) => {
     return {
@@ -85,7 +89,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
   });
 
   return (
-    <Box flexDirection="column" width={stdout?.columns}>
+    <Box flexDirection="column" width={terminalWidth}>
       {/* Header */}
       <Box>
         <Box width={SELECTOR_WIDTH}><Text> </Text></Box>

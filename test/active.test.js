@@ -278,6 +278,19 @@ test('updateDispatchField preserves other fields', () => {
   assert.strictEqual(dispatches[0].session_id, 'new-session');
 });
 
+test('updateDispatchField rejects disallowed field names', () => {
+  addDispatch(makeRecord({ id: 'allowlist-test' }));
+  assert.throws(() => {
+    updateDispatchField('allowlist-test', '__proto__', {});
+  }, /Cannot update field/);
+  assert.throws(() => {
+    updateDispatchField('allowlist-test', 'constructor', {});
+  }, /Cannot update field/);
+  assert.throws(() => {
+    updateDispatchField('allowlist-test', 'arbitrary_field', 'value');
+  }, /Cannot update field/);
+});
+
 test('concurrent addDispatch calls do not lose records', () => {
   // Simulate by calling addDispatch twice in sequence (same-process concurrency test)
   addDispatch(makeRecord({ id: 'concurrent-1' }));

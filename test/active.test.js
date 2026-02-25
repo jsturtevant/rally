@@ -229,20 +229,33 @@ test('lock without info.json (legacy) uses mtime for stale detection', () => {
 });
 
 test('non-stale lock (alive PID, recent timestamp) is NOT removed', () => {
-  const lockDir = join(tempDir, '.active.lock');
-  mkdirSync(lockDir);
-  const validInfo = { pid: process.pid, timestamp: Date.now() };
-  writeFileSync(join(lockDir, 'info.json'), JSON.stringify(validInfo), 'utf8');
+  // Set reduced timeout for this test
+  const origTimeout = process.env.RALLY_LOCK_TIMEOUT_MS;
+  process.env.RALLY_LOCK_TIMEOUT_MS = '200';
+  
+  try {
+    const lockDir = join(tempDir, '.active.lock');
+    mkdirSync(lockDir);
+    const validInfo = { pid: process.pid, timestamp: Date.now() };
+    writeFileSync(join(lockDir, 'info.json'), JSON.stringify(validInfo), 'utf8');
 
-  // Attempt to add dispatch should timeout waiting for this valid lock
-  const startTime = Date.now();
-  assert.throws(
-    () => addDispatch(makeRecord({ id: 'should-fail' })),
-    /Failed to acquire lock/
-  );
-  const elapsed = Date.now() - startTime;
-  assert.ok(elapsed >= 10000, 'should wait for lock timeout');
-  assert.ok(existsSync(lockDir), 'valid lock dir should NOT be removed');
+    // Attempt to add dispatch should timeout waiting for this valid lock
+    const startTime = Date.now();
+    assert.throws(
+      () => addDispatch(makeRecord({ id: 'should-fail' })),
+      /Failed to acquire lock/
+    );
+    const elapsed = Date.now() - startTime;
+    assert.ok(elapsed >= 150, 'should wait for lock timeout (200ms)');
+    assert.ok(existsSync(lockDir), 'valid lock dir should NOT be removed');
+  } finally {
+    // Restore original timeout
+    if (origTimeout !== undefined) {
+      process.env.RALLY_LOCK_TIMEOUT_MS = origTimeout;
+    } else {
+      delete process.env.RALLY_LOCK_TIMEOUT_MS;
+    }
+  }
 });
 
 test('updateDispatchField updates a single field', () => {

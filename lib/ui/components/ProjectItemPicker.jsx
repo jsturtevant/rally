@@ -7,7 +7,7 @@ import { fetchIssues, fetchPrs } from '../../picker.js';
  * Fetches data from GitHub on mount. ↑/↓ to navigate, Enter to dispatch, Esc to go back.
  */
 function resolveRepo(project) {
-  const repo = project.repo || project.name;
+  const repo = project.repo;
   if (!repo || !repo.includes('/')) return null;
   return repo;
 }

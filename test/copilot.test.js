@@ -178,6 +178,13 @@ describe('launchCopilot', () => {
     );
   });
 
+  test('rejects relative worktree path', () => {
+    assert.throws(
+      () => launchCopilot('relative/path', 'prompt', {}),
+      /worktreePath must be an absolute path/
+    );
+  });
+
   test('spawns docker sandbox when sandbox option is true', () => {
     let captured;
     const mockSpawn = (cmd, args, opts) => {

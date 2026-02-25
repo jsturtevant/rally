@@ -8,6 +8,15 @@ import { onboard } from '../lib/onboard.js';
 import { getStatus, formatStatus } from '../lib/status.js';
 import { handleError, RallyError } from '../lib/errors.js';
 import { assertTools } from '../lib/tools.js';
+import { cleanupLock } from '../lib/active.js';
+
+// Release lock on abrupt termination to avoid stale lock files
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    cleanupLock();
+    process.exit(128 + (sig === 'SIGINT' ? 2 : 15));
+  });
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));

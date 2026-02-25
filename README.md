@@ -38,13 +38,31 @@ npx github:jsturtevant/rally#v0.1.0
 ## Quick Start
 
 ```bash
-rally setup                            # Configure team directory (creates ~/rally/)
-rally onboard <url>                    # Clone and set up a repository
-rally dispatch issue 42                # Dispatch Squad to an issue
-rally dispatch pr 10                   # Dispatch Squad to a PR review
-rally dashboard                        # View active dispatches (also the default command)
-rally dispatch clean                   # Remove completed dispatches
+rally setup                    # One-time setup (creates ~/rally/)
+rally onboard owner/repo       # Register a project
+
+rally dashboard                 # Launch the dashboard ← this is the main entry point
 ```
+
+The dashboard is Rally's home screen. From here you can dispatch agents to issues and PRs, monitor progress, view logs, and manage all your work.
+
+```
+Rally Dashboard
+
+ Issue/PR                               Status               Changes   Age
+owner/myrepo
+❯ Issue #42  Fix login timeout          ⏳ copilot working              5m
+     PR #38  Refactor auth module       🟡 ready for review   +85 -12  23m
+owner/otherapp
+  Issue #15  Add dark mode toggle       ⏳ copilot working              2h
+
+3 active · 1 done · 0 orphaned
+
+↑/↓ navigate · Enter actions · d details · v open · o browser · a attach
+c connect IDE · l logs · n new dispatch · p pushed · x delete · r refresh · q quit
+```
+
+From the dashboard, press **`n`** to dispatch a new issue or PR, **`o`** to open in the browser, **`a`** to attach to a running Copilot session, **`l`** to view logs, and **`d`** for dispatch details. See the [Dashboard](#dashboard) section for the full keyboard shortcut reference.
 
 ### Onboarding a project
 
@@ -66,21 +84,86 @@ rally onboard remove [project]         # Interactive picker if project omitted
 rally onboard remove myrepo --yes      # Skip confirmation
 ```
 
-### Docker Sandbox (Optional)
+## Workflows
 
-For enhanced isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM:
+### For humans (dashboard workflow)
 
-- [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support
-- `GH_TOKEN` or `GITHUB_TOKEN` set globally in shell config
-- Docker Desktop restarted after setting the token
+The dashboard is the primary way to use Rally day-to-day:
 
-Use `--sandbox` with dispatch commands:
+1. **Setup:** `rally setup` → `rally onboard owner/repo`
+2. **Launch:** `rally dashboard` to open the dashboard
+3. **Dispatch:** Press `n` to pick an issue or PR from your onboarded projects
+4. **Monitor:** Watch progress in real time (auto-refreshes every 5 seconds)
+5. **Review:** Press `o` to open the PR in your browser, or `v` to open in VS Code
+6. **Attach:** Press `a` to attach to a running Copilot session if it needs guidance
+
+### CLI Workflows
+
+Agents and scripts should use CLI commands directly:
+
 ```bash
-rally dispatch issue 42 --sandbox
-rally dispatch pr 10 --sandbox
+rally dispatch issue 42                # Dispatch to an issue
+rally dispatch pr 15                   # Dispatch to a PR review
+rally dispatch continue 42             # Resume a session
+rally dispatch log 42                  # Check agent output
+rally dispatch clean                   # Clean up when done
 ```
 
+### Multi-project workflow
+
+```bash
+rally onboard owner/repo-a
+rally onboard owner/repo-b
+rally dispatch issue 10 --repo owner/repo-a
+rally dispatch pr 5 --repo owner/repo-b
+rally dashboard                        # See all dispatches across projects
+```
+
+### Fork workflow
+
+```bash
+rally onboard upstream/repo --fork myuser/repo
+# origin → myuser/repo (your fork)
+# upstream → upstream/repo (main project)
+rally dispatch issue 42
+```
+
+## Dashboard
+
+The dashboard (`rally dashboard`) is the primary interface for Rally. It supports interactive (TTY) and plain-text (piped) output.
+
+```
+$ rally dashboard [options]
+
+Options:
+  --json              Output as JSON instead of interactive UI
+  --project <name>    Filter by project (repo name)
+  -h, --help          display help for command
+```
+
+**Keyboard shortcuts (interactive mode):**
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate dispatch list |
+| `Enter` | Open action menu for selected dispatch |
+| `d` | View dispatch details |
+| `v` | Open worktree in VS Code |
+| `o` | Open issue/PR in browser |
+| `a` | Attach to Copilot session (exits dashboard, runs `dispatch continue`) |
+| `c` | Connect IDE — opens VS Code + bridges Copilot session |
+| `l` | View Copilot output log |
+| `n` | New dispatch — browse onboarded projects and pick an issue/PR |
+| `p` | Mark selected dispatch as "pushed" |
+| `x` | Delete selected dispatch |
+| `r` | Refresh dashboard data |
+| `q` | Quit |
+
+The dashboard auto-refreshes every 5 seconds.
+
 ## Commands
+
+> **For scripts and agents.** The CLI commands below are the programmatic interface to Rally. If you're a human, use the [Dashboard](#dashboard) instead — it's faster and easier.
 
 ### `rally setup`
 
@@ -127,41 +210,6 @@ Options:
   --json       Output as JSON
   -h, --help   display help for command
 ```
-
-### `rally dashboard`
-
-Show active dispatch dashboard. Supports interactive (TTY) and plain-text (piped) output.
-
-```
-$ rally dashboard [options]
-
-Show active dispatch dashboard
-
-Options:
-  --json              Output as JSON instead of interactive UI
-  --project <name>    Filter by project (repo name)
-  -h, --help          display help for command
-```
-
-**Keyboard shortcuts (interactive mode):**
-
-| Key | Action |
-|-----|--------|
-| `↑` / `↓` | Navigate dispatch list |
-| `Enter` | Open action menu for selected dispatch |
-| `d` | View dispatch details |
-| `v` | Open worktree in VS Code |
-| `o` | Open issue/PR in browser |
-| `a` | Attach to Copilot session (exits dashboard, runs `dispatch continue`) |
-| `c` | Connect IDE — opens VS Code + bridges Copilot session |
-| `l` | View Copilot output log |
-| `n` | New dispatch — browse onboarded projects and pick an issue/PR |
-| `p` | Mark selected dispatch as "pushed" |
-| `x` | Delete selected dispatch |
-| `r` | Refresh dashboard data |
-| `q` | Quit |
-
-The dashboard auto-refreshes every 5 seconds.
 
 ### `rally dispatch issue`
 
@@ -379,47 +427,18 @@ When `--repo` is omitted, Rally resolves the target repo in this order:
 3. Single-project fallback (if only one project is registered)
 4. Error with list of registered projects
 
-## Common Patterns
+## Docker Sandbox (Optional)
 
-### Full issue workflow
+For enhanced isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM:
 
+- [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support
+- `GH_TOKEN` or `GITHUB_TOKEN` set globally in shell config
+- Docker Desktop restarted after setting the token
+
+Use `--sandbox` with dispatch commands:
 ```bash
-rally setup                            # One-time setup
-rally onboard owner/repo               # Register the repo
-rally dispatch issue 42                # Dispatch agent to issue
-rally dashboard                        # Monitor progress
-rally dispatch log 42                  # Check agent output
-rally dispatch continue 42             # Resume if needed
-# Review changes in .worktrees/rally-42/
-rally dispatch clean                   # Clean up when done
-```
-
-### PR review workflow
-
-```bash
-rally dispatch pr 15                   # Dispatch multi-model review
-rally dispatch log 15                  # Check review progress
-# Read REVIEW.md in .worktrees/rally-pr-15/
-rally dispatch clean                   # Clean up
-```
-
-### Multi-project workflow
-
-```bash
-rally onboard owner/repo-a
-rally onboard owner/repo-b
-rally dispatch issue 10 --repo owner/repo-a
-rally dispatch pr 5 --repo owner/repo-b
-rally dashboard                        # See all dispatches across projects
-```
-
-### Fork workflow
-
-```bash
-rally onboard upstream/repo --fork myuser/repo
-# origin → myuser/repo (your fork)
-# upstream → upstream/repo (main project)
-rally dispatch issue 42
+rally dispatch issue 42 --sandbox
+rally dispatch pr 10 --sandbox
 ```
 
 ## Future Work

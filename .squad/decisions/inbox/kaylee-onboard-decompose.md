@@ -1,7 +1,7 @@
 # Decision: onboard() decomposition — private helpers, not exported
 
 **By:** Kaylee (Core Dev)
-**Date:** 2026
+**Date:** 2026-02-25
 **Issue:** #292
 
 ## Decision

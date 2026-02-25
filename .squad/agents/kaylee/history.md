@@ -605,6 +605,6 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
   - `setupSymlinks(projectPath, teamDir)` — symlink creation with idempotency checks
   - `registerProject({...})` — exclude management + projects.yaml registration
 - **Replaced inline regex** in repo name resolution with the already-imported `parseGitHubRemoteUrl()` — eliminates duplication
-- **Pure refactor:** All 70 onboard tests pass unmodified, all 82 full suite tests pass
+- **Pure refactor:** All 82 tests pass unmodified
 - **Exported API unchanged:** `onboard()` and `onboardRemove()` signatures identical
 - **Helpers are private (not exported)** — kept in the same file since they're small and tightly coupled to the onboard flow

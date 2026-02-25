@@ -155,7 +155,11 @@ describe('ProjectItemPicker', () => {
         ...mockFetchers(),
       })
     );
-    await delay();
+    // Poll until items render (useEffect may need extra ticks on Windows/Node 20)
+    for (let i = 0; i < 10; i++) {
+      await delay();
+      if (lastInstance.lastFrame().includes('❯')) break;
+    }
     lastInstance.stdin.write('\r');
     await delay();
     assert.ok(selectedItem, 'should have selected an item');

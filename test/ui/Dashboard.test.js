@@ -711,7 +711,10 @@ describe('Dashboard component', () => {
   it('help text includes n new dispatch shortcut', () => {
     instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
     const output = instance.lastFrame();
-    assert.ok(output.includes('n new dispatch'), 'should show n new dispatch shortcut hint');
+    // Strip ANSI codes and collapse wrapped lines so the assertion
+    // is immune to terminal-width line wrapping.
+    const plain = output.replace(/\u001b\[[0-9;]*m/g, '').replace(/\n\s*/g, ' ');
+    assert.ok(plain.includes('n new dispatch'), 'should show n new dispatch shortcut hint');
   });
 
   it('n shortcut opens project browser', async () => {

@@ -294,6 +294,91 @@ describe('dispatchPr error paths', () => {
     );
   });
 
+  test('throws when git fetch of PR head ref fails', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const fetchError = new Error('Could not resolve ref refs/pull/42/head');
+    const base = createExecWithPr(pr);
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
+        throw fetchError;
+      }
+      return base(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      (err) => {
+        assert.ok(err.message.includes('Failed to fetch PR #42 head ref'), 'should mention fetch failure and PR number');
+        assert.ok(err.message.includes(fetchError.message), 'should preserve original error message');
+        return true;
+      }
+    );
+
+    // Verify rollback: worktree directory removed and branch deleted
+    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
+    assert.ok(!existsSync(wtPath), 'worktree directory should be removed after fetch failure');
+    const branches = execFileSync('git', ['branch', '--list', 'rally/pr-42-fix-login-validation'], { cwd: repoPath, encoding: 'utf8' });
+    assert.strictEqual(branches.trim(), '', 'rally/pr-* branch should be deleted after fetch failure');
+  });
+
+  test('throws when git reset --hard FETCH_HEAD fails', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const resetError = new Error('Failed to read object FETCH_HEAD');
+    const base = createExecWithPr(pr);
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'git' && args.includes('reset') && args.includes('--hard') && args.includes('FETCH_HEAD')) {
+        throw resetError;
+      }
+      return base(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      (err) => {
+        assert.ok(err.message.includes('Failed to reset worktree to PR #42 head'), 'should mention reset failure and PR number');
+        assert.ok(err.message.includes(resetError.message), 'should preserve original error message');
+        return true;
+      }
+    );
+
+    // Verify rollback: worktree directory removed and branch deleted
+    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
+    assert.ok(!existsSync(wtPath), 'worktree directory should be removed after reset failure');
+    const branches = execFileSync('git', ['branch', '--list', 'rally/pr-42-fix-login-validation'], { cwd: repoPath, encoding: 'utf8' });
+    assert.strictEqual(branches.trim(), '', 'rally/pr-* branch should be deleted after reset failure');
+  });
+
+  test('fetch failure preserves original error message with PR context', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const originalMsg = 'network timeout after 30000ms';
+    const base = createExecWithPr(pr);
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
+        throw new Error(originalMsg);
+      }
+      return base(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 7, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      (err) => {
+        // The wrapper should include both the context (PR number) and the original error
+        assert.ok(err.message.startsWith('Failed to fetch PR #7 head ref:'), 'should start with contextual prefix');
+        assert.ok(err.message.endsWith(originalMsg), 'should end with original error message');
+        return true;
+      }
+    );
+  });
+
   test('returns early with existing flag when worktree already exists', async () => {
     setupRallyHome();
     const pr = makePr();

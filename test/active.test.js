@@ -319,7 +319,8 @@ test('terminatePid calls process.kill with SIGTERM', () => {
   const mockKill = (pid, signal) => {
     captured = { pid, signal };
   };
-  const result = terminatePid(12345, mockKill);
+  const mockRead = () => 'gh\0copilot\0--some-flag';
+  const result = terminatePid(12345, mockKill, mockRead);
   assert.strictEqual(result, true);
   assert.deepStrictEqual(captured, { pid: 12345, signal: 'SIGTERM' });
 });
@@ -328,8 +329,27 @@ test('terminatePid returns false when kill throws (best-effort)', () => {
   const mockKill = () => {
     throw new Error('No such process');
   };
-  const result = terminatePid(99999, mockKill);
+  const mockRead = () => 'gh\0copilot\0--some-flag';
+  const result = terminatePid(99999, mockKill, mockRead);
   assert.strictEqual(result, false);
+});
+
+test('terminatePid returns false when PID is not a copilot process', () => {
+  let killed = false;
+  const mockKill = () => { killed = true; };
+  const mockRead = () => '/usr/bin/node\0server.js';
+  const result = terminatePid(12345, mockKill, mockRead);
+  assert.strictEqual(result, false);
+  assert.strictEqual(killed, false, 'should not kill non-copilot processes');
+});
+
+test('terminatePid proceeds when /proc is unavailable', () => {
+  let captured;
+  const mockKill = (pid, signal) => { captured = { pid, signal }; };
+  const mockRead = () => { throw new Error('ENOENT'); };
+  const result = terminatePid(12345, mockKill, mockRead);
+  assert.strictEqual(result, true);
+  assert.deepStrictEqual(captured, { pid: 12345, signal: 'SIGTERM' });
 });
 
 test('addDispatch stores PID field', () => {

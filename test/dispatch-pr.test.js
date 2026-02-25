@@ -294,6 +294,91 @@ describe('dispatchPr error paths', () => {
     );
   });
 
+  test('throws when git fetch of PR head ref fails', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const fetchError = new Error('Could not resolve ref refs/pull/42/head');
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') return JSON.stringify(pr);
+      if (cmd === 'gh' && args[0] === 'copilot') return '';
+      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
+        throw fetchError;
+      }
+      return execFileSync(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      (err) => {
+        assert.ok(err.message.includes('Failed to fetch PR #42 head ref'), 'should mention fetch failure and PR number');
+        assert.ok(err.message.includes(fetchError.message), 'should preserve original error message');
+        return true;
+      }
+    );
+  });
+
+  test('throws when git reset --hard FETCH_HEAD fails', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const resetError = new Error('Failed to read object FETCH_HEAD');
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') return JSON.stringify(pr);
+      if (cmd === 'gh' && args[0] === 'copilot') return '';
+      // Allow fetch to succeed (redirect to real branch)
+      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
+        const cwd = opts?.cwd;
+        return execFileSync('git', ['-C', cwd, 'fetch', 'origin', pr.headRefName], opts);
+      }
+      // Fail on reset --hard FETCH_HEAD
+      if (cmd === 'git' && args.includes('reset') && args.includes('--hard') && args.includes('FETCH_HEAD')) {
+        throw resetError;
+      }
+      return execFileSync(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      (err) => {
+        assert.ok(err.message.includes('Failed to reset worktree to PR #42 head'), 'should mention reset failure and PR number');
+        assert.ok(err.message.includes(resetError.message), 'should preserve original error message');
+        return true;
+      }
+    );
+  });
+
+  test('catch-and-rethrow wraps original error context in both git operations', async () => {
+    setupRallyHome();
+    const pr = makePr();
+    const originalMsg = 'network timeout after 30000ms';
+    const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') return 'gh version 2.0.0';
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') return JSON.stringify(pr);
+      if (cmd === 'gh' && args[0] === 'copilot') return '';
+      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
+        throw new Error(originalMsg);
+      }
+      return execFileSync(cmd, args, opts);
+    };
+
+    mkdirSync(join(repoPath, '.squad'), { recursive: true });
+
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 7, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      (err) => {
+        // The wrapper should include both the context (PR number) and the original error
+        assert.ok(err.message.startsWith('Failed to fetch PR #7 head ref:'), 'should start with contextual prefix');
+        assert.ok(err.message.endsWith(originalMsg), 'should end with original error message');
+        return true;
+      }
+    );
+  });
+
   test('returns early with existing flag when worktree already exists', async () => {
     setupRallyHome();
     const pr = makePr();

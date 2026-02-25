@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
@@ -12,6 +12,8 @@ import {
   writeProjects,
   readActive,
   validateOnboarded,
+  ensureConfigDir,
+  atomicWrite,
 } from '../lib/config.js';
 
 test('getConfigDir returns ~/rally by default on fresh install', () => {
@@ -34,7 +36,7 @@ test('getConfigDir returns ~/rally by default on fresh install', () => {
     } else {
       delete process.env.USERPROFILE;
     }
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     }
     rmSync(tempHome, { recursive: true, force: true });
@@ -62,7 +64,7 @@ test('getConfigDir falls back to ~/.rally when it exists and ~/rally does not', 
     } else {
       delete process.env.USERPROFILE;
     }
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     }
     rmSync(tempHome, { recursive: true, force: true });
@@ -91,7 +93,7 @@ test('getConfigDir prefers ~/rally over ~/.rally when both exist', () => {
     } else {
       delete process.env.USERPROFILE;
     }
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     }
     rmSync(tempHome, { recursive: true, force: true });
@@ -107,7 +109,7 @@ test('getConfigDir respects RALLY_HOME env var', () => {
     const configDir = getConfigDir();
     assert.strictEqual(configDir, tempDir);
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -122,7 +124,7 @@ test('getConfigDir throws when RALLY_HOME is a relative path', () => {
     process.env.RALLY_HOME = 'relative/path';
     assert.throws(() => getConfigDir(), /RALLY_HOME must be an absolute path/);
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -139,7 +141,7 @@ test('readConfig returns null when file missing', () => {
     const config = readConfig();
     assert.strictEqual(config, null);
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -166,7 +168,7 @@ test('writeConfig creates directory if missing', () => {
     const content = readFileSync(configPath, 'utf8');
     assert.ok(content.includes('teamDir: /home/user/.rally/team'));
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -192,7 +194,7 @@ test('writeConfig and readConfig roundtrip', () => {
     
     assert.deepEqual(result, data);
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -214,7 +216,7 @@ test('readConfig throws on invalid YAML', () => {
       readConfig();
     }, /Failed to parse config.yaml/);
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -232,7 +234,7 @@ test('readProjects returns default when file missing', () => {
     const projects = readProjects();
     assert.deepEqual(projects, { projects: [] });
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -258,7 +260,7 @@ test('writeProjects and readProjects roundtrip', () => {
     
     assert.deepEqual(result, data);
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -276,7 +278,7 @@ test('readActive returns default when file missing', () => {
     const active = readActive();
     assert.deepEqual(active, { dispatches: [] });
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -295,7 +297,7 @@ test('readProjects returns default when file is empty', () => {
     const projects = readProjects();
     assert.deepEqual(projects, { projects: [] });
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -314,7 +316,7 @@ test('readActive returns default when file is empty', () => {
     const active = readActive();
     assert.deepEqual(active, { dispatches: [] });
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -340,7 +342,7 @@ test('readActive reads YAML written directly', () => {
     
     assert.deepEqual(result, data);
   } finally {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -360,7 +362,7 @@ describe('validateOnboarded', () => {
   });
 
   afterEach(() => {
-    if (originalEnv) {
+    if (originalEnv !== undefined) {
       process.env.RALLY_HOME = originalEnv;
     } else {
       delete process.env.RALLY_HOME;
@@ -387,5 +389,67 @@ describe('validateOnboarded', () => {
     const data = { projects: [] };
     writeFileSync(join(tempDir, 'projects.yaml'), yaml.dump(data), 'utf8');
     assert.throws(() => validateOnboarded('owner/missing'), /not onboarded/);
+  });
+});
+
+describe('ensureConfigDir', () => {
+  let tempDir;
+  const originalEnv = process.env.RALLY_HOME;
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'rally-ensure-'));
+  });
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+    if (originalEnv !== undefined) {
+      process.env.RALLY_HOME = originalEnv;
+    } else {
+      delete process.env.RALLY_HOME;
+    }
+  });
+
+  test('creates directory with 0o700 permissions', () => {
+    const dir = join(tempDir, 'newdir');
+    process.env.RALLY_HOME = dir;
+    ensureConfigDir();
+    assert.ok(existsSync(dir));
+    if (process.platform !== 'win32') {
+      const mode = statSync(dir).mode & 0o777;
+      assert.equal(mode, 0o700);
+    }
+  });
+
+  test('tightens permissions on existing directory', () => {
+    if (process.platform === 'win32') return;
+    const dir = join(tempDir, 'existing');
+    mkdirSync(dir, { mode: 0o755 });
+    process.env.RALLY_HOME = dir;
+    ensureConfigDir();
+    const mode = statSync(dir).mode & 0o777;
+    assert.equal(mode, 0o700);
+  });
+});
+
+describe('atomicWrite', () => {
+  let tempDir;
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'rally-atomic-'));
+  });
+  afterEach(() => rmSync(tempDir, { recursive: true, force: true }));
+
+  test('writes file with restricted permissions', () => {
+    const fp = join(tempDir, 'secret.yaml');
+    atomicWrite(fp, 'hello');
+    assert.equal(readFileSync(fp, 'utf8'), 'hello');
+    if (process.platform !== 'win32') {
+      const mode = statSync(fp).mode & 0o777;
+      assert.equal(mode, 0o600);
+    }
+  });
+
+  test('cleans up temp file on write failure', () => {
+    const badDir = join(tempDir, 'noexist', 'deep');
+    assert.throws(() => atomicWrite(join(badDir, 'file'), 'x'));
+    const tmps = readdirSync(tempDir).filter(f => f.endsWith('.tmp'));
+    assert.equal(tmps.length, 0);
   });
 });

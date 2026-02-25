@@ -10,6 +10,7 @@ import {
   removeDispatch,
   getActiveDispatches,
   terminatePid,
+  cleanupLock,
   VALID_STATUSES,
 } from '../lib/active.js';
 
@@ -417,4 +418,8 @@ test('addDispatch allows null PID field', () => {
   const record = makeRecord({ pid: null });
   const result = addDispatch(record);
   assert.strictEqual(result.pid, null);
+});
+
+test('cleanupLock does not throw when no lock exists', () => {
+  assert.doesNotThrow(() => cleanupLock());
 });

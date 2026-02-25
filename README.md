@@ -225,6 +225,16 @@ Options:
   -h, --help  display help for command
 ```
 
+## CI Secrets
+
+The bundled GitHub Actions workflows use one optional repository secret:
+
+| Secret | Required | Scope | Used by |
+|--------|----------|-------|---------|
+| `COPILOT_ASSIGN_TOKEN` | Optional | `issues:write` (fine-grained PAT on this repo only) | `rally-issue-assign.yml`, `rally-heartbeat.yml` |
+
+`COPILOT_ASSIGN_TOKEN` is needed to assign the Copilot coding agent to triaged issues. If missing, assignment falls back to `GITHUB_TOKEN` which may lack the required scope.
+
 ## Future Work
 
 - **Smart worktree cleanup:** Automatic removal of completed worktrees and branches after PR merge

@@ -88,11 +88,17 @@ function makePr(overrides = {}) {
 
 function createExecWithIssue(issueData) {
   return (cmd, args, opts) => {
+    if (cmd === 'gh' && args[0] === '--version') {
+      return 'gh version 2.0.0';
+    }
     if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
       if (!issueData) {
         throw new Error('Could not resolve to an Issue with the number of 999');
       }
       return JSON.stringify(issueData);
+    }
+    if (cmd === 'gh' && args[0] === 'copilot') {
+      return '';
     }
     return execFileSync(cmd, args, opts);
   };
@@ -100,11 +106,17 @@ function createExecWithIssue(issueData) {
 
 function createExecWithPr(prData) {
   return (cmd, args, opts) => {
+    if (cmd === 'gh' && args[0] === '--version') {
+      return 'gh version 2.0.0';
+    }
     if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
       if (!prData) {
         throw new Error('Could not resolve to a PullRequest with the number of 999');
       }
       return JSON.stringify(prData);
+    }
+    if (cmd === 'gh' && args[0] === 'copilot') {
+      return '';
     }
     // Simulate refs/pull/N/head fetch — in tests, fetch the PR branch directly
     if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
@@ -143,6 +155,7 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     // Verify dispatch result
@@ -218,6 +231,7 @@ describe('Integration: PR dispatch workflow', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     assert.strictEqual(result.branch, 'rally/pr-10-fix-login-validation');
@@ -309,6 +323,7 @@ describe('Integration: error cases', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     assert.strictEqual(result.existing, true);
@@ -351,6 +366,7 @@ describe('Integration: error cases', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     assert.strictEqual(result.existing, true);
@@ -540,6 +556,7 @@ describe('Integration: multiple dispatches', () => {
       repoPath,
       _exec: exec1,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     await dispatchIssue({
@@ -548,6 +565,7 @@ describe('Integration: multiple dispatches', () => {
       repoPath,
       _exec: exec2,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     const dispatches = getActiveDispatches();

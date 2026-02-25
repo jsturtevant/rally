@@ -67,8 +67,14 @@ function makeIssue(overrides = {}) {
 
 function createExecWithIssue(issueData, { dirty = false } = {}) {
   return (cmd, args, opts) => {
+    if (cmd === 'gh' && args[0] === '--version') {
+      return 'gh version 2.0.0';
+    }
     if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
       return JSON.stringify(issueData);
+    }
+    if (cmd === 'gh' && args[0] === 'copilot') {
+      return '';
     }
     if (cmd === 'git' && args[0] === 'status' && args[1] === '--porcelain') {
       return dirty ? ' M file.txt\n' : '';
@@ -162,6 +168,7 @@ describe('worktree collision detection', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     assert.strictEqual(result.existing, true);
@@ -185,6 +192,7 @@ describe('worktree collision detection', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     assert.strictEqual(result.existing, true);

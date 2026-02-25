@@ -414,4 +414,11 @@ describe('resumeCopilot', () => {
     const result = resumeCopilot('/tmp/wt', 'sess-1', { _spawnSync: mockSpawnSync });
     assert.strictEqual(result.status, 42);
   });
+
+  test('rejects relative worktree path', () => {
+    assert.throws(
+      () => resumeCopilot('relative/path', 'sess-1', {}),
+      /worktreePath must be an absolute path/
+    );
+  });
 });

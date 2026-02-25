@@ -41,7 +41,7 @@ npx github:jsturtevant/rally#v0.1.0
 rally setup                    # One-time setup (creates ~/rally/)
 rally onboard owner/repo       # Register a project
 
-rally                          # Launch the dashboard ← this is the main entry point
+rally dashboard                 # Launch the dashboard ← this is the main entry point
 ```
 
 The dashboard is Rally's home screen. From here you can dispatch agents to issues and PRs, monitor progress, view logs, and manage all your work.
@@ -91,7 +91,7 @@ rally onboard remove myrepo --yes      # Skip confirmation
 The dashboard is the primary way to use Rally day-to-day:
 
 1. **Setup:** `rally setup` → `rally onboard owner/repo`
-2. **Launch:** `rally` to open the dashboard
+2. **Launch:** `rally dashboard` to open the dashboard
 3. **Dispatch:** Press `n` to pick an issue or PR from your onboarded projects
 4. **Monitor:** Watch progress in real time (auto-refreshes every 5 seconds)
 5. **Review:** Press `o` to open the PR in your browser, or `v` to open in VS Code
@@ -116,7 +116,7 @@ rally onboard owner/repo-a
 rally onboard owner/repo-b
 rally dispatch issue 10 --repo owner/repo-a
 rally dispatch pr 5 --repo owner/repo-b
-rally                                  # See all dispatches across projects
+rally dashboard                        # See all dispatches across projects
 ```
 
 ### Fork workflow

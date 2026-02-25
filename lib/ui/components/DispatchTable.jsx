@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text, useStdout } from 'ink';
 import { formatAge } from '../dashboard-data.js';
 
 const STATUS_ICONS = {
@@ -28,21 +28,38 @@ function formatStatus(status) {
   return `${icon} ${label}`;
 }
 
-const COLUMNS = [
-  { key: 'project', label: 'Project', width: 18 },
-  { key: 'issueRef', label: 'Issue/PR', width: 12 },
-  { key: 'status', label: 'Status', width: 20 },
-  { key: 'changes', label: 'Changes', width: 10 },
-  { key: 'age', label: 'Age', width: 6 },
+// Minimum widths per column; Project is flexible and gets remaining space
+const COLUMN_DEFS = [
+  { key: 'project', label: 'Project', minWidth: 18, flex: true },
+  { key: 'issueRef', label: 'Issue/PR', minWidth: 12 },
+  { key: 'status', label: 'Status', minWidth: 20 },
+  { key: 'changes', label: 'Changes', minWidth: 10 },
+  { key: 'age', label: 'Age', minWidth: 6 },
 ];
 
-function TableRow({ cells, selected }) {
+const SELECTOR_WIDTH = 2;
+const DEFAULT_WIDTH = 80;
+
+function computeColumnWidths(terminalWidth) {
+  const width = terminalWidth || DEFAULT_WIDTH;
+  const fixedTotal = COLUMN_DEFS.reduce(
+    (sum, col) => sum + (col.flex ? 0 : col.minWidth),
+    0,
+  );
+  const remaining = Math.max(0, width - SELECTOR_WIDTH - fixedTotal);
+  return COLUMN_DEFS.map((col) => ({
+    ...col,
+    width: col.flex ? Math.max(col.minWidth, remaining) : col.minWidth,
+  }));
+}
+
+function TableRow({ cells, columns, selected }) {
   return (
     <Box>
-      <Box width={2}>
+      <Box width={SELECTOR_WIDTH}>
         <Text color="cyan">{selected ? '❯' : ' '}</Text>
       </Box>
-      {COLUMNS.map((col) => (
+      {columns.map((col) => (
         <Box key={col.key} width={col.width} paddingRight={1}>
           <Text bold={selected}>
             {cells[col.key] ?? ''}
@@ -54,6 +71,9 @@ function TableRow({ cells, selected }) {
 }
 
 export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
+  const { stdout } = useStdout();
+  const columns = computeColumnWidths(stdout?.columns);
+
   const rows = dispatches.map((d) => {
     return {
       project: d.repo ?? '',
@@ -65,11 +85,11 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
   });
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" width={stdout?.columns}>
       {/* Header */}
       <Box>
-        <Box width={2}><Text> </Text></Box>
-        {COLUMNS.map((col) => (
+        <Box width={SELECTOR_WIDTH}><Text> </Text></Box>
+        {columns.map((col) => (
           <Box key={col.key} width={col.width} paddingRight={1}>
             <Text bold underline>{col.label}</Text>
           </Box>
@@ -83,11 +103,11 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
         </Box>
       ) : (
         rows.map((row, i) => (
-          <TableRow key={dispatches[i].id ?? i} cells={row} selected={i === selectedIndex} />
+          <TableRow key={dispatches[i].id ?? i} cells={row} columns={columns} selected={i === selectedIndex} />
         ))
       )}
     </Box>
   );
 }
 
-export { STATUS_ICONS };
+export { STATUS_ICONS, computeColumnWidths };

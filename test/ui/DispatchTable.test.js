@@ -2,7 +2,7 @@ import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import DispatchTable, { STATUS_ICONS } from '../../lib/ui/components/DispatchTable.js';
+import DispatchTable, { STATUS_ICONS, computeColumnWidths } from '../../lib/ui/components/DispatchTable.js';
 import { formatAge } from '../../lib/ui/dashboard-data.js';
 
 let lastCleanup;
@@ -156,5 +156,40 @@ describe('formatAge', () => {
   it('returns 0m for future timestamps', () => {
     const future = new Date(Date.now() + 60000).toISOString();
     assert.equal(formatAge(future), '0m');
+  });
+});
+
+describe('computeColumnWidths', () => {
+  it('gives Project column extra space from terminal width', () => {
+    const cols = computeColumnWidths(120);
+    const project = cols.find(c => c.key === 'project');
+    // Fixed columns: issueRef(12) + status(20) + changes(10) + age(6) = 48
+    // selector = 2, remaining = 120 - 2 - 48 = 70
+    assert.equal(project.width, 70, 'Project should get remaining terminal width');
+  });
+
+  it('uses minimum widths for non-flex columns', () => {
+    const cols = computeColumnWidths(120);
+    const issueRef = cols.find(c => c.key === 'issueRef');
+    const status = cols.find(c => c.key === 'status');
+    const changes = cols.find(c => c.key === 'changes');
+    const age = cols.find(c => c.key === 'age');
+    assert.equal(issueRef.width, 12);
+    assert.equal(status.width, 20);
+    assert.equal(changes.width, 10);
+    assert.equal(age.width, 6);
+  });
+
+  it('defaults to 80 columns when terminal width is undefined', () => {
+    const cols = computeColumnWidths(undefined);
+    const project = cols.find(c => c.key === 'project');
+    // remaining = 80 - 2 - 48 = 30
+    assert.equal(project.width, 30);
+  });
+
+  it('never shrinks Project below its minimum width', () => {
+    const cols = computeColumnWidths(40);
+    const project = cols.find(c => c.key === 'project');
+    assert.ok(project.width >= 18, 'Project should not go below minWidth');
   });
 });

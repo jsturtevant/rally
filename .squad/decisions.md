@@ -2032,3 +2032,145 @@ Never spawn anticipatory tests. Tests must always be written as part of the same
 
 User request — captured for team memory. Prevents test assumptions from diverging from actual implementation code.
 
+
+---
+
+# Decision: resolveRepo() prefers projects.yaml over git remote
+
+**Date:** 2026-02-24  
+**Author:** Wash  
+**Issue:** #223  
+**PR:** #224  
+
+## Context
+
+When a project is onboarded with `--fork`, `rally onboard` reconfigures git remotes: origin → fork, upstream → original repo. The `projects.yaml` entry stores `repo` as the upstream and `fork` as the user's fork.
+
+`resolveRepo()` was calling `getRemoteRepo()` which reads `git remote get-url origin` — returning the fork URL instead of the upstream. This broke issue/PR fetching for fork projects.
+
+## Decision
+
+`resolveRepo()` now uses `project.repo` from `projects.yaml` as the source of truth for repo identity. It only falls back to `getRemoteRepo()` (git remote) for legacy entries that lack a `repo` field.
+
+## Implications
+
+- **All agents:** When resolving which GitHub repo to operate against, always use `project.repo` from `projects.yaml` — never rely on git remote origin.
+- **Onboard:** The `repo` field in `projects.yaml` must always be the upstream repo, even for forks. This is already the case.
+- **Backward compat:** Legacy projects without `repo` field still work via git remote fallback.
+
+---
+
+# Decision: Pushed Status in Dispatch Lifecycle (Issue #222, PR #225)
+
+**Date:** 2026-02-24
+**Author:** Kaylee (Core Dev)
+**Issue:** #222
+**Status:** Implemented
+
+## Context
+
+Users needed a way to indicate they've reviewed Copilot's work and pushed it, but aren't ready to clean up the worktree/branch yet. The `reviewing` → `done` gap didn't capture this intermediate state.
+
+## Decision
+
+- Added `pushed` as a new status between `reviewing` and `done` in `VALID_STATUSES`
+- Dashboard `p` shortcut transitions `reviewing` → `pushed` (only fires on reviewing dispatches)
+- `pushed` displays as 🟣 in the dashboard
+- `dispatch-clean` includes `pushed` in its default filter
+- `computeSummary` counts `pushed` in the `done` bucket
+
+## Rationale
+
+`pushed` signals "I've reviewed and pushed, but the worktree is still useful." This prevents premature cleanup while giving visibility into which dispatches have been acted on. The `p` shortcut follows the established single-key pattern (v/l/d/x/r/q).
+
+## Impact
+
+- Status lifecycle: planning → implementing → reviewing → pushed → done → cleaned
+- `pushed` is optional — users can still go reviewing → done directly
+- All 562+ tests pass
+
+---
+
+# Decision: Default project directory changed from ~/.rally to ~/rally
+
+**Author:** Wash  
+**Date:** 2026-02-23  
+**Issue:** #221  
+**PR:** #226  
+
+## Context
+
+VSCode and Copilot agents treat `~/.rally` (dotfile directory) as a trusted workspace, causing trust-related issues when working with cloned projects inside it.
+
+## Decision
+
+Default config directory is now `~/rally` (no dot prefix). Backward compatibility is handled in `getConfigDir()`:
+
+1. `RALLY_HOME` env var takes priority (unchanged)
+2. `~/rally` is preferred if it exists
+3. `~/.rally` is used as fallback if it exists and `~/rally` does not
+4. Fresh installs get `~/rally`
+
+No migration script needed — the fallback logic handles it transparently.
+
+## Impact
+
+- All agents: `getConfigDir()` return value may differ. All code already goes through this function, so no other changes needed.
+- `rally setup` creates directories under `~/rally` for new users.
+- Existing `~/.rally` users can keep using it or move to `~/rally` at their convenience — both work.
+- Docs (PRD.md, TESTING.md) updated to reference `~/rally`.
+
+---
+
+# Decision: Dashboard attach-to-session uses callback + waitUntilExit pattern
+
+**Author:** Kaylee (Core Dev)
+**Date:** 2026-02-25
+**Issue:** #220
+**PR:** #227
+
+## Context
+
+Adding an "Attach to session" action to the Dashboard requires spawning `gh copilot --resume` with `stdio: 'inherit'` for an interactive terminal session. However, Ink owns the terminal in fullscreen mode — spawning an interactive child process while Ink is running doesn't work.
+
+## Decision
+
+Use a callback pattern: Dashboard component calls `onAttachSession(dispatch)` then `exit()`. The CLI command in `bin/rally.js` captures the dispatch via the callback, waits for Ink to unmount via `waitUntilExit()`, then calls `dispatchContinue()` to spawn the interactive copilot session.
+
+## Rationale
+
+- Keeps component logic (what to attach to) separate from CLI wiring (how to attach)
+- Clean terminal handoff — Ink fully unmounts before interactive process starts
+- Reuses existing `dispatchContinue()` which handles session ID resolution, status updates, and `resumeCopilot()`
+- Same pattern can be used for any future actions that need to exit Ink before spawning interactive processes
+
+## Impact
+
+This pattern should be followed for any future Dashboard actions that require interactive terminal access (e.g., launching editors with terminal UI, running interactive commands).
+
+---
+
+# Decision: Dispatch Trust Check Behavior
+
+**Author:** Wash (Integration Dev)
+**Date:** 2026-02-25
+**Issue:** #218
+**PR:** #228
+
+## Context
+
+When dispatching issues/PRs, the content (title, body, labels, comments) is fed to an AI agent. Content authored by untrusted third parties could contain prompt injection attacks.
+
+## Decision
+
+1. **Author mismatch warning**: If the issue/PR  current GitHub user, show a warning and require confirmation (default: No).author 
+2. **Org membership warning**: If the current user is not a member of the repo's org, show an additional warning.
+3. **`--trust` flag**: Bypasses all warnings for automation/scripting.
+4. **Non-TTY passthrough**: In non-interactive environments (CI, piped input), skip warnings silently — don't block automated workflows.
+5. **Graceful degradation**: If `gh api user` or author lookup fails, proceed without warning rather than blocking the user.
+
+## Rationale
+
+- **Default deny** (confirm default: false) — user must actively opt in when processing untrusted content
+- **Non-TTY passthrough** — CI/automation users should use `--trust` explicitly; when stdin isn't a TTY there's no way to prompt anyway
+- **Fail-open on API errors** — better to let the user proceed than to block on transient API failures

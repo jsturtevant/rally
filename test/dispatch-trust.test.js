@@ -264,12 +264,48 @@ describe('checkDispatchTrust', () => {
       if (args[0] === 'issue' && args[1] === 'view') return 'mallory\n';
       return '';
     };
-    const result = await checkDispatchTrust({
-      type: 'issue', number: 1, repo: 'o/r',
-      _exec: exec, _isTTY: false,
-      _confirm: () => { throw new Error('should not prompt in non-TTY'); },
-    });
-    assert.strictEqual(result, false);
+    const original = console.error;
+    const messages = [];
+    console.error = (...args) => messages.push(args.join(' '));
+    try {
+      const result = await checkDispatchTrust({
+        type: 'issue', number: 1, repo: 'o/r',
+        _exec: exec, _isTTY: false,
+        _confirm: () => { throw new Error('should not prompt in non-TTY'); },
+      });
+      assert.strictEqual(result, false);
+      assert.ok(
+        messages.some(m => m.includes('issue authored by mallory')),
+        `Expected stderr message about author mismatch, got: ${JSON.stringify(messages)}`
+      );
+    } finally {
+      console.error = original;
+    }
+  });
+
+  test('non-TTY + author mismatch (type=pr) → returns false with correct message', async () => {
+    const exec = (cmd, args) => {
+      if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
+      if (args[0] === 'pr' && args[1] === 'view') return 'mallory\n';
+      return '';
+    };
+    const original = console.error;
+    const messages = [];
+    console.error = (...args) => messages.push(args.join(' '));
+    try {
+      const result = await checkDispatchTrust({
+        type: 'pr', number: 5, repo: 'o/r',
+        _exec: exec, _isTTY: false,
+        _confirm: () => { throw new Error('should not prompt in non-TTY'); },
+      });
+      assert.strictEqual(result, false);
+      assert.ok(
+        messages.some(m => m.includes('pr authored by mallory')),
+        `Expected stderr message about pr author mismatch, got: ${JSON.stringify(messages)}`
+      );
+    } finally {
+      console.error = original;
+    }
   });
 
   test('non-TTY + author matches → returns true', async () => {

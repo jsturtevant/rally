@@ -608,3 +608,12 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Pure refactor:** All 82 tests pass unmodified
 - **Exported API unchanged:** `onboard()` and `onboardRemove()` signatures identical
 - **Helpers are private (not exported)** — kept in the same file since they're small and tightly coupled to the onboard flow
+
+### 2026-XX-XX — Dashboard Issue/PR Pickers (#278)
+
+- **New components:** `ProjectBrowser.jsx` (project list + "Add Project") and `ProjectItemPicker.jsx` (issues/PRs for a project) added to `lib/ui/components/`
+ dispatch flow. Uses same exit-and-run pattern as `onAttachSession`.
+- **DI pattern preserved:** Both components accept injectable `_listOnboardedRepos`, `_fetchIssues`, `_fetchPrs` for testing. Dashboard passes these through.
+- **rally.js wiring:** After dashboard exit, `pendingDispatch` triggers `dispatchIssue` or `dispatchPr`; `pendingAddProject` prints onboard instructions.
+- **Build system:** New JSX files added to `test/build-jsx.mjs` and `.gitignore` (compiled .js output is gitignored).
+- **Pre-existing test hang:** Some UI tests hang when run together (not from these changes). Dashboard.test.js passes individually.

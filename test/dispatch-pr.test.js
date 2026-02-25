@@ -561,6 +561,18 @@ describe('buildReviewPrompt', () => {
     assert.ok(prompt.includes('feat/my-branch_v2.0'), 'should preserve valid chars');
     assert.ok(prompt.includes('release/1.0'), 'should preserve valid base chars');
   });
+
+  test('handles null/undefined branch names gracefully', () => {
+    const pr = makePr({ headRefName: null, baseRefName: undefined });
+    const prompt = buildReviewPrompt({ ...pr, number: 1 });
+    assert.ok(typeof prompt === 'string', 'should not throw');
+  });
+
+  test('handles empty branch names', () => {
+    const pr = makePr({ headRefName: '', baseRefName: '' });
+    const prompt = buildReviewPrompt({ ...pr, number: 1 });
+    assert.ok(typeof prompt === 'string', 'should not throw');
+  });
 });
 
 // =====================================================

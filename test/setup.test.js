@@ -1,28 +1,16 @@
-import { test, describe, beforeEach, afterEach } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 import { setup } from '../lib/setup.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 describe('setup', () => {
   let tempDir;
-  let originalEnv;
 
-  beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'rally-setup-test-'));
-    originalEnv = process.env.RALLY_HOME;
-    process.env.RALLY_HOME = tempDir;
-  });
-
-  afterEach(() => {
-    if (originalEnv) {
-      process.env.RALLY_HOME = originalEnv;
-    } else {
-      delete process.env.RALLY_HOME;
-    }
-    rmSync(tempDir, { recursive: true, force: true });
+  beforeEach((t) => {
+    tempDir = withTempRallyHome(t);
   });
 
   // --- Acceptance Criteria: Creates Rally directories ---

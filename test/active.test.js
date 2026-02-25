@@ -1,8 +1,8 @@
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, utimesSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { withTempRallyHome } from './helpers/temp-env.js';
 import {
   addDispatch,
   updateDispatchStatus,
@@ -28,22 +28,10 @@ function makeRecord(overrides = {}) {
   };
 }
 
-let originalEnv;
 let tempDir;
 
-beforeEach(() => {
-  originalEnv = process.env.RALLY_HOME;
-  tempDir = mkdtempSync(join(tmpdir(), 'rally-active-test-'));
-  process.env.RALLY_HOME = tempDir;
-});
-
-afterEach(() => {
-  if (originalEnv) {
-    process.env.RALLY_HOME = originalEnv;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
-  rmSync(tempDir, { recursive: true, force: true });
+beforeEach((t) => {
+  tempDir = withTempRallyHome(t);
 });
 
 test('getActiveDispatches returns empty array when no active.yaml', () => {

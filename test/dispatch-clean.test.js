@@ -1,13 +1,13 @@
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { addDispatch, getActiveDispatches } from '../lib/active.js';
 import { createWorktree } from '../lib/worktree.js';
 import { dispatchClean } from '../lib/dispatch-clean.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 function makeRecord(overrides = {}) {
   return {
@@ -34,22 +34,10 @@ const silentChalk = {
   dim: (s) => s,
 };
 
-let originalEnv;
 let tempDir;
 
-beforeEach(() => {
-  originalEnv = process.env.RALLY_HOME;
-  tempDir = mkdtempSync(join(tmpdir(), 'rally-clean-test-'));
-  process.env.RALLY_HOME = tempDir;
-});
-
-afterEach(() => {
-  if (originalEnv) {
-    process.env.RALLY_HOME = originalEnv;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
-  rmSync(tempDir, { recursive: true, force: true });
+beforeEach((t) => {
+  tempDir = withTempRallyHome(t);
 });
 
 test('dispatchClean with no dispatches returns empty result', async () => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import DispatchTable, { STATUS_ICONS, computeColumns } from '../../lib/ui/components/DispatchTable.js';
-import { formatAge } from '../../lib/ui/dashboard-data.js';
+import { formatAge, groupByProject } from '../../lib/ui/dashboard-data.js';
 
 let lastCleanup;
 afterEach(() => { if (lastCleanup) lastCleanup(); });
@@ -261,5 +261,49 @@ describe('Status label formatting', () => {
     const output = lastFrame();
     assert.ok(output.includes('review'), 'should show review label');
     assert.ok(!output.includes('ready for review'), 'should not show old long label');
+  });
+});
+
+describe('groupByProject', () => {
+  it('groups dispatches by repo', () => {
+    const dispatches = [
+      { repo: 'owner/repo-a', number: 1 },
+      { repo: 'owner/repo-b', number: 2 },
+      { repo: 'owner/repo-a', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 2);
+    assert.equal(groups[0].project, 'owner/repo-a');
+    assert.equal(groups[0].dispatches.length, 2);
+    assert.equal(groups[1].project, 'owner/repo-b');
+    assert.equal(groups[1].dispatches.length, 1);
+  });
+
+  it('handles single project', () => {
+    const dispatches = [
+      { repo: 'owner/repo-a', number: 1 },
+      { repo: 'owner/repo-a', number: 2 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].project, 'owner/repo-a');
+    assert.equal(groups[0].dispatches.length, 2);
+  });
+
+  it('returns empty array for empty input', () => {
+    const groups = groupByProject([]);
+    assert.deepEqual(groups, []);
+  });
+
+  it('uses (unknown) for null/undefined/empty repo', () => {
+    const dispatches = [
+      { repo: null, number: 1 },
+      { repo: undefined, number: 2 },
+      { repo: '', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].project, '(unknown)');
+    assert.equal(groups[0].dispatches.length, 3);
   });
 });

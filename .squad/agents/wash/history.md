@@ -366,3 +366,33 @@ See GitHub issues for full specs. Blockers resolved—proceed with implementatio
 - CI environment handles GH_TOKEN for gh CLI
 
 **Status:** CI fully operational. Five-round code review all tests passing. Ready for feature development.
+
+### 2026 — Issue #218: Dispatch Trust Warnings
+
+**Task:** Add prompt injection warnings when dispatching issues/PRs from other users.
+
+**What Was Built:**
+
+1. **lib/dispatch-trust.js** — Trust check module:
+   - `getCurrentUser(_exec)` — gets current GitHub username via `gh api user`
+   - `getItemAuthor(type, number, repo, _exec)` — gets issue/PR author login
+   - `checkOrgMembership(repo, username, _exec)` — checks org membership via `gh api orgs/{org}/members/{user}`
+   - `checkDispatchTrust(opts)` — orchestrates checks, shows warnings, prompts for confirmation
+   - All functions injectable for testing (`_exec`, `_confirm`, `_isTTY`)
+
+2. **Integration into dispatch-issue.js and dispatch-pr.js:**
+   - Trust check runs after input validation, before fetching the issue/PR
+   - Returns `{ aborted: true }` if user declines
+   - `trust` and `_confirm` params threaded through options
+
+3. **CLI flag:** `--trust` on both `dispatch issue` and `dispatch pr` bypasses all warnings
+
+4. **test/dispatch-trust.test.js** — 20 tests covering all trust check paths
+
+**Key Decisions:**
+- Non-interactive (non-TTY) environments silently skip warnings — doesn't block CI
+- `_isTTY` injectable for testing since `process.stdin.isTTY` is undefined in node:test
+- Uses @inquirer/prompts `confirm` (project standard) with `default: false` for safety
+- Org membership check returns `null` (indeterminate) for non-org repos or API errors — only warns on definitive `false`
+
+**PR:** #228 on branch `squad/218-dispatch-warning`

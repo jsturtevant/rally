@@ -16,6 +16,7 @@
 | Wash | Integration Dev | `.squad/agents/wash/charter.md` | ✅ Active |
 | Kaylee | Core Dev | `.squad/agents/kaylee/charter.md` | ✅ Active |
 | Jayne | Tester | `.squad/agents/jayne/charter.md` | ✅ Active |
+| Zoe | Security Engineer | `.squad/agents/zoe/charter.md` | ✅ Active |
 | Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Silent |
 | Ralph | Work Monitor | — | 🔄 Monitor |
 

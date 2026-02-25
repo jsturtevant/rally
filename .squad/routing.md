@@ -9,6 +9,7 @@ How to decide who handles what.
 | Architecture, CLI design, scope | Mal | Command structure, workflow design, decisions |
 | Git/GitHub integration, worktrees | Wash | Worktree management, GitHub API, gh CLI, issue lifecycle |
 | CLI commands, orchestration logic | Kaylee | Command implementation, argument parsing, output formatting |
+| Security audits, threat modeling | Zoe | Vulnerability analysis, dependency review, prompt injection defense |
 | Code review | Mal | Review PRs, check quality, suggest improvements |
 | Testing | Jayne | Write tests, find edge cases, verify fixes |
 | Scope & priorities | Mal | What to build next, trade-offs, decisions |

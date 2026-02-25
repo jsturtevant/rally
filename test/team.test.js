@@ -165,7 +165,7 @@ describe('team selection', () => {
 
       // Verify projects.yaml records team type
       const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
-      const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+      const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
       assert.strictEqual(projects.projects.length, 1);
       assert.strictEqual(projects.projects[0].team, 'project');
       assert.ok(projects.projects[0].teamDir.includes('my-team'));
@@ -199,7 +199,7 @@ describe('team selection', () => {
       await onboard({ path: repoPath, _select: async () => 'shared' });
 
       const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
-      const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+      const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
       assert.strictEqual(projects.projects[0].team, 'shared');
       assert.strictEqual(projects.projects[0].teamDir, teamDir);
     });
@@ -218,7 +218,7 @@ describe('team selection', () => {
 
       // No projects.yaml should be created
       const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
-      assert.ok(!existsSync(projectsPath) || yaml.load(readFileSync(projectsPath, 'utf8'))?.projects?.length === 0 || !existsSync(projectsPath));
+      assert.ok(!existsSync(projectsPath) || yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA })?.projects?.length === 0 || !existsSync(projectsPath));
     });
   });
 

@@ -50,7 +50,7 @@ describe('onboard remove', () => {
 
   function readProjectsYaml() {
     const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
-    return yaml.load(readFileSync(projectsPath, 'utf8'));
+    return yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
   }
 
   function setupOnboardedProject(name, repoPath, extra = {}) {

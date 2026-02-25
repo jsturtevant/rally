@@ -234,7 +234,7 @@ describe('atomic yaml writes', () => {
     });
 
     const content = readFileSync(join(rallyHome, 'active.yaml'), 'utf8');
-    const data = yaml.load(content);
+    const data = yaml.load(content, { schema: yaml.CORE_SCHEMA });
     assert.ok(Array.isArray(data.dispatches));
     assert.strictEqual(data.dispatches[0].id, 'valid-yaml');
   });

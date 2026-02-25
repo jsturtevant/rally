@@ -129,7 +129,7 @@ describe('onboard', () => {
     const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
     assert.ok(existsSync(projectsPath), 'projects.yaml should exist');
 
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects.length, 1);
     assert.strictEqual(projects.projects[0].name, 'my-repo');
     assert.strictEqual(projects.projects[0].path, repoPath);
@@ -148,7 +148,7 @@ describe('onboard', () => {
     await onboard({ path: repoPath, _select: sharedSelect });
 
     const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects.length, 1, 'should not duplicate project entry');
   });
 
@@ -253,7 +253,7 @@ describe('onboard', () => {
     await assert.doesNotReject(() => onboard({ path: repoPath, _select: sharedSelect }));
 
     const projectsPath = join(rallyHome, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects.length, 1);
   });
 
@@ -274,7 +274,7 @@ describe('onboard', () => {
     await assert.doesNotReject(() => onboard({ path: repoPath, _select: sharedSelect }));
 
     const projectsPath = join(rallyHome, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects.length, 2, 'should add new project alongside stale one');
   });
 
@@ -340,7 +340,7 @@ describe('onboard', () => {
 
     assert.ok(selectCalled, 'selectTeam should invoke the interactive prompt when no --team flag');
     const projectsPath = join(process.env.RALLY_HOME, 'projects.yaml');
-    const projects = yaml.load(readFileSync(projectsPath, 'utf8'));
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects[0].team, 'shared');
     assert.strictEqual(projects.projects[0].teamDir, teamDir);
   });

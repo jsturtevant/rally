@@ -155,13 +155,14 @@ describe('ProjectItemPicker', () => {
         ...mockFetchers(),
       })
     );
-    // Poll until items render (useEffect may need extra ticks on Windows/Node 20)
-    for (let i = 0; i < 10; i++) {
-      await delay();
+    // Poll until items render — use real ms delays for slow CI (Windows/Node 20)
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 50));
       if (lastInstance.lastFrame().includes('❯')) break;
     }
     lastInstance.stdin.write('\r');
-    await delay();
+    await new Promise(r => setTimeout(r, 50));
     assert.ok(selectedItem, 'should have selected an item');
     assert.equal(selectedItem.number, 1, 'should select first issue');
     assert.equal(selectedItem.itemType, 'issue', 'should be an issue');

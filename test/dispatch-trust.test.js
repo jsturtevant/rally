@@ -253,4 +253,61 @@ describe('checkDispatchTrust', () => {
     });
     assert.strictEqual(result, true);
   });
+
+  // =====================================================
+  // Non-TTY behavior (issue #236)
+  // =====================================================
+
+  test('non-TTY + author mismatch + no --trust → returns false', async () => {
+    const exec = (cmd, args) => {
+      if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
+      if (args[0] === 'issue' && args[1] === 'view') return 'mallory\n';
+      return '';
+    };
+    const result = await checkDispatchTrust({
+      type: 'issue', number: 1, repo: 'o/r',
+      _exec: exec, _isTTY: false,
+      _confirm: () => { throw new Error('should not prompt in non-TTY'); },
+    });
+    assert.strictEqual(result, false);
+  });
+
+  test('non-TTY + author matches → returns true', async () => {
+    const exec = (cmd, args) => {
+      if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
+      if (args[0] === 'issue' && args[1] === 'view') return 'alice\n';
+      return '';
+    };
+    const result = await checkDispatchTrust({
+      type: 'issue', number: 1, repo: 'o/r',
+      _exec: exec, _isTTY: false,
+      _confirm: () => { throw new Error('should not prompt in non-TTY'); },
+    });
+    assert.strictEqual(result, true);
+  });
+
+  test('non-TTY + --trust → returns true', async () => {
+    const result = await checkDispatchTrust({
+      type: 'issue', number: 1, repo: 'o/r',
+      trust: true, _isTTY: false,
+    });
+    assert.strictEqual(result, true);
+  });
+
+  test('--trust logs a warning to stderr', async () => {
+    const original = console.error;
+    const messages = [];
+    console.error = (...args) => messages.push(args.join(' '));
+    try {
+      await checkDispatchTrust({
+        type: 'issue', number: 1, repo: 'o/r', trust: true,
+      });
+      assert.ok(
+        messages.some(m => m.includes('--trust flag used')),
+        `Expected stderr warning about --trust, got: ${JSON.stringify(messages)}`
+      );
+    } finally {
+      console.error = original;
+    }
+  });
 });

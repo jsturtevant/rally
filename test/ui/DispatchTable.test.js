@@ -158,3 +158,56 @@ describe('formatAge', () => {
     assert.equal(formatAge(future), '0m');
   });
 });
+
+import { computeColumns } from "../../lib/ui/components/DispatchTable.js";
+
+describe("computeColumns", () => {
+  it("returns all five columns", () => {
+    const cols = computeColumns(120);
+    assert.deepEqual(cols.map(c => c.key), ["project", "issueRef", "status", "changes", "age"]);
+  });
+  it("gives Project more space on wider terminals", () => {
+    const n = computeColumns(80).find(c => c.key === "project").width;
+    const w = computeColumns(160).find(c => c.key === "project").width;
+    assert.ok(w > n);
+  });
+  it("enforces minimum Project width", () => {
+    assert.ok(computeColumns(20).find(c => c.key === "project").width >= 18);
+  });
+  it("defaults to 80 columns", () => {
+    assert.equal(computeColumns().find(c => c.key === "project").width, 34);
+  });
+  it("Project gets the most space", () => {
+    const cols = computeColumns(100);
+    const p = cols.find(c => c.key === "project").width;
+    cols.filter(c => c.key !== "project").forEach(c => assert.ok(p > c.width));
+  });
+});
+
+describe("DispatchTable width prop", () => {
+  it("accepts width prop", () => {
+    const { lastFrame, cleanup } = render(
+      React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, width: 120 })
+    );
+    lastCleanup = cleanup;
+    assert.ok(lastFrame().includes("Project"));
+    assert.ok(lastFrame().includes("owner/repo-a"));
+  });
+  it("renders with defaults", () => {
+    const { lastFrame, cleanup } = render(
+      React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
+    );
+    lastCleanup = cleanup;
+    assert.ok(lastFrame().includes("Project"));
+  });
+});
+
+describe("Status label", () => {
+  it("uses review not ready for review", () => {
+    const d = [{ repo: "o/r", type: "issue", number: 1, status: "reviewing", created: new Date().toISOString() }];
+    const { lastFrame, cleanup } = render(React.createElement(DispatchTable, { dispatches: d }));
+    lastCleanup = cleanup;
+    assert.ok(lastFrame().includes("review"));
+    assert.ok(!lastFrame().includes("ready for review"));
+  });
+});

@@ -5,12 +5,12 @@ import DispatchTable from './components/DispatchTable.jsx';
 import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
 import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
-import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
+import { computeSummary, getDashboardData, renderPlainDashboard, groupByProject } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 import { updateDispatchStatus as defaultUpdateDispatchStatus } from '../active.js';
 import { parseSessionIdFromLog as defaultParseSessionId, UUID_RE } from '../copilot.js';
 
-export { computeSummary, getDashboardData, renderPlainDashboard };
+export { computeSummary, getDashboardData, renderPlainDashboard, groupByProject };
 
 /**
  * Summary line component.
@@ -285,7 +285,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
       <Box marginBottom={1}>
         <Text bold>Rally Dashboard</Text>
       </Box>
-      <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
+      <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} width={stdout.columns} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
         <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · a attach · c connect IDE · l logs · p pushed · x delete · r refresh · q quit</Text>

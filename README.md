@@ -38,12 +38,32 @@ npx github:jsturtevant/rally#v0.1.0
 ## Quick Start
 
 ```bash
-rally setup              # Configure team directory
-rally onboard <url>      # Clone and set up a repository
-rally dispatch issue 42  # Dispatch Squad to an issue
-rally dispatch pr 10     # Dispatch Squad to a PR review
-rally dashboard          # View active dispatches
-rally dashboard clean    # Remove completed dispatches
+rally setup                            # Configure team directory (creates ~/rally/)
+rally onboard <url>                    # Clone and set up a repository
+rally dispatch issue 42                # Dispatch Squad to an issue
+rally dispatch pr 10                   # Dispatch Squad to a PR review
+rally dashboard                        # View active dispatches (also the default command)
+rally dispatch clean                   # Remove completed dispatches
+```
+
+### Onboarding a project
+
+```bash
+rally onboard .                          # Current directory
+rally onboard /path/to/repo              # Local path
+rally onboard owner/repo                 # GitHub shorthand (clones to ~/rally/projects/)
+rally onboard https://github.com/o/r     # Full URL
+rally onboard owner/repo --fork me/repo  # Fork workflow: origin→fork, upstream→main
+rally onboard --team myteam              # Skip interactive team prompt
+```
+
+Onboarding symlinks team files (`.squad/`, `.squad-templates/`, `.github/agents/`) into the project, adds `.worktrees/` to `.git/info/exclude`, and registers the project in `projects.yaml`.
+
+#### Removing a project
+
+```bash
+rally onboard remove [project]         # Interactive picker if project omitted
+rally onboard remove myrepo --yes      # Skip confirmation
 ```
 
 ### Docker Sandbox (Optional)
@@ -90,6 +110,7 @@ Arguments:
 
 Options:
   --team <name>     Use a named team (skips interactive prompt)
+  --fork <owner/repo>  Fork workflow: set origin to your fork, upstream to main repo
   -h, --help        display help for command
 ```
 
@@ -122,7 +143,25 @@ Options:
   -h, --help          display help for command
 ```
 
-**Keyboard shortcuts (interactive mode):** ↑/↓ navigate, Enter select, r refresh, q quit.
+**Keyboard shortcuts (interactive mode):**
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate dispatch list |
+| `Enter` | Open action menu for selected dispatch |
+| `d` | View dispatch details |
+| `v` | Open worktree in VS Code |
+| `o` | Open issue/PR in browser |
+| `a` | Attach to Copilot session (exits dashboard, runs `dispatch continue`) |
+| `c` | Connect IDE — opens VS Code + bridges Copilot session |
+| `l` | View Copilot output log |
+| `n` | New dispatch — browse onboarded projects and pick an issue/PR |
+| `p` | Mark selected dispatch as "pushed" |
+| `x` | Delete selected dispatch |
+| `r` | Refresh dashboard data |
+| `q` | Quit |
+
+The dashboard auto-refreshes every 5 seconds.
 
 ### `rally dispatch issue`
 
@@ -140,6 +179,8 @@ Options:
   --repo <owner/repo>    Target repository (owner/repo)
   --repo-path <path>     Path to local repo clone
   --team-dir <path>      Path to custom squad directory
+  --sandbox              Run Copilot inside a Docker sandbox microVM
+  --trust                Skip author trust warnings
   -h, --help             display help for command
 ```
 
@@ -159,6 +200,26 @@ Options:
   --repo <owner/repo>    Target repository (owner/repo)
   --repo-path <path>     Path to local repo clone
   --team-dir <path>      Path to custom squad directory
+  --sandbox              Run Copilot inside a Docker sandbox microVM
+  --prompt <file>        Custom review prompt file
+  -h, --help             display help for command
+```
+
+### `rally dispatch continue`
+
+Resume or reconnect to an existing Copilot session for a dispatch.
+
+```
+$ rally dispatch continue [options] <number>
+
+Resume a Copilot session for a dispatch
+
+Arguments:
+  number                 Issue or PR number
+
+Options:
+  --repo <owner/repo>    Target repository (owner/repo)
+  -m, --message <text>   Send additional instructions to the session
   -h, --help             display help for command
 ```
 
@@ -223,6 +284,142 @@ Refresh dispatch statuses by checking if Copilot processes have exited
 
 Options:
   -h, --help  display help for command
+```
+
+### `rally dispatch sessions`
+
+List active dispatches with their Copilot session info.
+
+```
+$ rally dispatch sessions [options]
+
+Show active dispatches with session info
+
+Options:
+  -h, --help  display help for command
+```
+
+## Dispatch Status Model
+
+Each dispatch progresses through these statuses:
+
+```
+planning → implementing → reviewing → pushed → done → cleaned
+```
+
+| Status | Meaning |
+|--------|---------|
+| `planning` | Issue dispatch created, Copilot is analyzing the issue |
+| `implementing` | Copilot is actively writing code |
+| `reviewing` | PR review dispatch, Copilot is reviewing code |
+| `pushed` | Changes have been pushed (manual status via dashboard `p` key) |
+| `done` | Copilot session has exited |
+| `cleaned` | Worktree and branch removed |
+
+## Key Concepts
+
+### Worktrees
+
+Rally uses **git worktrees** to isolate each dispatch. Each dispatch gets its own directory under `<repo>/.worktrees/`:
+- Issues: `.worktrees/rally-<number>/`
+- PRs: `.worktrees/rally-pr-<number>/`
+
+Worktrees share the same git history as the main repo but have independent working directories and branches.
+
+### Configuration directory
+
+Default: `~/rally/` (override with `RALLY_HOME` env var, legacy `~/.rally/` supported).
+
+Contains:
+- `config.yaml` — Rally settings (team dir, projects dir, version)
+- `projects.yaml` — registered projects with name, repo, path, team info
+- `active.yaml` — all active dispatch records
+- `team/` — shared team configuration (`.squad/`, templates)
+- `projects/` — cloned repos (when onboarded via URL)
+
+### active.yaml
+
+Central state file tracking all dispatches. Each record contains:
+- `id` — unique identifier (e.g. `myrepo-issue-42`)
+- `repo` — `owner/repo`
+- `number` — issue or PR number
+- `type` — `issue` or `pr`
+- `branch` — git branch name
+- `worktreePath` — absolute path to the worktree
+- `status` — current status (see status model above)
+- `session_id` — Copilot session ID (or PID, or `pending`)
+- `pid` — Copilot process ID
+- `logPath` — path to `.copilot-output.log`
+- `title` — issue/PR title
+- `created` — ISO timestamp
+
+### projects.yaml
+
+Registry of onboarded projects. Each entry has:
+- `name` — repository name
+- `repo` — `owner/repo`
+- `path` — absolute local path
+- `team` — team type identifier
+- `teamDir` — path to team directory
+- `onboarded` — ISO timestamp
+- `fork` — (optional) fork `owner/repo`
+
+### Read-only dispatch policy
+
+Dispatched Copilot agents run in **read-only mode**:
+- **CAN:** read code, make local edits, run builds/tests, use git locally
+- **CANNOT:** `git push`, run `gh` CLI commands, use `curl`/`wget`/`nc`/`ssh`
+- Remote reads use MCP tools (e.g. `github-mcp-server-issue_read`)
+
+### Repo resolution
+
+When `--repo` is omitted, Rally resolves the target repo in this order:
+1. `--repo owner/repo` flag
+2. Current working directory (if inside an onboarded project)
+3. Single-project fallback (if only one project is registered)
+4. Error with list of registered projects
+
+## Common Patterns
+
+### Full issue workflow
+
+```bash
+rally setup                            # One-time setup
+rally onboard owner/repo               # Register the repo
+rally dispatch issue 42                # Dispatch agent to issue
+rally dashboard                        # Monitor progress
+rally dispatch log 42                  # Check agent output
+rally dispatch continue 42             # Resume if needed
+# Review changes in .worktrees/rally-42/
+rally dispatch clean                   # Clean up when done
+```
+
+### PR review workflow
+
+```bash
+rally dispatch pr 15                   # Dispatch multi-model review
+rally dispatch log 15                  # Check review progress
+# Read REVIEW.md in .worktrees/rally-pr-15/
+rally dispatch clean                   # Clean up
+```
+
+### Multi-project workflow
+
+```bash
+rally onboard owner/repo-a
+rally onboard owner/repo-b
+rally dispatch issue 10 --repo owner/repo-a
+rally dispatch pr 5 --repo owner/repo-b
+rally dashboard                        # See all dispatches across projects
+```
+
+### Fork workflow
+
+```bash
+rally onboard upstream/repo --fork myuser/repo
+# origin → myuser/repo (your fork)
+# upstream → upstream/repo (main project)
+rally dispatch issue 42
 ```
 
 ## Future Work

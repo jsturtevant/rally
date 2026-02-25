@@ -318,6 +318,12 @@ describe('dispatchPr error paths', () => {
         return true;
       }
     );
+
+    // Verify rollback: worktree directory removed and branch deleted
+    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
+    assert.ok(!existsSync(wtPath), 'worktree directory should be removed after fetch failure');
+    const branches = execFileSync('git', ['branch', '--list', 'rally/pr-42-fix-login-validation'], { cwd: repoPath, encoding: 'utf8' });
+    assert.strictEqual(branches.trim(), '', 'rally/pr-* branch should be deleted after fetch failure');
   });
 
   test('throws when git reset --hard FETCH_HEAD fails', async () => {
@@ -330,7 +336,8 @@ describe('dispatchPr error paths', () => {
       if (cmd === 'gh' && args[0] === 'copilot') return '';
       // Allow fetch to succeed (redirect to real branch)
       if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
-        const cwd = opts?.cwd;
+        const idx = args.indexOf('-C');
+        const cwd = idx !== -1 ? args[idx + 1] : opts?.cwd;
         return execFileSync('git', ['-C', cwd, 'fetch', 'origin', pr.headRefName], opts);
       }
       // Fail on reset --hard FETCH_HEAD
@@ -350,9 +357,15 @@ describe('dispatchPr error paths', () => {
         return true;
       }
     );
+
+    // Verify rollback: worktree directory removed and branch deleted
+    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
+    assert.ok(!existsSync(wtPath), 'worktree directory should be removed after reset failure');
+    const branches = execFileSync('git', ['branch', '--list', 'rally/pr-42-fix-login-validation'], { cwd: repoPath, encoding: 'utf8' });
+    assert.strictEqual(branches.trim(), '', 'rally/pr-* branch should be deleted after reset failure');
   });
 
-  test('catch-and-rethrow wraps original error context in both git operations', async () => {
+  test('fetch failure preserves original error message with PR context', async () => {
     setupRallyHome();
     const pr = makePr();
     const originalMsg = 'network timeout after 30000ms';

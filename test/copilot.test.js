@@ -237,6 +237,14 @@ describe('DENY_TOOLS', () => {
     assert.ok(DENY_TOOLS.includes('shell(gh)'));
   });
 
+  test('blocks network exfiltration tools', () => {
+    assert.ok(DENY_TOOLS.includes('shell(curl)'));
+    assert.ok(DENY_TOOLS.includes('shell(wget)'));
+    assert.ok(DENY_TOOLS.includes('shell(nc)'));
+    assert.ok(DENY_TOOLS.includes('shell(ssh)'));
+    assert.ok(DENY_TOOLS.includes('shell(scp)'));
+  });
+
   test('does not use granular deny rules (they do not work)', () => {
     // Granular rules like shell(gh pr create) are NOT matched by --deny-tool
     const granular = DENY_TOOLS.filter(t =>
@@ -273,6 +281,13 @@ describe('getReadOnlyPolicy', () => {
     const policy = getReadOnlyPolicy();
     assert.ok(policy.includes('MCP read-only tools'));
     assert.ok(policy.includes('github-mcp-server'));
+  });
+
+  test('includes untrusted content handling instructions', () => {
+    const policy = getReadOnlyPolicy();
+    assert.ok(policy.includes('untrusted_user_content'));
+    assert.ok(policy.includes('Never'));
+    assert.ok(policy.includes('data to analyze'));
   });
 });
 

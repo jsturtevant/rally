@@ -11,9 +11,21 @@ const STATUS_ICONS = {
   cleaned: '⚪',
 };
 
-function formatIssueRef(dispatch) {
+const PR_INDENT = '   ';
+
+function truncate(str, maxLen) {
+  if (!str || str.length <= maxLen) return str || '';
+  return str.slice(0, maxLen - 1) + '…';
+}
+
+function formatIssueRef(dispatch, maxWidth) {
   const prefix = dispatch.type === 'pr' ? 'PR' : 'Issue';
-  return `${prefix} #${dispatch.number}`;
+  const indent = dispatch.type === 'pr' ? PR_INDENT : '';
+  const ref = `${indent}${prefix} #${dispatch.number}`;
+  if (!dispatch.title) return ref;
+  const titleSpace = maxWidth - ref.length - 2; // 2 for "  " separator
+  if (titleSpace <= 3) return ref;
+  return `${ref}  ${truncate(dispatch.title, titleSpace)}`;
 }
 
 const STATUS_LABELS = {
@@ -113,8 +125,9 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
               <ProjectHeader project={group.project} />
               {group.dispatches.map((d) => {
                 const idx = flatIndex++;
+                const issueRefCol = columns.find(c => c.key === 'issueRef');
                 const row = {
-                  issueRef: formatIssueRef(d),
+                  issueRef: formatIssueRef(d, issueRefCol?.width ?? 40),
                   status: formatStatus(d.status),
                   changes: d.changes ?? '',
                   age: formatAge(d.created ?? d.created_at),

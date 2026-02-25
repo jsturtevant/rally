@@ -22,6 +22,7 @@ const SAMPLE_DISPATCHES = [
     status: 'planning',
     worktreePath: '/home/user/projects/repo-a',
     session_id: 'abc123',
+    title: 'Fix the login bug',
     created: new Date(Date.now() - 3600000).toISOString(), // 1h ago
   },
   {
@@ -32,6 +33,7 @@ const SAMPLE_DISPATCHES = [
     status: 'implementing',
     worktreePath: '/home/user/projects/repo-b',
     session_id: 'def456',
+    title: 'Add unit tests for auth module',
     created: new Date(Date.now() - 86400000 * 2).toISOString(), // 2d ago
   },
 ];
@@ -59,8 +61,31 @@ describe('DispatchTable', () => {
     assert.ok(output.includes('owner/repo-b'), 'should include second project group header');
     assert.ok(output.includes('Issue #42'), 'should include issue ref');
     assert.ok(output.includes('PR #7'), 'should include PR ref');
+    assert.ok(output.includes('Fix the login bug'), 'should include issue title');
+    assert.ok(output.includes('Add unit tests'), 'should include PR title (possibly truncated)');
     assert.ok(!output.includes('rally/42-fix-bug'), 'should not include branch');
     assert.ok(!output.includes('/home/user/projects'), 'should not include folder path');
+  });
+
+  it('renders dispatches without titles (backward compat)', () => {
+    const noTitleDispatches = SAMPLE_DISPATCHES.map(({ title, ...rest }) => rest);
+    lastInstance = render(
+      React.createElement(DispatchTable, { dispatches: noTitleDispatches })
+    );
+    const output = lastInstance.lastFrame();
+    assert.ok(output.includes('Issue #42'), 'should include issue ref without title');
+    assert.ok(output.includes('PR #7'), 'should include PR ref without title');
+  });
+
+  it('indents PR rows with leading spaces', () => {
+    lastInstance = render(
+      React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
+    );
+    const output = lastInstance.lastFrame();
+    // PR rows should have leading indentation
+    const prLine = output.split('\n').find(l => l.includes('PR #7'));
+    assert.ok(prLine, 'should find PR line');
+    assert.ok(prLine.includes('   PR #7'), 'PR should be indented');
   });
 
   it('renders status icons for each status', () => {

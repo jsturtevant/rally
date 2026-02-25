@@ -109,13 +109,43 @@ const dashboard = program
         const { render } = await import('ink');
         const { default: Dashboard } = await import('../lib/ui/Dashboard.js');
         let attachDispatch = null;
+        let pendingDispatch = null;
+        let pendingAddProject = false;
         const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
+        const onDispatchItem = (item) => { pendingDispatch = item; };
+        const onAddProject = () => { pendingAddProject = true; };
         const app = render(
-          React.createElement(Dashboard, { project: opts.project, onAttachSession }),
+          React.createElement(Dashboard, { project: opts.project, onAttachSession, onDispatchItem, onAddProject }),
           { fullScreen: true }
         );
         await app.waitUntilExit();
-        if (attachDispatch) {
+        if (pendingDispatch) {
+          const { resolveRepo } = await import('../lib/dispatch.js');
+          const resolved = resolveRepo({ repo: pendingDispatch.repo });
+          if (pendingDispatch.type === 'issue') {
+            const { dispatchIssue } = await import('../lib/dispatch-issue.js');
+            const result = await dispatchIssue({
+              issueNumber: pendingDispatch.number,
+              repo: resolved.fullName,
+              repoPath: resolved.project.path,
+            });
+            if (!result.aborted) {
+              console.log(`Dispatched issue #${pendingDispatch.number}: ${result.issue.title} → ${result.worktreePath}`);
+            }
+          } else {
+            const { dispatchPr } = await import('../lib/dispatch-pr.js');
+            const result = await dispatchPr({
+              prNumber: pendingDispatch.number,
+              repo: resolved.fullName,
+              repoPath: resolved.project.path,
+            });
+            if (!result.aborted) {
+              console.log(`Dispatched PR #${pendingDispatch.number}: ${result.pr.title} → ${result.worktreePath}`);
+            }
+          }
+        } else if (pendingAddProject) {
+          console.log('To add a project, run: rally onboard <path-or-url>');
+        } else if (attachDispatch) {
           const { dispatchContinue } = await import('../lib/dispatch-continue.js');
           await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });
         }

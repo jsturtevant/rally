@@ -2,7 +2,7 @@ import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import DispatchTable, { STATUS_ICONS } from '../../lib/ui/components/DispatchTable.js';
+import DispatchTable, { STATUS_ICONS, computeColumns } from '../../lib/ui/components/DispatchTable.js';
 import { formatAge } from '../../lib/ui/dashboard-data.js';
 
 let lastCleanup;
@@ -17,7 +17,7 @@ const SAMPLE_DISPATCHES = [
     status: 'planning',
     worktreePath: '/home/user/projects/repo-a',
     session_id: 'abc123',
-    created: new Date(Date.now() - 3600000).toISOString(), // 1h ago
+    created: new Date(Date.now() - 3600000).toISOString(),
   },
   {
     repo: 'owner/repo-b',
@@ -27,7 +27,7 @@ const SAMPLE_DISPATCHES = [
     status: 'implementing',
     worktreePath: '/home/user/projects/repo-b',
     session_id: 'def456',
-    created: new Date(Date.now() - 86400000 * 2).toISOString(), // 2d ago
+    created: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
 ];
 
@@ -66,9 +66,10 @@ describe('DispatchTable', () => {
     );
     lastCleanup = cleanup;
     const output = lastFrame();
-    const lines = output.split('\n');
-    const repoALines = lines.filter(l => l.includes('owner/repo-a') || l.includes('Issue #1') || l.includes('Issue #3'));
-    assert.ok(repoALines.length >= 3, 'repo-a header and both issues should render');
+    assert.ok(output.includes('owner/repo-a'), 'should include repo-a group header');
+    assert.ok(output.includes('owner/repo-b'), 'should include repo-b group header');
+    assert.ok(output.includes('Issue #1'), 'should include first repo-a issue');
+    assert.ok(output.includes('Issue #3'), 'should include second repo-a issue');
   });
 
   it('renders dispatch data rows', () => {
@@ -181,5 +182,84 @@ describe('formatAge', () => {
   it('returns 0m for future timestamps', () => {
     const future = new Date(Date.now() + 60000).toISOString();
     assert.equal(formatAge(future), '0m');
+  });
+});
+
+describe('computeColumns', () => {
+  it('returns four columns with computed widths', () => {
+    const cols = computeColumns(120);
+    const keys = cols.map(c => c.key);
+    assert.deepEqual(keys, ['issueRef', 'status', 'changes', 'age']);
+  });
+
+  it('gives wider columns on wider terminals', () => {
+    const narrow = computeColumns(80);
+    const wide = computeColumns(160);
+    const narrowIssue = narrow.find(c => c.key === 'issueRef').width;
+    const wideIssue = wide.find(c => c.key === 'issueRef').width;
+    assert.ok(wideIssue > narrowIssue, 'wider terminal should give more space to Issue/PR');
+  });
+
+  it('respects minimum column widths on narrow terminals', () => {
+    const cols = computeColumns(20);
+    for (const col of cols) {
+      assert.ok(col.width >= col.minWidth, `${col.key} should not be narrower than minWidth`);
+    }
+  });
+
+  it('defaults to 80 columns when no width given', () => {
+    const cols = computeColumns();
+    const total = cols.reduce((sum, c) => sum + c.width, 0);
+    assert.ok(total > 44, 'columns should expand beyond minimums at 80 cols');
+  });
+
+  it('distributes extra space proportionally', () => {
+    const cols = computeColumns(120);
+    const issueRef = cols.find(c => c.key === 'issueRef').width;
+    const age = cols.find(c => c.key === 'age').width;
+    assert.ok(issueRef > age, 'Issue/PR should get more space than Age');
+  });
+});
+
+describe('DispatchTable width prop', () => {
+  it('accepts width prop and renders correctly', () => {
+    const { lastFrame, cleanup } = render(
+      React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, width: 120 })
+    );
+    lastCleanup = cleanup;
+    const output = lastFrame();
+    assert.ok(output.includes('Issue/PR'), 'should render column headers');
+    assert.ok(output.includes('owner/repo-a'), 'should render project group');
+    assert.ok(output.includes('Issue #42'), 'should render dispatch data');
+  });
+
+  it('renders without width prop using defaults', () => {
+    const { lastFrame, cleanup } = render(
+      React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
+    );
+    lastCleanup = cleanup;
+    const output = lastFrame();
+    assert.ok(output.includes('Issue/PR'), 'should render with default width');
+  });
+});
+
+describe('Status label formatting', () => {
+  it('uses short review label instead of ready for review', () => {
+    const dispatches = [{
+      repo: 'o/r',
+      type: 'issue',
+      number: 1,
+      branch: 'rally/1-test',
+      status: 'reviewing',
+      session_id: 's1',
+      created: new Date().toISOString(),
+    }];
+    const { lastFrame, cleanup } = render(
+      React.createElement(DispatchTable, { dispatches })
+    );
+    lastCleanup = cleanup;
+    const output = lastFrame();
+    assert.ok(output.includes('review'), 'should show review label');
+    assert.ok(!output.includes('ready for review'), 'should not show old long label');
   });
 });

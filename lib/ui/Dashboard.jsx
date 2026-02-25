@@ -285,7 +285,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
       <Box marginBottom={1}>
         <Text bold>Rally Dashboard</Text>
       </Box>
-      <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
+      <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} width={stdout.columns} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
         <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · a attach · c connect IDE · l logs · p pushed · x delete · r refresh · q quit</Text>

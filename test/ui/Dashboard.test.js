@@ -153,7 +153,10 @@ describe('Dashboard component', () => {
   });
 
   afterEach(() => {
-    if (instance) instance.unmount();
+    if (instance) {
+      instance.unmount();
+      instance.cleanup();
+    }
   });
 
   it('renders the dashboard title', () => {

@@ -5,14 +5,11 @@
 - **Stack:** Node.js with curated npm packages (Ink, Chalk, Ora, Commander, js-yaml, @inquirer/prompts) + node:test for testing
 - **Created:** 2026-02-21
 
-## Project Description
+## Core Context
 
-Rally is a command line tool that works with Squad. Key commands:
-- **setup** — Sets up Squad outside of a repo
-- **onboard** — Onboards a new team to a repo without committing the files
-- **dispatch** — Takes a GitHub issue, creates a worktree, adds the Squad, has them plan, iterate, add tests, and do code reviews
-- **PR review** — Similar dispatch flow for PR reviews
-- **dashboard** — Shows all active projects with worktrees and active teams
+This history has been summarized. Earlier entries have been condensed into key learnings and decisions below. See the Learnings section for detailed context from ongoing work.
+
+---
 
 ## Learnings
 

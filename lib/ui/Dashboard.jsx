@@ -5,6 +5,8 @@ import DispatchTable from './components/DispatchTable.jsx';
 import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
 import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
+import ProjectBrowser from './components/ProjectBrowser.jsx';
+import ProjectItemPicker from './components/ProjectItemPicker.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 import { updateDispatchStatus as defaultUpdateDispatchStatus } from '../active.js';
@@ -34,7 +36,7 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, onAttachSession, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus }) {
+export default function Dashboard({ project, onSelect, onAttachSession, onDispatchItem, onAddProject, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus, _listOnboardedRepos, _fetchIssues, _fetchPrs }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -43,6 +45,8 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
   const [actionIndex, setActionIndex] = useState(0);
   const [logViewDispatch, setLogViewDispatch] = useState(null);
   const [detailViewDispatch, setDetailViewDispatch] = useState(null);
+  const [browseMode, setBrowseMode] = useState(null); // null | 'projects' | 'items'
+  const [browseProject, setBrowseProject] = useState(null);
 
   let data;
   let error;
@@ -71,14 +75,14 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
     : [];
   const actionCount = actions.length;
 
-  // Auto-refresh at the configured interval (pause during action menu, log view, or detail view)
+  // Auto-refresh at the configured interval (pause during action menu, log view, detail view, or browse mode)
   useEffect(() => {
-    if (!refreshInterval || actionDispatch || logViewDispatch || detailViewDispatch) return;
+    if (!refreshInterval || actionDispatch || logViewDispatch || detailViewDispatch || browseMode) return;
     const timer = setInterval(() => {
       setRefreshKey(k => k + 1);
     }, refreshInterval);
     return () => clearInterval(timer);
-  }, [refreshInterval, actionDispatch, logViewDispatch, detailViewDispatch]);
+  }, [refreshInterval, actionDispatch, logViewDispatch, detailViewDispatch, browseMode]);
 
   // Clamp selectedIndex when dispatch count changes
   useEffect(() => {
@@ -205,8 +209,8 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
   }
 
   useInput((input, key) => {
-    // Log view, detail view, and action menu handle their own input
-    if (logViewDispatch || actionDispatch || detailViewDispatch) return;
+    // Log view, detail view, action menu, and browse mode handle their own input
+    if (logViewDispatch || actionDispatch || detailViewDispatch || browseMode) return;
 
     if (key.upArrow) {
       setSelectedIndex(i => (i > 0 ? i - 1 : 0));
@@ -234,6 +238,8 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
       viewLogs(data.dispatches[selectedIndex]);
     } else if (input === 'r') {
       setRefreshKey(k => k + 1);
+    } else if (input === 'n') {
+      setBrowseMode('projects');
     } else if (input === 'x' && count > 0) {
       removeSelectedDispatch(data.dispatches[selectedIndex]);
     } else if (input === 'p' && count > 0) {
@@ -280,6 +286,45 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
     );
   }
 
+  if (browseMode === 'items' && browseProject) {
+    return (
+      <ProjectItemPicker
+        project={browseProject}
+        _fetchIssues={_fetchIssues}
+        _fetchPrs={_fetchPrs}
+        onSelectItem={(item, repo) => {
+          if (onDispatchItem) {
+            onDispatchItem({ type: item.itemType, number: item.number, repo });
+          }
+          exit();
+        }}
+        onBack={() => {
+          setBrowseMode('projects');
+          setBrowseProject(null);
+        }}
+      />
+    );
+  }
+
+  if (browseMode === 'projects') {
+    return (
+      <ProjectBrowser
+        _listOnboardedRepos={_listOnboardedRepos}
+        onSelectProject={(proj) => {
+          setBrowseProject(proj);
+          setBrowseMode('items');
+        }}
+        onAddProject={() => {
+          if (onAddProject) {
+            onAddProject();
+          }
+          exit();
+        }}
+        onBack={() => setBrowseMode(null)}
+      />
+    );
+  }
+
   return (
     <Box flexDirection="column" height={stdout.rows}>
       <Box marginBottom={1}>
@@ -288,7 +333,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, refreshI
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · a attach · c connect IDE · l logs · p pushed · x delete · r refresh · q quit</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · a attach · c connect IDE · l logs · n new dispatch · p pushed · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

@@ -10,3 +10,5 @@ lib/ui/components/StatusMessage.js
 lib/ui/components/DispatchBox.js
 lib/ui/components/DetailView.js
 lib/ui/components/DispatchTable.js
+lib/ui/components/ProjectBrowser.js
+lib/ui/components/ProjectItemPicker.js

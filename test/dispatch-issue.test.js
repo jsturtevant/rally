@@ -71,6 +71,9 @@ function makeIssue(overrides = {}) {
  */
 function createExecWithIssue(issueData) {
   return (cmd, args, opts) => {
+    if (cmd === 'gh' && args[0] === '--version') {
+      return 'gh version 2.0.0'; // Mock gh version check
+    }
     if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
       if (!issueData) {
         const err = new Error('Could not resolve to an Issue with the number of 999');
@@ -133,6 +136,21 @@ describe('slugify', () => {
 // =====================================================
 
 describe('dispatchIssue error paths', () => {
+  test('throws RallyError when gh CLI is missing', async () => {
+    setupRallyHome();
+    const execMissingGh = () => {
+      throw new Error('gh: command not found');
+    };
+    await assert.rejects(
+      () => dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: execMissingGh }),
+      (err) => {
+        assert.ok(err.message.includes('gh'));
+        assert.ok(err.message.includes('Missing required tools'));
+        return true;
+      }
+    );
+  });
+
   test('throws when issue number is missing', async () => {
     setupRallyHome();
     await assert.rejects(
@@ -187,7 +205,7 @@ describe('dispatchIssue error paths', () => {
     const wtPath = join(repoPath, '.worktrees', 'rally-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-existing'], { cwd: repoPath, stdio: 'ignore' });
 
-    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn });
+    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-42'));
   });
@@ -254,6 +272,7 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     // Verify return value
@@ -300,6 +319,7 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     assert.strictEqual(result.branch, 'rally/7-fix-broken-navbar-component');
@@ -324,6 +344,7 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     const expected = join(repoPath, '.worktrees', 'rally-99');
@@ -348,6 +369,7 @@ describe('dispatchIssue happy path', () => {
       teamDir,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     // Verify .squad exists in worktree (either as symlink or directory)
@@ -368,6 +390,7 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: () => ({ pid: 98765, unref() {} }),
+      trust: true,
     });
 
     assert.strictEqual(result.sessionId, '98765');
@@ -391,6 +414,7 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: () => { throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }); },
+      trust: true,
     });
 
     // Should complete without throwing, sessionId null
@@ -407,6 +431,9 @@ describe('dispatchIssue happy path', () => {
 
     // _exec that fails for copilot check (not installed)
     const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') {
+        return 'gh version 2.0.0';
+      }
       if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
         return JSON.stringify(issue);
       }
@@ -424,6 +451,7 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: () => { spawnCalled = true; return { pid: 1, unref() {} }; },
+      trust: true,
     });
 
     assert.strictEqual(result.sessionId, null);
@@ -436,6 +464,9 @@ describe('dispatchIssue happy path', () => {
 
     // _exec that succeeds for gh + git but makes addDispatch fail
     const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') {
+        return 'gh version 2.0.0';
+      }
       if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
         return JSON.stringify(issue);
       }
@@ -458,6 +489,7 @@ describe('dispatchIssue happy path', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
+        trust: true,
       }),
     );
 

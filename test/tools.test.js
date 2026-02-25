@@ -106,4 +106,32 @@ describe('assertTools', () => {
       assert.ok(!err.message.includes('git, '));
     }
   });
+
+  it('accepts array syntax assertTools(["gh"])', () => {
+    assert.doesNotThrow(() => assertTools(['gh'], { _exec: execAllPass }));
+  });
+
+  it('throws when specific tool is missing using array syntax', () => {
+    try {
+      assertTools(['gh'], { _exec: execFailFor('gh') });
+      assert.fail('should have thrown');
+    } catch (err) {
+      assert.ok(err instanceof RallyError);
+      assert.ok(err.message.includes('gh'));
+      assert.equal(err.exitCode, EXIT_CONFIG);
+    }
+  });
+
+  it('accepts options object syntax with tools property', () => {
+    assert.doesNotThrow(() => assertTools({ tools: ['gh'], _exec: execAllPass }));
+  });
+
+  it('checks only specified tools when tools array is provided', () => {
+    const calls = [];
+    const spy = (tool) => {
+      calls.push(tool);
+    };
+    checkTools({ tools: ['gh'], _exec: spy });
+    assert.deepEqual(calls, ['gh']);
+  });
 });

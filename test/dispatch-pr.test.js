@@ -84,6 +84,9 @@ function makePr(overrides = {}) {
  */
 function createExecWithPr(prData) {
   return (cmd, args, opts) => {
+    if (cmd === 'gh' && args[0] === '--version') {
+      return 'gh version 2.0.0'; // Mock gh version check
+    }
     if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
       if (!prData) {
         const err = new Error('Could not resolve to a PullRequest with the number of 999');
@@ -168,6 +171,21 @@ describe('fetchPrOrFail', () => {
 // =====================================================
 
 describe('dispatchPr error paths', () => {
+  test('throws RallyError when gh CLI is missing', async () => {
+    setupRallyHome();
+    const execMissingGh = () => {
+      throw new Error('gh: command not found');
+    };
+    await assert.rejects(
+      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: execMissingGh }),
+      (err) => {
+        assert.ok(err.message.includes('gh'));
+        assert.ok(err.message.includes('Missing required tools'));
+        return true;
+      }
+    );
+  });
+
   test('throws when PR number is missing', async () => {
     setupRallyHome();
     await assert.rejects(
@@ -256,7 +274,7 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr({ state: 'MERGED' }));
     await assert.rejects(
-      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
       (err) => {
         assert.ok(err.message.includes('already merged'));
         return true;
@@ -268,7 +286,7 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr({ state: 'CLOSED' }));
     await assert.rejects(
-      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
       (err) => {
         assert.ok(err.message.includes('closed'));
         return true;
@@ -285,7 +303,7 @@ describe('dispatchPr error paths', () => {
     const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-existing'], { cwd: repoPath, stdio: 'ignore' });
 
-    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn });
+    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
     assert.strictEqual(result.existing, true);
   });
 });
@@ -309,6 +327,7 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     // Verify return value
@@ -361,6 +380,7 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     assert.strictEqual(result.branch, 'rally/pr-7-add-dark-mode-support');
@@ -385,6 +405,7 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     const expected = join(repoPath, '.worktrees', 'rally-pr-99');
@@ -408,6 +429,7 @@ describe('dispatchPr happy path', () => {
       teamDir,
       _exec: exec,
       _spawn: noopSpawn,
+      trust: true,
     });
 
     const squadInWorktree = join(result.worktreePath, '.squad');
@@ -427,6 +449,7 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: () => ({ pid: 98765, unref() {} }),
+      trust: true,
     });
 
     assert.strictEqual(result.sessionId, '98765');
@@ -449,6 +472,7 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: () => { throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }); },
+      trust: true,
     });
 
     assert.strictEqual(result.sessionId, null);
@@ -477,6 +501,7 @@ describe('dispatchPr happy path', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
+        trust: true,
       }),
     );
 
@@ -596,6 +621,9 @@ describe('dispatchPr with custom prompt file', () => {
       return { pid: 12345, unref() {}, on() {} };
     };
     const exec = (cmd, args, opts) => {
+      if (cmd === 'gh' && args[0] === '--version') {
+        return 'gh version 2.0.0';
+      }
       if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
         return JSON.stringify(pr);
       }
@@ -619,6 +647,7 @@ describe('dispatchPr with custom prompt file', () => {
       promptFile: promptPath,
       _exec: exec,
       _spawn: capturingSpawn,
+      trust: true,
     });
 
     assert.ok(result.worktreePath, 'should return worktree path');

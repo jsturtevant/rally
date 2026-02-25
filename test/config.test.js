@@ -116,6 +116,20 @@ test('getConfigDir respects RALLY_HOME env var', () => {
   }
 });
 
+test('getConfigDir throws when RALLY_HOME is a relative path', () => {
+  const originalEnv = process.env.RALLY_HOME;
+  try {
+    process.env.RALLY_HOME = 'relative/path';
+    assert.throws(() => getConfigDir(), /RALLY_HOME must be an absolute path/);
+  } finally {
+    if (originalEnv) {
+      process.env.RALLY_HOME = originalEnv;
+    } else {
+      delete process.env.RALLY_HOME;
+    }
+  }
+});
+
 test('readConfig returns null when file missing', () => {
   const originalEnv = process.env.RALLY_HOME;
   const tempDir = mkdtempSync(join(tmpdir(), 'rally-test-'));

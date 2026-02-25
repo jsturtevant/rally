@@ -576,3 +576,22 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - `test/dispatch-refresh.test.js`, `test/integration.test.js`
 
 **Test results:** 415 pass, 0 failures from changes (2 pre-existing timeout issues in e2e).
+
+### 2025-07-25 — Issue #321: Copilot Status Display Fix
+
+**Problem:** PR dispatches were created with `initialStatus: 'reviewing'`, so the dashboard showed "ready for review" immediately — even while copilot was still actively working on the review.
+
+**Fix:**
+- Changed `dispatch-pr.js` initial status from `'reviewing'` to `'implementing'`. Now the refresh logic (`refreshDispatchStatuses`) handles the transition to `'reviewing'` only after the copilot process exits and log goes idle.
+- Changed `DispatchTable.jsx` label for `implementing` from "working" to "copilot working" to match user expectation.
+- Added `docs/STATUS-FLOW.md` documenting the full status lifecycle with transition diagram.
+
+**Key insight:** The status model was already correct for issue dispatches (start at `planning`, auto-transition to `reviewing`). PR dispatches were the exception — they skipped the working phase entirely.
+
+**Files changed:**
+- `lib/dispatch-pr.js` (initialStatus fix)
+- `lib/ui/components/DispatchTable.jsx` (label change)
+- `docs/STATUS-FLOW.md` (new documentation)
+- `test/dispatch-pr.test.js`, `test/integration.test.js` (test updates)
+
+**Test results:** 724 pass, 0 failures.

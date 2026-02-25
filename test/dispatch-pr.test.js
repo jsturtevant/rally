@@ -704,7 +704,7 @@ describe('buildReviewPrompt', () => {
   test('includes inline file comment template with REVIEW ISSUE format', () => {
     const pr = makePr();
     const prompt = buildReviewPrompt({ ...pr, number: 42 });
-    assert.ok(prompt.includes('// # REVIEW ISSUE #N [SEVERITY]'), 'should include inline comment template');
+    assert.ok(prompt.includes('// # REVIEW ISSUE #N [SEVERITY]: Brief description'), 'should include inline comment template');
     assert.ok(prompt.includes('CRITICAL'), 'should mention CRITICAL severity in template');
   });
 
@@ -712,7 +712,7 @@ describe('buildReviewPrompt', () => {
     const pr = makePr();
     const prompt = buildReviewPrompt({ ...pr, number: 42 });
     assert.ok(prompt.includes('unstaged'), 'should instruct to leave files unstaged');
-    assert.ok(prompt.includes('git add') || prompt.includes('git diff'), 'should mention git workflow for comments');
+    assert.ok(prompt.includes('git diff'), 'should mention git diff for comments');
   });
 
   test('includes REVIEW.md template with all required sections', () => {

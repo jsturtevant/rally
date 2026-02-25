@@ -8,8 +8,15 @@ import { listOnboardedRepos } from '../../picker.js';
  */
 export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, _listOnboardedRepos }) {
   const listRepos = _listOnboardedRepos || listOnboardedRepos;
-  const projects = listRepos();
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  let projects = [];
+  let error = null;
+  try {
+    projects = listRepos();
+  } catch (err) {
+    error = err.message;
+  }
 
   const items = [
     ...projects.map((p) => ({ type: 'project', label: p.repo || p.name, project: p })),
@@ -17,6 +24,11 @@ export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, 
   ];
 
   useInput((input, key) => {
+    if (key.escape || input === 'q') {
+      onBack();
+      return;
+    }
+    if (error) return;
     if (key.upArrow) {
       setSelectedIndex((i) => Math.max(0, i - 1));
     } else if (key.downArrow) {
@@ -28,10 +40,19 @@ export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, 
       } else {
         onSelectProject(selected.project);
       }
-    } else if (key.escape || input === 'q') {
-      onBack();
     }
   });
+
+  if (error) {
+    return (
+      <Box flexDirection="column">
+        <Text color="red">✗ {error}</Text>
+        <Box marginTop={1}>
+          <Text dimColor>Esc back</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column">

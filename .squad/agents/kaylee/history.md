@@ -609,7 +609,7 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Exported API unchanged:** `onboard()` and `onboardRemove()` signatures identical
 - **Helpers are private (not exported)** — kept in the same file since they're small and tightly coupled to the onboard flow
 
-### 2026-XX-XX — Dashboard Issue/PR Pickers (#278)
+### 2026-02-25 — Dashboard Issue/PR Pickers (#278)
 
 - **New components:** `ProjectBrowser.jsx` (project list + "Add Project") and `ProjectItemPicker.jsx` (issues/PRs for a project) added to `lib/ui/components/`
  dispatch flow. Uses same exit-and-run pattern as `onAttachSession`.

@@ -1,7 +1,7 @@
 # Decision: Dashboard Pickers — Exit-and-Run Pattern for Dispatch
 
 **By:** Kaylee (Core Dev)
-**Date:** 2026-XX-XX
+**Date:** 2026-02-25
 **Status:** Proposed
 
 ## Context

@@ -707,4 +707,27 @@ describe('Dashboard component', () => {
     assert.ok(attachedDispatch, 'action menu a shortcut should call onAttachSession');
     assert.equal(attachedDispatch.number, 42, 'should pass dispatch number');
   });
+
+  it('help text includes n new dispatch shortcut', () => {
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
+    assert.ok(output.includes('n new dispatch'), 'should show n new dispatch shortcut hint');
+  });
+
+  it('n shortcut opens project browser', async () => {
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        _listOnboardedRepos: () => [
+          { repo: 'owner/repo-x', name: 'repo-x', path: '/home/user/repo-x' },
+        ],
+      })
+    );
+    await delay();
+    instance.stdin.write('n');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('Select a Project'), 'n shortcut should open project browser');
+    assert.ok(output.includes('owner/repo-x'), 'should show onboarded project');
+  });
 });

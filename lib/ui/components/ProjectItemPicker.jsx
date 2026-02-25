@@ -6,16 +6,26 @@ import { fetchIssues, fetchPrs } from '../../picker.js';
  * Project item picker — shows issues and PRs for a selected project.
  * Fetches data from GitHub on mount. ↑/↓ to navigate, Enter to dispatch, Esc to go back.
  */
+function resolveRepo(project) {
+  const repo = project.repo || project.name;
+  if (!repo || !repo.includes('/')) return null;
+  return repo;
+}
+
 export default function ProjectItemPicker({ project, onSelectItem, onBack, _fetchIssues, _fetchPrs }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  const repo = project.repo || project.name;
+  const repo = resolveRepo(project);
   const _fi = _fetchIssues || fetchIssues;
   const _fp = _fetchPrs || fetchPrs;
 
   useEffect(() => {
+    if (!repo) {
+      setError(`Invalid repo format: "${project.repo || project.name}". Expected "owner/repo".`);
+      return;
+    }
     try {
       const issues = _fi(repo);
       const prs = _fp(repo);
@@ -23,7 +33,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onBack, _fetc
     } catch (err) {
       setError(err.message);
     }
-  }, [repo]);
+  }, [repo, _fi, _fp]);
 
   const items = data
     ? [

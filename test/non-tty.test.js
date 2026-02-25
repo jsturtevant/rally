@@ -1,18 +1,16 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 import { renderPlainDashboard } from '../lib/ui/dashboard-data.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 let TEST_DIR;
 let WORKTREE_DIR;
-let originalRallyHome;
 
-function setupWithDispatches() {
-  originalRallyHome = process.env.RALLY_HOME;
-  TEST_DIR = join(tmpdir(), `rally-nontty-test-${process.pid}-${Date.now()}`);
+function setupWithDispatches(t) {
+  TEST_DIR = withTempRallyHome(t);
   WORKTREE_DIR = join(TEST_DIR, 'worktree-check');
   mkdirSync(WORKTREE_DIR, { recursive: true });
   const dispatches = [
@@ -40,29 +38,11 @@ function setupWithDispatches() {
     },
   ];
   writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
-  process.env.RALLY_HOME = TEST_DIR;
-}
-
-function teardownTestEnv() {
-  if (originalRallyHome !== undefined) {
-    process.env.RALLY_HOME = originalRallyHome;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
-  if (TEST_DIR) {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-    TEST_DIR = null;
-    WORKTREE_DIR = null;
-  }
 }
 
 describe('renderPlainDashboard (non-TTY)', () => {
-  beforeEach(() => {
-    setupWithDispatches();
-  });
-
-  afterEach(() => {
-    teardownTestEnv();
+  beforeEach((t) => {
+    setupWithDispatches(t);
   });
 
   it('outputs plain text with no ANSI escape codes', () => {

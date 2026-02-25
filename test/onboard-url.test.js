@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { parseGithubUrl, onboard } from '../lib/onboard.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 // ─── parseGithubUrl unit tests ───────────────────────────────────────────────
 
@@ -115,23 +116,16 @@ describe('parseGithubUrl', () => {
 
 describe('onboard URL cloning', () => {
   let tempDir;
-  let originalEnv;
 
   // Mock select that picks "shared" team (used for tests that don't test team selection itself)
   const sharedSelect = async () => 'shared';
 
-  beforeEach(() => {
+  beforeEach((t) => {
     tempDir = mkdtempSync(join(tmpdir(), 'rally-url-test-'));
-    originalEnv = process.env.RALLY_HOME;
-    process.env.RALLY_HOME = join(tempDir, 'rally-home');
+    withTempRallyHome(t);
   });
 
   afterEach(() => {
-    if (originalEnv) {
-      process.env.RALLY_HOME = originalEnv;
-    } else {
-      delete process.env.RALLY_HOME;
-    }
     rmSync(tempDir, { recursive: true, force: true });
   });
 

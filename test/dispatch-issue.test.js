@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { dispatchIssue } from '../lib/dispatch-issue.js';
 import { slugify } from '../lib/utils.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 // =====================================================
 // Helpers
@@ -17,13 +18,11 @@ import { slugify } from '../lib/utils.js';
 
 let tempDir;
 let repoPath;
-let originalEnv;
 
-beforeEach(() => {
+beforeEach((t) => {
   tempDir = mkdtempSync(join(tmpdir(), 'rally-dispatch-issue-'));
   repoPath = join(tempDir, 'repo');
-  originalEnv = process.env.RALLY_HOME;
-  process.env.RALLY_HOME = join(tempDir, 'rally-home');
+  withTempRallyHome(t);
 
   // Initialize a real git repo for worktree operations
   mkdirSync(repoPath, { recursive: true });
@@ -36,11 +35,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  if (originalEnv !== undefined) {
-    process.env.RALLY_HOME = originalEnv;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
   rmSync(tempDir, { recursive: true, force: true });
 });
 

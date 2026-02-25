@@ -2,39 +2,24 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.js';
+import { withTempRallyHome } from '../helpers/temp-env.js';
 
 let TEST_DIR;
 let WORKTREE_DIR;
-let originalRallyHome;
 
-function setupTestEnv(dispatches = []) {
-  originalRallyHome = process.env.RALLY_HOME;
+function setupTestEnv(t, dispatches = []) {
   if (!TEST_DIR) {
-    TEST_DIR = join(tmpdir(), `rally-dashboard-test-${process.pid}-${Date.now()}`);
+    TEST_DIR = withTempRallyHome(t);
     WORKTREE_DIR = join(TEST_DIR, 'worktree-check');
   }
   mkdirSync(TEST_DIR, { recursive: true });
   const content = yaml.dump({ dispatches });
   writeFileSync(join(TEST_DIR, 'active.yaml'), content, 'utf8');
-  process.env.RALLY_HOME = TEST_DIR;
-}
-
-function teardownTestEnv() {
-  if (originalRallyHome !== undefined) {
-    process.env.RALLY_HOME = originalRallyHome;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
-  if (TEST_DIR) {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-    TEST_DIR = null;
-    WORKTREE_DIR = null;
-  }
 }
 
 function makeSampleDispatches() {
@@ -75,11 +60,11 @@ function makeSampleDispatches() {
   ];
 }
 
-function setupWithDispatches() {
-  TEST_DIR = join(tmpdir(), `rally-dashboard-test-${process.pid}-${Date.now()}`);
+function setupWithDispatches(t) {
+  TEST_DIR = withTempRallyHome(t);
   WORKTREE_DIR = join(TEST_DIR, 'worktree-check');
   const dispatches = makeSampleDispatches();
-  setupTestEnv(dispatches);
+  setupTestEnv(t, dispatches);
   mkdirSync(WORKTREE_DIR, { recursive: true });
 }
 
@@ -116,12 +101,8 @@ describe('computeSummary', () => {
 });
 
 describe('getDashboardData', () => {
-  beforeEach(() => {
-    setupWithDispatches();
-  });
-
-  afterEach(() => {
-    teardownTestEnv();
+  beforeEach((t) => {
+    setupWithDispatches(t);
   });
 
   it('loads dispatches and adds health status', () => {
@@ -155,8 +136,8 @@ describe('getDashboardData', () => {
     assert.equal(data.dispatches.length, 3);
   });
 
-  it('returns empty when no dispatches exist', () => {
-    setupTestEnv([]);
+  it('returns empty when no dispatches exist', (t) => {
+    setupTestEnv(t, []);
     const data = getDashboardData();
     assert.equal(data.dispatches.length, 0);
     assert.deepEqual(data.summary, { active: 0, done: 0, orphaned: 0 });
@@ -167,13 +148,12 @@ describe('Dashboard component', () => {
   let instance;
   const delay = () => new Promise(r => setImmediate(r));
 
-  beforeEach(() => {
-    setupWithDispatches();
+  beforeEach((t) => {
+    setupWithDispatches(t);
   });
 
   afterEach(() => {
     if (instance) instance.unmount();
-    teardownTestEnv();
   });
 
   it('renders the dashboard title', () => {
@@ -208,7 +188,7 @@ describe('Dashboard component', () => {
   });
 
   it('renders empty state when no dispatches', () => {
-    setupTestEnv([]);
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches: [] }), 'utf8');
     instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
     const output = instance.lastFrame();
     assert.ok(output.includes('No active dispatches'), 'should show empty state');
@@ -252,7 +232,7 @@ describe('Dashboard component', () => {
   it('action menu shows View dispatch logs when logPath exists', async () => {
     const dispatches = makeSampleDispatches();
     dispatches[0].logPath = join(tmpdir(), 'test-log.txt');
-    setupTestEnv(dispatches);
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
     mkdirSync(WORKTREE_DIR, { recursive: true });
 
     instance = render(

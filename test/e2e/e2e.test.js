@@ -282,7 +282,7 @@ describe('e2e: dispatch clean', () => {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test('dispatch clean removes done dispatches', { timeout: DISPATCH_TIMEOUT }, async () => {
+  test('dispatch clean removes done dispatches', { timeout: DISPATCH_TIMEOUT }, async (t) => {
     // Seed config with a "done" dispatch
     seedConfig(tempDir, REPO_ROOT);
     const active = {
@@ -303,37 +303,33 @@ describe('e2e: dispatch clean', () => {
     // Set RALLY_HOME for library imports
     const origHome = process.env.RALLY_HOME;
     process.env.RALLY_HOME = tempDir;
+    t.after(() => {
+      if (origHome !== undefined) process.env.RALLY_HOME = origHome;
+      else delete process.env.RALLY_HOME;
+    });
 
-    try {
-      const { dispatchClean } = await import('../../lib/dispatch-clean.js');
-      const noopOra = (opts) => ({
-        start() { return this; },
-        succeed() {},
-        fail() {},
-      });
+    const { dispatchClean } = await import('../../lib/dispatch-clean.js');
+    const noopOra = (opts) => ({
+      start() { return this; },
+      succeed() {},
+      fail() {},
+    });
 
-      const result = await dispatchClean({
-        _ora: noopOra,
-        _chalk: { green: s => s, red: s => s, yellow: s => s, dim: s => s },
-        _removeWorktree: () => {},  // worktree doesn't exist; skip removal
-      });
+    const result = await dispatchClean({
+      _ora: noopOra,
+      _chalk: { green: s => s, red: s => s, yellow: s => s, dim: s => s },
+      _removeWorktree: () => {},  // worktree doesn't exist; skip removal
+    });
 
-      assert.equal(result.cleaned.length, 1, 'should clean one dispatch');
-      assert.equal(result.cleaned[0].id, 'rally-issue-99');
+    assert.equal(result.cleaned.length, 1, 'should clean one dispatch');
+    assert.equal(result.cleaned[0].id, 'rally-issue-99');
 
-      // active.yaml should now be empty
-      const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
-      assert.equal(afterActive.dispatches.length, 0, 'active.yaml should have no dispatches');
-    } finally {
-      if (origHome !== undefined) {
-        process.env.RALLY_HOME = origHome;
-      } else {
-        delete process.env.RALLY_HOME;
-      }
-    }
+    // active.yaml should now be empty
+    const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
+    assert.equal(afterActive.dispatches.length, 0, 'active.yaml should have no dispatches');
   });
 
-  test('dispatch clean skips when no done dispatches', { timeout: DISPATCH_TIMEOUT }, async () => {
+  test('dispatch clean skips when no done dispatches', { timeout: DISPATCH_TIMEOUT }, async (t) => {
     seedConfig(tempDir, REPO_ROOT);
     // All dispatches are "implementing" — none are "done"
     const active = {
@@ -353,29 +349,25 @@ describe('e2e: dispatch clean', () => {
 
     const origHome = process.env.RALLY_HOME;
     process.env.RALLY_HOME = tempDir;
+    t.after(() => {
+      if (origHome !== undefined) process.env.RALLY_HOME = origHome;
+      else delete process.env.RALLY_HOME;
+    });
 
-    try {
-      const { dispatchClean } = await import('../../lib/dispatch-clean.js');
-      const noopOra = () => ({ start() { return this; }, succeed() {}, fail() {} });
+    const { dispatchClean } = await import('../../lib/dispatch-clean.js');
+    const noopOra = () => ({ start() { return this; }, succeed() {}, fail() {} });
 
-      const result = await dispatchClean({
-        _ora: noopOra,
-        _chalk: { green: s => s, red: s => s, yellow: s => s, dim: s => s },
-        _removeWorktree: () => {},
-      });
+    const result = await dispatchClean({
+      _ora: noopOra,
+      _chalk: { green: s => s, red: s => s, yellow: s => s, dim: s => s },
+      _removeWorktree: () => {},
+    });
 
-      assert.equal(result.cleaned.length, 0, 'should clean nothing');
+    assert.equal(result.cleaned.length, 0, 'should clean nothing');
 
-      // Dispatch should still be present
-      const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
-      assert.equal(afterActive.dispatches.length, 1, 'dispatch should remain');
-    } finally {
-      if (origHome !== undefined) {
-        process.env.RALLY_HOME = origHome;
-      } else {
-        delete process.env.RALLY_HOME;
-      }
-    }
+    // Dispatch should still be present
+    const afterActive = yaml.load(readFileSync(join(tempDir, 'active.yaml'), 'utf8'), { schema: yaml.CORE_SCHEMA });
+    assert.equal(afterActive.dispatches.length, 1, 'dispatch should remain');
   });
 
   test('rally dashboard --json shows filtered project data', { timeout: DISPATCH_TIMEOUT }, () => {

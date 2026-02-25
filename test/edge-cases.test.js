@@ -12,6 +12,7 @@ import { dispatchIssue } from '../lib/dispatch-issue.js';
 import { checkTools, assertTools } from '../lib/tools.js';
 import { RallyError, EXIT_CONFIG } from '../lib/errors.js';
 import { addDispatch } from '../lib/active.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 // =====================================================
 // Helpers
@@ -19,13 +20,11 @@ import { addDispatch } from '../lib/active.js';
 
 let tempDir;
 let repoPath;
-let originalEnv;
 
-beforeEach(() => {
+beforeEach((t) => {
   tempDir = mkdtempSync(join(tmpdir(), 'rally-edge-'));
   repoPath = join(tempDir, 'repo');
-  originalEnv = process.env.RALLY_HOME;
-  process.env.RALLY_HOME = join(tempDir, 'rally-home');
+  withTempRallyHome(t);
 
   mkdirSync(repoPath, { recursive: true });
   execFileSync('git', ['init'], { cwd: repoPath, stdio: 'ignore' });
@@ -37,11 +36,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  if (originalEnv !== undefined) {
-    process.env.RALLY_HOME = originalEnv;
-  } else {
-    delete process.env.RALLY_HOME;
-  }
   rmSync(tempDir, { recursive: true, force: true });
 });
 

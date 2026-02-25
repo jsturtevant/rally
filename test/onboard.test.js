@@ -9,23 +9,17 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { onboard } from '../lib/onboard.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 describe('onboard', () => {
   let tempDir;
-  let originalEnv;
 
-  beforeEach(() => {
+  beforeEach((t) => {
     tempDir = mkdtempSync(join(tmpdir(), 'rally-onboard-test-'));
-    originalEnv = process.env.RALLY_HOME;
-    process.env.RALLY_HOME = join(tempDir, 'rally-home');
+    withTempRallyHome(t);
   });
 
   afterEach(() => {
-    if (originalEnv) {
-      process.env.RALLY_HOME = originalEnv;
-    } else {
-      delete process.env.RALLY_HOME;
-    }
     rmSync(tempDir, { recursive: true, force: true });
   });
 

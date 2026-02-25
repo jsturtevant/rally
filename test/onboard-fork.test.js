@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { parseForkArg, configureForkRemotes, onboard } from '../lib/onboard.js';
+import { withTempRallyHome } from './helpers/temp-env.js';
 
 // ─── parseForkArg unit tests ─────────────────────────────────────────────────
 
@@ -142,22 +143,15 @@ describe('configureForkRemotes', () => {
 
 describe('onboard --fork integration', () => {
   let tempDir;
-  let originalEnv;
 
   const sharedSelect = async () => 'shared';
 
-  beforeEach(() => {
+  beforeEach((t) => {
     tempDir = mkdtempSync(join(tmpdir(), 'rally-fork-integ-'));
-    originalEnv = process.env.RALLY_HOME;
-    process.env.RALLY_HOME = join(tempDir, 'rally-home');
+    withTempRallyHome(t);
   });
 
   afterEach(() => {
-    if (originalEnv) {
-      process.env.RALLY_HOME = originalEnv;
-    } else {
-      delete process.env.RALLY_HOME;
-    }
     rmSync(tempDir, { recursive: true, force: true });
   });
 

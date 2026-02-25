@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import DispatchTable, { STATUS_ICONS, computeColumnWidths } from '../../lib/ui/components/DispatchTable.js';
-import { formatAge } from '../../lib/ui/dashboard-data.js';
+import { formatAge, groupByProject } from '../../lib/ui/dashboard-data.js';
 
 let lastCleanup;
 afterEach(() => { if (lastCleanup) lastCleanup(); });
@@ -38,7 +38,7 @@ describe('DispatchTable', () => {
     );
     lastCleanup = cleanup;
     const output = lastFrame();
-    assert.ok(output.includes('Project'), 'should include Project column');
+    assert.ok(!output.includes('Project'), 'Project is now a group header, not a column');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR column');
     assert.ok(!output.includes('Branch'), 'should not include Branch column');
     assert.ok(!output.includes('Folder'), 'should not include Folder column');
@@ -46,13 +46,14 @@ describe('DispatchTable', () => {
     assert.ok(output.includes('Age'), 'should include Age column');
   });
 
-  it('renders dispatch data rows', () => {
+  it('renders dispatch data rows with project group headers', () => {
     const { lastFrame, cleanup } = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );
     lastCleanup = cleanup;
     const output = lastFrame();
-    assert.ok(output.includes('owner/repo-a'), 'should include repo name');
+    assert.ok(output.includes('owner/repo-a'), 'should include project group header');
+    assert.ok(output.includes('owner/repo-b'), 'should include second project group header');
     assert.ok(output.includes('Issue #42'), 'should include issue ref');
     assert.ok(output.includes('PR #7'), 'should include PR ref');
     assert.ok(!output.includes('rally/42-fix-bug'), 'should not include branch');
@@ -160,21 +161,19 @@ describe('formatAge', () => {
 });
 
 describe('computeColumnWidths', () => {
-  it('gives Project column extra space from terminal width', () => {
+  it('gives Issue/PR column extra space from terminal width', () => {
     const cols = computeColumnWidths(120);
-    const project = cols.find(c => c.key === 'project');
-    // Fixed columns: issueRef(12) + status(20) + changes(10) + age(6) = 48
-    // selector = 2, remaining = 120 - 2 - 48 = 70
-    assert.equal(project.width, 70, 'Project should get remaining terminal width');
+    const issueRef = cols.find(c => c.key === 'issueRef');
+    // Fixed columns: status(20) + changes(10) + age(6) = 36
+    // selector = 2, remaining = 120 - 2 - 36 = 82
+    assert.equal(issueRef.width, 82, 'Issue/PR should get remaining terminal width');
   });
 
   it('uses minimum widths for non-flex columns', () => {
     const cols = computeColumnWidths(120);
-    const issueRef = cols.find(c => c.key === 'issueRef');
     const status = cols.find(c => c.key === 'status');
     const changes = cols.find(c => c.key === 'changes');
     const age = cols.find(c => c.key === 'age');
-    assert.equal(issueRef.width, 12);
     assert.equal(status.width, 20);
     assert.equal(changes.width, 10);
     assert.equal(age.width, 6);
@@ -182,14 +181,54 @@ describe('computeColumnWidths', () => {
 
   it('defaults to 80 columns when terminal width is undefined', () => {
     const cols = computeColumnWidths(undefined);
-    const project = cols.find(c => c.key === 'project');
-    // remaining = 80 - 2 - 48 = 30
-    assert.equal(project.width, 30);
+    const issueRef = cols.find(c => c.key === 'issueRef');
+    // remaining = 80 - 2 - 36 = 42
+    assert.equal(issueRef.width, 42);
   });
 
-  it('never shrinks Project below its minimum width', () => {
+  it('never shrinks Issue/PR below its minimum width', () => {
     const cols = computeColumnWidths(40);
-    const project = cols.find(c => c.key === 'project');
-    assert.ok(project.width >= 18, 'Project should not go below minWidth');
+    const issueRef = cols.find(c => c.key === 'issueRef');
+    assert.ok(issueRef.width >= 12, 'Issue/PR should not go below minWidth');
+  });
+});
+
+describe('groupByProject', () => {
+  it('groups dispatches by repo', () => {
+    const dispatches = [
+      { repo: 'owner/a', number: 1 },
+      { repo: 'owner/b', number: 2 },
+      { repo: 'owner/a', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 2);
+    assert.equal(groups[0].project, 'owner/a');
+    assert.equal(groups[0].dispatches.length, 2);
+    assert.equal(groups[1].project, 'owner/b');
+    assert.equal(groups[1].dispatches.length, 1);
+  });
+
+  it('uses "(unknown)" for null or empty repo', () => {
+    const dispatches = [
+      { repo: null, number: 1 },
+      { repo: '', number: 2 },
+      { repo: 'owner/a', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups.length, 2);
+    assert.equal(groups[0].project, '(unknown)');
+    assert.equal(groups[0].dispatches.length, 2);
+    assert.equal(groups[1].project, 'owner/a');
+  });
+
+  it('preserves encounter order', () => {
+    const dispatches = [
+      { repo: 'owner/b', number: 1 },
+      { repo: 'owner/a', number: 2 },
+      { repo: 'owner/b', number: 3 },
+    ];
+    const groups = groupByProject(dispatches);
+    assert.equal(groups[0].project, 'owner/b');
+    assert.equal(groups[1].project, 'owner/a');
   });
 });

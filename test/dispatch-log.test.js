@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { dispatchLog } from '../lib/dispatch-log.js';
 
 describe('dispatchLog', () => {
-  test('displays log file content when dispatch is found', async () => {
+  test('displays log file content when dispatch is found', async (t) => {
     const mockGetActive = () => [
       {
         id: 'issue-42',
@@ -25,29 +25,23 @@ describe('dispatchLog', () => {
       return true;
     };
 
-    let output = [];
-    const originalLog = console.log;
-    console.log = (...args) => output.push(args.join(' '));
+    const mockLog = t.mock.method(console, 'log', () => {});
 
-    try {
-      await dispatchLog(42, {
-        _getActiveDispatches: mockGetActive,
-        _readFile: mockReadFile,
-        _existsSync: mockExists,
-        _chalk: {
-          yellow: (s) => s,
-          dim: (s) => s,
-        },
-      });
+    await dispatchLog(42, {
+      _getActiveDispatches: mockGetActive,
+      _readFile: mockReadFile,
+      _existsSync: mockExists,
+      _chalk: {
+        yellow: (s) => s,
+        dim: (s) => s,
+      },
+    });
 
-      assert.strictEqual(output.length, 1);
-      assert.strictEqual(output[0], 'Copilot output here\nMore output\n');
-    } finally {
-      console.log = originalLog;
-    }
+    assert.strictEqual(mockLog.mock.calls.length, 1);
+    assert.strictEqual(mockLog.mock.calls[0].arguments[0], 'Copilot output here\nMore output\n');
   });
 
-  test('shows warning when logPath is missing', async () => {
+  test('shows warning when logPath is missing', async (t) => {
     const mockGetActive = () => [
       {
         id: 'issue-42',
@@ -58,26 +52,20 @@ describe('dispatchLog', () => {
       },
     ];
 
-    let output = [];
-    const originalLog = console.log;
-    console.log = (...args) => output.push(args.join(' '));
+    const mockLog = t.mock.method(console, 'log', () => {});
 
-    try {
-      await dispatchLog(42, {
-        _getActiveDispatches: mockGetActive,
-        _chalk: {
-          yellow: (s) => `[yellow]${s}`,
-          dim: (s) => `[dim]${s}`,
-        },
-      });
+    await dispatchLog(42, {
+      _getActiveDispatches: mockGetActive,
+      _chalk: {
+        yellow: (s) => `[yellow]${s}`,
+        dim: (s) => `[dim]${s}`,
+      },
+    });
 
-      assert.ok(output.some((line) => line.includes('No log file available')));
-    } finally {
-      console.log = originalLog;
-    }
+    assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('No log file available')));
   });
 
-  test('shows warning when log file does not exist', async () => {
+  test('shows warning when log file does not exist', async (t) => {
     const mockGetActive = () => [
       {
         id: 'issue-42',
@@ -90,24 +78,18 @@ describe('dispatchLog', () => {
 
     const mockExists = () => false;
 
-    let output = [];
-    const originalLog = console.log;
-    console.log = (...args) => output.push(args.join(' '));
+    const mockLog = t.mock.method(console, 'log', () => {});
 
-    try {
-      await dispatchLog(42, {
-        _getActiveDispatches: mockGetActive,
-        _existsSync: mockExists,
-        _chalk: {
-          yellow: (s) => `[yellow]${s}`,
-          dim: (s) => `[dim]${s}`,
-        },
-      });
+    await dispatchLog(42, {
+      _getActiveDispatches: mockGetActive,
+      _existsSync: mockExists,
+      _chalk: {
+        yellow: (s) => `[yellow]${s}`,
+        dim: (s) => `[dim]${s}`,
+      },
+    });
 
-      assert.ok(output.some((line) => line.includes('Log file not found')));
-    } finally {
-      console.log = originalLog;
-    }
+    assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('Log file not found')));
   });
 
   test('throws when no dispatch is found for number', async () => {
@@ -133,7 +115,7 @@ describe('dispatchLog', () => {
     );
   });
 
-  test('disambiguates with --repo flag', async () => {
+  test('disambiguates with --repo flag', async (t) => {
     const mockGetActive = () => [
       {
         id: 'issue-42-a',
@@ -158,26 +140,20 @@ describe('dispatchLog', () => {
 
     const mockExists = () => true;
 
-    let output = [];
-    const originalLog = console.log;
-    console.log = (...args) => output.push(args.join(' '));
+    const mockLog = t.mock.method(console, 'log', () => {});
 
-    try {
-      await dispatchLog(42, {
-        repo: 'owner/repo2',
-        _getActiveDispatches: mockGetActive,
-        _readFile: mockReadFile,
-        _existsSync: mockExists,
-        _chalk: { yellow: (s) => s, dim: (s) => s },
-      });
+    await dispatchLog(42, {
+      repo: 'owner/repo2',
+      _getActiveDispatches: mockGetActive,
+      _readFile: mockReadFile,
+      _existsSync: mockExists,
+      _chalk: { yellow: (s) => s, dim: (s) => s },
+    });
 
-      assert.strictEqual(output[0], 'repo2 output\n');
-    } finally {
-      console.log = originalLog;
-    }
+    assert.strictEqual(mockLog.mock.calls[0].arguments[0], 'repo2 output\n');
   });
 
-  test('warns that --follow is not yet implemented', async () => {
+  test('warns that --follow is not yet implemented', async (t) => {
     const mockGetActive = () => [
       {
         id: 'issue-42',
@@ -191,26 +167,20 @@ describe('dispatchLog', () => {
     const mockReadFile = () => 'output\n';
     const mockExists = () => true;
 
-    let output = [];
-    const originalLog = console.log;
-    console.log = (...args) => output.push(args.join(' '));
+    const mockLog = t.mock.method(console, 'log', () => {});
 
-    try {
-      await dispatchLog(42, {
-        follow: true,
-        _getActiveDispatches: mockGetActive,
-        _readFile: mockReadFile,
-        _existsSync: mockExists,
-        _chalk: { yellow: (s) => `[yellow]${s}`, dim: (s) => s },
-      });
+    await dispatchLog(42, {
+      follow: true,
+      _getActiveDispatches: mockGetActive,
+      _readFile: mockReadFile,
+      _existsSync: mockExists,
+      _chalk: { yellow: (s) => `[yellow]${s}`, dim: (s) => s },
+    });
 
-      assert.ok(output.some((line) => line.includes('--follow flag is not yet implemented')));
-    } finally {
-      console.log = originalLog;
-    }
+    assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('--follow flag is not yet implemented')));
   });
 
-  test('shows stats summary when log contains copilot stats', async () => {
+  test('shows stats summary when log contains copilot stats', async (t) => {
     const logContent = [
       'Some copilot output...',
       'Total code changes:     +164 -1',
@@ -229,31 +199,25 @@ describe('dispatchLog', () => {
       },
     ];
 
-    let output = [];
-    const originalLog = console.log;
-    console.log = (...args) => output.push(args.join(' '));
+    const mockLog = t.mock.method(console, 'log', () => {});
 
-    try {
-      await dispatchLog(42, {
-        _getActiveDispatches: mockGetActive,
-        _readFile: () => logContent,
-        _existsSync: () => true,
-        _chalk: {
-          yellow: (s) => s,
-          dim: (s) => s,
-          bold: (s) => `[bold]${s}`,
-        },
-      });
+    await dispatchLog(42, {
+      _getActiveDispatches: mockGetActive,
+      _readFile: () => logContent,
+      _existsSync: () => true,
+      _chalk: {
+        yellow: (s) => s,
+        dim: (s) => s,
+        bold: (s) => `[bold]${s}`,
+      },
+    });
 
-      assert.ok(output.some((line) => line.includes('[bold]Stats:')));
-      assert.ok(output.some((line) => line.includes('+164 -1')));
-      assert.ok(output.some((line) => line.includes('Premium requests: 3')));
-    } finally {
-      console.log = originalLog;
-    }
+    assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('[bold]Stats:')));
+    assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('+164 -1')));
+    assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('Premium requests: 3')));
   });
 
-  test('shows log normally when no stats present', async () => {
+  test('shows log normally when no stats present', async (t) => {
     const logContent = 'Just regular output\nNo stats here\n';
 
     const mockGetActive = () => [
@@ -266,27 +230,21 @@ describe('dispatchLog', () => {
       },
     ];
 
-    let output = [];
-    const originalLog = console.log;
-    console.log = (...args) => output.push(args.join(' '));
+    const mockLog = t.mock.method(console, 'log', () => {});
 
-    try {
-      await dispatchLog(42, {
-        _getActiveDispatches: mockGetActive,
-        _readFile: () => logContent,
-        _existsSync: () => true,
-        _chalk: {
-          yellow: (s) => s,
-          dim: (s) => s,
-          bold: (s) => `[bold]${s}`,
-        },
-      });
+    await dispatchLog(42, {
+      _getActiveDispatches: mockGetActive,
+      _readFile: () => logContent,
+      _existsSync: () => true,
+      _chalk: {
+        yellow: (s) => s,
+        dim: (s) => s,
+        bold: (s) => `[bold]${s}`,
+      },
+    });
 
-      assert.ok(!output.some((line) => line.includes('[bold]Stats:')));
-      assert.strictEqual(output.length, 1);
-      assert.strictEqual(output[0], logContent);
-    } finally {
-      console.log = originalLog;
-    }
+    assert.ok(!mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('[bold]Stats:')));
+    assert.strictEqual(mockLog.mock.calls.length, 1);
+    assert.strictEqual(mockLog.mock.calls[0].arguments[0], logContent);
   });
 });

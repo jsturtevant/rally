@@ -22,12 +22,7 @@ const silentChalk = {
   dim: (s) => s,
 };
 
-// Suppress console.log during tests
-const hushLog = () => {
-  const orig = console.log;
-  console.log = () => {};
-  return () => { console.log = orig; };
-};
+// Suppress console.log during tests via t.mock.method — see individual tests
 
 test('throws when no dispatch found for the given number', async () => {
   await assert.rejects(
@@ -75,8 +70,8 @@ test('throws when no session ID available (pending, no log parse)', async () => 
   );
 });
 
-test('resolves session ID from log when stored value is a PID', async () => {
-  const restore = hushLog();
+test('resolves session ID from log when stored value is a PID', async (t) => {
+  t.mock.method(console, 'log', () => {});
   let resumedSessionId = null;
 
   await dispatchContinue(42, {
@@ -89,12 +84,11 @@ test('resolves session ID from log when stored value is a PID', async () => {
     _chalk: silentChalk,
   });
 
-  restore();
   assert.strictEqual(resumedSessionId, 'ses_resolved-from-log');
 });
 
-test('persists resolved session ID back via updateDispatchField', async () => {
-  const restore = hushLog();
+test('persists resolved session ID back via updateDispatchField', async (t) => {
+  t.mock.method(console, 'log', () => {});
   let fieldUpdates = [];
 
   await dispatchContinue(42, {
@@ -107,7 +101,6 @@ test('persists resolved session ID back via updateDispatchField', async () => {
     _chalk: silentChalk,
   });
 
-  restore();
   assert.strictEqual(fieldUpdates.length, 1);
   assert.deepEqual(fieldUpdates[0], {
     id: 'rally-issue-42',
@@ -116,8 +109,8 @@ test('persists resolved session ID back via updateDispatchField', async () => {
   });
 });
 
-test('sets status to implementing before resume, restores to reviewing after', async () => {
-  const restore = hushLog();
+test('sets status to implementing before resume, restores to reviewing after', async (t) => {
+  t.mock.method(console, 'log', () => {});
   let statusUpdates = [];
 
   await dispatchContinue(42, {
@@ -130,12 +123,11 @@ test('sets status to implementing before resume, restores to reviewing after', a
     _chalk: silentChalk,
   });
 
-  restore();
   assert.deepEqual(statusUpdates, ['implementing', 'reviewing']);
 });
 
-test('passes message option through to resumeCopilot', async () => {
-  const restore = hushLog();
+test('passes message option through to resumeCopilot', async (t) => {
+  t.mock.method(console, 'log', () => {});
   let capturedOpts = null;
 
   await dispatchContinue(42, {
@@ -149,14 +141,11 @@ test('passes message option through to resumeCopilot', async () => {
     _chalk: silentChalk,
   });
 
-  restore();
   assert.strictEqual(capturedOpts.message, 'focus on tests');
 });
 
-test('resume message includes dispatch id context', async () => {
-  const logs = [];
-  const origLog = console.log;
-  console.log = (...args) => { logs.push(args.join(' ')); };
+test('resume message includes dispatch id context', async (t) => {
+  const mockLog = t.mock.method(console, 'log', () => {});
 
   await dispatchContinue(42, {
     _getActiveDispatches: () => [makeRecord({ id: 'rally-42' })],
@@ -168,13 +157,12 @@ test('resume message includes dispatch id context', async () => {
     _chalk: silentChalk,
   });
 
-  console.log = origLog;
-  const msg = logs.join('\n');
+  const msg = mockLog.mock.calls.map((call) => call.arguments.join(' ')).join('\n');
   assert.ok(msg.includes('rally-42'), `Expected dispatch id in message, got: ${msg}`);
 });
 
-test('works with --repo filter for disambiguation', async () => {
-  const restore = hushLog();
+test('works with --repo filter for disambiguation', async (t) => {
+  t.mock.method(console, 'log', () => {});
   let resumedId = null;
 
   await dispatchContinue(42, {
@@ -191,12 +179,11 @@ test('works with --repo filter for disambiguation', async () => {
     _chalk: silentChalk,
   });
 
-  restore();
   assert.strictEqual(resumedId, 'sess-abc');
 });
 
-test('handles resume failure gracefully (status still restored)', async () => {
-  const restore = hushLog();
+test('handles resume failure gracefully (status still restored)', async (t) => {
+  t.mock.method(console, 'log', () => {});
   let statusUpdates = [];
 
   await assert.rejects(
@@ -212,7 +199,6 @@ test('handles resume failure gracefully (status still restored)', async () => {
     { message: 'resume failed' }
   );
 
-  restore();
   // Status should still be restored to 'reviewing' via finally block
   assert.deepEqual(statusUpdates, ['implementing', 'reviewing']);
 });

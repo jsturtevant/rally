@@ -5,8 +5,13 @@ import { render } from 'ink-testing-library';
 import DispatchTable, { STATUS_ICONS, computeColumnWidths } from '../../lib/ui/components/DispatchTable.js';
 import { formatAge, groupByProject } from '../../lib/ui/dashboard-data.js';
 
-let lastCleanup;
-afterEach(() => { if (lastCleanup) lastCleanup(); });
+let lastInstance;
+afterEach(() => {
+  if (lastInstance) {
+    lastInstance.unmount();
+    lastInstance.cleanup();
+  }
+});
 
 const SAMPLE_DISPATCHES = [
   {
@@ -33,11 +38,10 @@ const SAMPLE_DISPATCHES = [
 
 describe('DispatchTable', () => {
   it('renders header columns', () => {
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );
-    lastCleanup = cleanup;
-    const output = lastFrame();
+    const output = lastInstance.lastFrame();
     assert.ok(!output.includes('Project'), 'Project is now a group header, not a column');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR column');
     assert.ok(!output.includes('Branch'), 'should not include Branch column');
@@ -47,11 +51,10 @@ describe('DispatchTable', () => {
   });
 
   it('renders dispatch data rows with project group headers', () => {
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );
-    lastCleanup = cleanup;
-    const output = lastFrame();
+    const output = lastInstance.lastFrame();
     assert.ok(output.includes('owner/repo-a'), 'should include project group header');
     assert.ok(output.includes('owner/repo-b'), 'should include second project group header');
     assert.ok(output.includes('Issue #42'), 'should include issue ref');
@@ -71,11 +74,10 @@ describe('DispatchTable', () => {
       session_id: `s${i}`,
       created: new Date().toISOString(),
     }));
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(DispatchTable, { dispatches })
     );
-    lastCleanup = cleanup;
-    const output = lastFrame();
+    const output = lastInstance.lastFrame();
     for (const status of statuses) {
       assert.ok(
         output.includes(STATUS_ICONS[status]),
@@ -89,6 +91,7 @@ describe('DispatchTable', () => {
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: 0 })
     );
     const selected = r1.lastFrame();
+    r1.unmount();
     r1.cleanup();
     assert.ok(selected.includes('❯'), 'selected row should show arrow indicator');
     assert.ok(selected.includes('owner/repo-a'), 'selected row data should render');
@@ -99,31 +102,30 @@ describe('DispatchTable', () => {
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES, selectedIndex: -1 })
     );
     const noSelection = r1.lastFrame();
+    r1.unmount();
     r1.cleanup();
     assert.ok(!noSelection.includes('❯'), 'no arrow should appear when nothing is selected');
     const r2 = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );
     const defaultRender = r2.lastFrame();
-    lastCleanup = r2.cleanup;
+    lastInstance = r2;
     assert.equal(noSelection, defaultRender, 'selectedIndex -1 should match default render');
   });
 
   it('renders empty state when no dispatches', () => {
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(DispatchTable, { dispatches: [] })
     );
-    lastCleanup = cleanup;
-    const output = lastFrame();
+    const output = lastInstance.lastFrame();
     assert.ok(output.includes('No active dispatches'), 'should show empty message');
   });
 
   it('renders empty state with default props', () => {
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(DispatchTable)
     );
-    lastCleanup = cleanup;
-    const output = lastFrame();
+    const output = lastInstance.lastFrame();
     assert.ok(output.includes('No active dispatches'), 'should show empty message');
   });
 });

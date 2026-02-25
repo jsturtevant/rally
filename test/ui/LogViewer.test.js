@@ -4,8 +4,13 @@ import React from 'react';
 import { render } from 'ink-testing-library';
 import LogViewer from '../../lib/ui/components/LogViewer.js';
 
-let lastCleanup;
-afterEach(() => { if (lastCleanup) lastCleanup(); });
+let lastInstance;
+afterEach(() => {
+  if (lastInstance) {
+    lastInstance.unmount();
+    lastInstance.cleanup();
+  }
+});
 
 const SAMPLE_DISPATCH = {
   repo: 'owner/repo-a',
@@ -21,7 +26,7 @@ function makeLogContent(lineCount) {
 describe('LogViewer', () => {
   it('shows "No log file available" when logPath missing', () => {
     const dispatch = { ...SAMPLE_DISPATCH, logPath: null };
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(LogViewer, {
         dispatch,
         onBack: () => {},
@@ -29,13 +34,12 @@ describe('LogViewer', () => {
         _existsSync: () => false,
       })
     );
-    lastCleanup = cleanup;
-    assert.ok(lastFrame().includes('No log file available'));
+    assert.ok(lastInstance.lastFrame().includes('No log file available'));
   });
 
   it('starts scrolled to the bottom for long logs', () => {
     const content = makeLogContent(50);
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(LogViewer, {
         dispatch: SAMPLE_DISPATCH,
         onBack: () => {},
@@ -44,8 +48,7 @@ describe('LogViewer', () => {
         _existsSync: () => true,
       })
     );
-    lastCleanup = cleanup;
-    const frame = lastFrame();
+    const frame = lastInstance.lastFrame();
     // Should show the last lines, not the first
     assert.ok(frame.includes('line-50'), 'should show last line');
     assert.ok(!frame.includes('line-1\n'), 'should not show first line at top');
@@ -53,7 +56,7 @@ describe('LogViewer', () => {
 
   it('renders escape hint in footer', () => {
     const content = makeLogContent(5);
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(LogViewer, {
         dispatch: SAMPLE_DISPATCH,
         onBack: () => {},
@@ -61,14 +64,13 @@ describe('LogViewer', () => {
         _existsSync: () => true,
       })
     );
-    lastCleanup = cleanup;
-    assert.ok(lastFrame().includes('Esc back'), 'should show escape hint');
-    assert.ok(lastFrame().includes('scroll'), 'should show scroll hint');
+    assert.ok(lastInstance.lastFrame().includes('Esc back'), 'should show escape hint');
+    assert.ok(lastInstance.lastFrame().includes('scroll'), 'should show scroll hint');
   });
 
   it('shows short logs without scrolling', () => {
     const content = makeLogContent(5);
-    const { lastFrame, cleanup } = render(
+    lastInstance = render(
       React.createElement(LogViewer, {
         dispatch: SAMPLE_DISPATCH,
         onBack: () => {},
@@ -77,8 +79,7 @@ describe('LogViewer', () => {
         _existsSync: () => true,
       })
     );
-    lastCleanup = cleanup;
-    const frame = lastFrame();
+    const frame = lastInstance.lastFrame();
     assert.ok(frame.includes('line-1'));
     assert.ok(frame.includes('line-5'));
   });

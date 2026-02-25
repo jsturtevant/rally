@@ -185,6 +185,13 @@ describe('launchCopilot', () => {
     );
   });
 
+  test('rejects worktree path with traversal segments', () => {
+    assert.throws(
+      () => launchCopilot('/repo/../etc/passwd', 'prompt', {}),
+      /must not contain "\.\." traversal/
+    );
+  });
+
   test('spawns docker sandbox when sandbox option is true', () => {
     let captured;
     const mockSpawn = (cmd, args, opts) => {
@@ -419,6 +426,13 @@ describe('resumeCopilot', () => {
     assert.throws(
       () => resumeCopilot('relative/path', 'sess-1', {}),
       /worktreePath must be an absolute path/
+    );
+  });
+
+  test('rejects worktree path with traversal segments', () => {
+    assert.throws(
+      () => resumeCopilot('/repo/../etc/passwd', 'sess-1', {}),
+      /must not contain "\.\." traversal/
     );
   });
 });

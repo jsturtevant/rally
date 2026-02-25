@@ -664,3 +664,15 @@ Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-0
 - Stats parsed on-demand from log files, not stored in active.yaml
 - Log append mode for continue sessions (one log per dispatch)
 - Display-only change for "ready for review" (no new status in state machine)
+
+---
+
+### Rally Agent Skill (#332) — 2025-07-24
+
+**Task:** Create `.claude/skills/rally/SKILL.md` — an agent skill file teaching AI agents how to use Rally.
+
+**Approach:** Read the full command surface from `bin/rally.js`, studied dispatch-core, dispatch-issue, dispatch-pr, dispatch-continue, dispatch-clean, dispatch-log, copilot.js, config.js, active.js, onboard.js, and Dashboard.jsx to build an accurate, comprehensive reference.
+
+**Outcome:** PR #333 opened. Single file addition — 299 lines covering all commands, workflows, status model, dashboard shortcuts, key concepts, and common patterns. Used `.claude/skills/` path for compatibility with both Claude Code and Copilot CLI.
+
+**Decision:** Skill goes in `.claude/skills/rally/SKILL.md` (not `.github/skills/`) since both Claude Code and Copilot CLI support the `.claude/skills/` convention. One path, both tools.

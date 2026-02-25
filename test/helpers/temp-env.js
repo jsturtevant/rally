@@ -33,7 +33,11 @@ export function withTempHome(t) {
   process.env.USERPROFILE = dir;
 
   t.after(() => {
-    process.env.HOME = originalHome;
+    if (originalHome !== undefined) {
+      process.env.HOME = originalHome;
+    } else {
+      delete process.env.HOME;
+    }
     if (originalUserProfile !== undefined) {
       process.env.USERPROFILE = originalUserProfile;
     } else {

@@ -434,7 +434,7 @@ test('cleanupLock removes lock owned by current process', (t) => {
   writeFileSync(join(lockDir, 'info.json'), JSON.stringify({ pid: process.pid, timestamp: Date.now() }));
   const savedHome = process.env.RALLY_HOME;
   process.env.RALLY_HOME = configDir;
-  t.after(() => { process.env.RALLY_HOME = savedHome; });
+  t.after(() => { if (savedHome !== undefined) process.env.RALLY_HOME = savedHome; else delete process.env.RALLY_HOME; });
   cleanupLock();
   assert.ok(!existsSync(lockDir), 'lock should be removed');
 });
@@ -447,7 +447,7 @@ test('cleanupLock does not remove lock owned by another process', (t) => {
   writeFileSync(join(lockDir, 'info.json'), JSON.stringify({ pid: 999999, timestamp: Date.now() }));
   const savedHome = process.env.RALLY_HOME;
   process.env.RALLY_HOME = configDir;
-  t.after(() => { process.env.RALLY_HOME = savedHome; });
+  t.after(() => { if (savedHome !== undefined) process.env.RALLY_HOME = savedHome; else delete process.env.RALLY_HOME; });
   cleanupLock();
   assert.ok(existsSync(lockDir), 'lock should remain');
 });

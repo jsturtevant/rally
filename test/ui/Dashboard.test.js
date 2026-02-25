@@ -435,6 +435,8 @@ describe('Dashboard component', () => {
     await delay();
     instance.stdin.write('\x1B[B');
     await delay();
+    instance.stdin.write('\x1B[B');
+    await delay();
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
@@ -632,5 +634,94 @@ describe('Dashboard component', () => {
     instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
     const output = instance.lastFrame();
     assert.ok(output.includes('p pushed'), 'should show p pushed shortcut hint');
+  });
+
+  it('help text includes a attach shortcut', () => {
+    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+    const output = instance.lastFrame();
+    assert.ok(output.includes('a attach'), 'should show a attach shortcut hint');
+  });
+
+  it('action menu shows Attach to session when dispatch has worktreePath', async () => {
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(output.includes('(a) Attach to session'), 'should show Attach option when worktreePath exists');
+  });
+
+  it('action menu hides Attach to session when no worktreePath', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].worktreePath = '';
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    instance = render(
+      React.createElement(Dashboard, { refreshInterval: 0 })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    const output = instance.lastFrame();
+    assert.ok(!output.includes('(a) Attach to session'), 'should not show Attach when no worktreePath');
+  });
+
+  it('a shortcut calls onAttachSession with selected dispatch', async () => {
+    let attachedDispatch = null;
+    const onAttachSession = (dispatch) => { attachedDispatch = dispatch; };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        onAttachSession,
+      })
+    );
+    await delay();
+    instance.stdin.write('a');
+    await delay();
+    assert.ok(attachedDispatch, 'a shortcut should call onAttachSession');
+    assert.equal(attachedDispatch.number, 42, 'should pass the selected dispatch');
+    assert.equal(attachedDispatch.worktreePath, WORKTREE_DIR, 'should include worktreePath');
+  });
+
+  it('a shortcut does nothing when dispatch has no worktreePath', async () => {
+    const dispatches = makeSampleDispatches();
+    dispatches[0].worktreePath = '';
+    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+
+    let attachCalled = false;
+    const onAttachSession = () => { attachCalled = true; };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        onAttachSession,
+      })
+    );
+    await delay();
+    instance.stdin.write('a');
+    await delay();
+    assert.ok(!attachCalled, 'a shortcut should not trigger when no worktreePath');
+  });
+
+  it('action menu Attach to session calls onAttachSession via shortcut', async () => {
+    let attachedDispatch = null;
+    const onAttachSession = (dispatch) => { attachedDispatch = dispatch; };
+
+    instance = render(
+      React.createElement(Dashboard, {
+        refreshInterval: 0,
+        onAttachSession,
+      })
+    );
+    await delay();
+    instance.stdin.write('\r');
+    await delay();
+    instance.stdin.write('a');
+    await delay();
+    assert.ok(attachedDispatch, 'action menu a shortcut should call onAttachSession');
+    assert.equal(attachedDispatch.number, 42, 'should pass dispatch number');
   });
 });

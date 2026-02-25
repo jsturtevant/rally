@@ -99,7 +99,17 @@ const dashboard = program
         const React = await import('react');
         const { render } = await import('ink');
         const { default: Dashboard } = await import('../lib/ui/Dashboard.js');
-        render(React.createElement(Dashboard, { project: opts.project }), { fullScreen: true });
+        let attachDispatch = null;
+        const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
+        const app = render(
+          React.createElement(Dashboard, { project: opts.project, onAttachSession }),
+          { fullScreen: true }
+        );
+        await app.waitUntilExit();
+        if (attachDispatch) {
+          const { dispatchContinue } = await import('../lib/dispatch-continue.js');
+          await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });
+        }
       }
     } catch (err) {
       handleError(err);

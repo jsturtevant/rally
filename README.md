@@ -355,6 +355,60 @@ Options:
   -h, --help  display help for command
 ```
 
+## Configuration
+
+Rally reads user settings from `config.yaml` in the config directory (`~/rally/` by default, override with `RALLY_HOME`). Run `rally setup` to create the file with defaults.
+
+Settings live under the `settings` key in `config.yaml`:
+
+```yaml
+# ~/rally/config.yaml
+settings:
+  docker_sandbox: ask
+  require_trust: ask
+  review_template: prompts/review.md
+  deny_tools_copilot:
+    - "shell(git push)"
+    - "shell(gh)"
+    - "shell(curl)"
+    - "shell(wget)"
+    - "shell(nc)"
+    - "shell(ssh)"
+    - "shell(scp)"
+  deny_tools_sandbox:
+    - "shell(git push)"
+    - "shell(gh)"
+    - "shell(curl)"
+    - "shell(wget)"
+    - "shell(nc)"
+    - "shell(ssh)"
+    - "shell(scp)"
+```
+
+### Settings reference
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `docker_sandbox` | `'always'` \| `'never'` \| `'ask'` | `'ask'` | Controls Docker sandbox usage. `always` enables it for every dispatch, `never` disables it, `ask` uses sandbox only when `--sandbox` flag is passed. |
+| `require_trust` | `'always'` \| `'never'` \| `'ask'` | `'ask'` | Controls author/org trust checks before dispatching. `always` requires trust confirmation, `never` skips all trust checks, `ask` warns on author mismatch and prompts interactively. |
+| `review_template` | `string` \| `null` | `null` | Path to a custom review prompt file, **relative to the config directory** (e.g. `prompts/review.md` resolves to `~/rally/prompts/review.md`). Used for `dispatch pr` when `--prompt` is not passed. |
+| `deny_tools_copilot` | `string[]` | See below | Tools denied when running Copilot **without** Docker sandbox. |
+| `deny_tools_sandbox` | `string[]` | See below | Tools denied when running Copilot **inside** Docker sandbox. |
+
+**Default deny lists** (both `deny_tools_copilot` and `deny_tools_sandbox`):
+
+```
+shell(git push), shell(gh), shell(curl), shell(wget), shell(nc), shell(ssh), shell(scp)
+```
+
+### Precedence
+
+CLI flags take precedence over config settings. For example, `rally dispatch issue 42 --sandbox` enables the sandbox even if `docker_sandbox` is set to `never`, and `--prompt review.md` overrides `review_template`.
+
+### Security note on deny_tools
+
+The `deny_tools_copilot` and `deny_tools_sandbox` values must be arrays of strings. Empty arrays are rejected as a validation error — this is a security measure to prevent accidentally removing all tool restrictions. If you don't want to customize the deny lists, omit them entirely and the defaults will be used.
+
 ## Dispatch Status Model
 
 Each dispatch progresses through these statuses:

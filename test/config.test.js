@@ -383,4 +383,20 @@ describe('getSettings', () => {
     }), 'utf8');
     assert.throws(() => getSettings(), /Invalid deny_tools_copilot: must be an array of strings/);
   });
+
+  test('rejects empty deny_tools_copilot array', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { deny_tools_copilot: [] }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid deny_tools_copilot: must not be empty/);
+  });
+
+  test('rejects empty deny_tools_sandbox array', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { deny_tools_sandbox: [] }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid deny_tools_sandbox: must not be empty/);
+  });
 });

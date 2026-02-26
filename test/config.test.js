@@ -16,6 +16,7 @@ import {
   atomicWrite,
   getSettings,
 } from '../lib/config.js';
+import { DEFAULT_DENY_TOOLS } from '../lib/copilot.js';
 import { withTempRallyHome, withTempHome } from './helpers/temp-env.js';
 
 test('getConfigDir returns ~/rally by default on fresh install', (t) => {
@@ -262,6 +263,8 @@ describe('getSettings', () => {
       docker_sandbox: 'ask',
       review_template: null,
       require_trust: 'ask',
+      deny_tools_copilot: DEFAULT_DENY_TOOLS,
+      deny_tools_sandbox: DEFAULT_DENY_TOOLS,
     });
   });
 
@@ -273,6 +276,8 @@ describe('getSettings', () => {
       docker_sandbox: 'ask',
       review_template: null,
       require_trust: 'ask',
+      deny_tools_copilot: DEFAULT_DENY_TOOLS,
+      deny_tools_sandbox: DEFAULT_DENY_TOOLS,
     });
   });
 
@@ -290,6 +295,8 @@ describe('getSettings', () => {
       docker_sandbox: 'always',
       review_template: 'prompts/review.md',
       require_trust: 'never',
+      deny_tools_copilot: DEFAULT_DENY_TOOLS,
+      deny_tools_sandbox: DEFAULT_DENY_TOOLS,
     });
   });
 
@@ -329,5 +336,51 @@ describe('getSettings', () => {
     const settings = getSettings();
     assert.strictEqual(settings.docker_sandbox, 'never');
     assert.strictEqual(settings.require_trust, 'never');
+  });
+
+  test('returns default deny_tools arrays when not in config', (t) => {
+    withTempRallyHome(t);
+    const settings = getSettings();
+    assert.deepEqual(settings.deny_tools_copilot, DEFAULT_DENY_TOOLS);
+    assert.deepEqual(settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
+  });
+
+  test('reads custom deny_tools from config', (t) => {
+    const tempDir = withTempRallyHome(t);
+    const customCopilot = ['shell(git push)', 'shell(rm)'];
+    const customSandbox = ['shell(curl)'];
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: {
+        deny_tools_copilot: customCopilot,
+        deny_tools_sandbox: customSandbox,
+      }
+    }), 'utf8');
+    const settings = getSettings();
+    assert.deepEqual(settings.deny_tools_copilot, customCopilot);
+    assert.deepEqual(settings.deny_tools_sandbox, customSandbox);
+  });
+
+  test('validates deny_tools_copilot is an array', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { deny_tools_copilot: 'not-an-array' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid deny_tools_copilot: must be an array/);
+  });
+
+  test('validates deny_tools_sandbox is an array', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { deny_tools_sandbox: 42 }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid deny_tools_sandbox: must be an array/);
+  });
+
+  test('validates deny_tools elements are strings', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { deny_tools_copilot: ['shell(gh)', 123] }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid deny_tools_copilot: must be an array of strings/);
   });
 });

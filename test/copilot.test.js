@@ -256,6 +256,24 @@ describe('launchCopilot', () => {
       }
     }
   });
+
+  test('falls back to DEFAULT_DENY_TOOLS when denyTools is empty array', () => {
+    let captured;
+    const mockSpawn = (cmd, args, opts) => {
+      captured = { cmd, args, opts };
+      return { pid: 42, unref() {} };
+    };
+
+    launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn, denyTools: [] });
+
+    // Default deny tools should be present (empty array should not bypass)
+    for (const tool of DEFAULT_DENY_TOOLS) {
+      assert.ok(
+        captured.args.some((a, i) => a === '--deny-tool' && captured.args[i + 1] === tool),
+        `Expected default --deny-tool ${tool} when empty array provided`
+      );
+    }
+  });
 });
 
 // =====================================================

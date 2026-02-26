@@ -225,6 +225,18 @@ Contains:
 - `team/` — shared team configuration (`.squad/`, templates)
 - `projects/` — cloned repos (when onboarded via URL)
 
+### Config settings (`config.yaml` → `settings` key)
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `docker_sandbox` | `always` / `never` / `ask` | `ask` | Docker sandbox usage |
+| `require_trust` | `always` / `never` / `ask` | `ask` | Author/org trust checks |
+| `review_template` | string or null | `null` | Custom review prompt path (relative to config dir) |
+| `deny_tools_copilot` | string[] | DEFAULT_DENY_TOOLS | Tools denied without sandbox |
+| `deny_tools_sandbox` | string[] | DEFAULT_DENY_TOOLS | Tools denied in sandbox |
+
+CLI flags (`--sandbox`, `--trust`, `--prompt`) override config settings.
+
 ### active.yaml
 
 Central state file tracking all dispatches. Each record contains:

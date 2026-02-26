@@ -1,7 +1,7 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync,
+  mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, statSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -144,6 +144,17 @@ describe('dispatch-context', () => {
       const contextPath = join(worktreePath, '.squad', 'dispatch-context.md');
       assert.ok(existsSync(contextPath));
     });
+
+    test('writes context file with restricted permissions (0o600)', () => {
+      writeIssueContext(worktreePath, {
+        number: 7, title: 'Permissions test', labels: [], assignees: [], body: 'test',
+      });
+      const contextPath = join(worktreePath, '.squad', 'dispatch-context.md');
+      if (process.platform !== 'win32') {
+        const stats = statSync(contextPath);
+        assert.strictEqual(stats.mode & 0o777, 0o600, 'context file should have 0o600 permissions');
+      }
+    });
   });
 
   // ---- writePrContext ----
@@ -285,6 +296,17 @@ describe('dispatch-context', () => {
         number: 1, title: 'T', baseRefName: 'main', headRefName: 'fix', files: [], body: null,
       });
       assert.ok(existsSync(join(worktreePath, '.squad', 'dispatch-context.md')));
+    });
+
+    test('writes context file with restricted permissions (0o600)', () => {
+      writePrContext(worktreePath, {
+        number: 2, title: 'Perm test', baseRefName: 'main', headRefName: 'fix', files: [], body: 'test',
+      });
+      const contextPath = join(worktreePath, '.squad', 'dispatch-context.md');
+      if (process.platform !== 'win32') {
+        const stats = statSync(contextPath);
+        assert.strictEqual(stats.mode & 0o777, 0o600, 'context file should have 0o600 permissions');
+      }
     });
   });
 

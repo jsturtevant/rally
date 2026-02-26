@@ -345,7 +345,7 @@ describe('dispatchPr error paths', () => {
   });
 
   test('returns early with existing flag when worktree already exists', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const pr = makePr();
     const exec = createExecWithPr(pr);
 
@@ -353,12 +353,17 @@ describe('dispatchPr error paths', () => {
     const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-existing'], { cwd: repoPath, stdio: 'ignore' });
 
+    // Register a matching dispatch so the code treats it as legitimately active
+    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+      dispatches: [{ id: 'repo-pr-42', repo: 'owner/repo', number: 42, type: 'pr', branch: 'rally/pr-42-existing', worktreePath: wtPath, status: 'implementing' }],
+    }), 'utf8');
+
     const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
     assert.strictEqual(result.existing, true);
   });
 
   test('handles TOCTOU race: worktree created between check and create', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const pr = makePr();
     const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
 
@@ -368,6 +373,10 @@ describe('dispatchPr error paths', () => {
       if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'view') {
         // Simulate race: another dispatch creates the worktree while we fetch the PR
         execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-race-winner'], { cwd: repoPath, stdio: 'ignore' });
+        // Register the concurrent dispatch so the code treats it as legitimate
+        writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+          dispatches: [{ id: 'repo-pr-42', repo: 'owner/repo', number: 42, type: 'pr', branch: 'rally/pr-42-race-winner', worktreePath: wtPath, status: 'implementing' }],
+        }), 'utf8');
         return JSON.stringify(pr);
       }
       if (cmd === 'gh' && args[0] === 'copilot') return '';

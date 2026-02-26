@@ -191,7 +191,7 @@ describe('dispatchIssue error paths', () => {
   });
 
   test('returns early when worktree directory already exists', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
 
@@ -199,13 +199,18 @@ describe('dispatchIssue error paths', () => {
     const wtPath = join(repoPath, '.worktrees', 'rally-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-existing'], { cwd: repoPath, stdio: 'ignore' });
 
+    // Register a matching dispatch so the code treats it as legitimately active
+    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+      dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-existing', worktreePath: wtPath, status: 'planning' }],
+    }), 'utf8');
+
     const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-42'));
   });
 
   test('handles TOCTOU race: worktree created between check and create', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const issue = makeIssue();
     const wtPath = join(repoPath, '.worktrees', 'rally-42');
 
@@ -215,6 +220,10 @@ describe('dispatchIssue error paths', () => {
       if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') {
         // Simulate race: another dispatch creates the worktree while we fetch the issue
         execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-race-winner'], { cwd: repoPath, stdio: 'ignore' });
+        // Register the concurrent dispatch so the code treats it as legitimate
+        writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+          dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-race-winner', worktreePath: wtPath, status: 'planning' }],
+        }), 'utf8');
         return JSON.stringify(issue);
       }
       if (cmd === 'gh' && args[0] === 'copilot') return '';

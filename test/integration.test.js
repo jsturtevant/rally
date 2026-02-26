@@ -306,13 +306,18 @@ describe('Integration: error cases', () => {
   });
 
   test('dispatchIssue returns idempotently when worktree already exists', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
 
     // Create an actual git worktree so worktreeExists() returns true
     const wtPath = join(repoPath, '.worktrees', 'rally-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-test-issue'], { cwd: repoPath, stdio: 'ignore' });
+
+    // Register a matching dispatch so the code treats it as legitimately active
+    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+      dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-test-issue', worktreePath: wtPath, status: 'planning' }],
+    }), 'utf8');
 
     const result = await dispatchIssue({
       issueNumber: 42,
@@ -350,12 +355,17 @@ describe('Integration: error cases', () => {
   });
 
   test('dispatchPr returns idempotently when worktree already exists', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const exec = createExecWithPr(makePr());
 
     // Create an actual git worktree so worktreeExists() returns true
     const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-test-pr'], { cwd: repoPath, stdio: 'ignore' });
+
+    // Register a matching dispatch so the code treats it as legitimately active
+    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+      dispatches: [{ id: 'repo-pr-42', repo: 'owner/repo', number: 42, type: 'pr', branch: 'rally/pr-42-test-pr', worktreePath: wtPath, status: 'implementing' }],
+    }), 'utf8');
 
     const result = await dispatchPr({
       prNumber: 42,

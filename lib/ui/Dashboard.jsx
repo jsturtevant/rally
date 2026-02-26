@@ -304,51 +304,64 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (detailViewDispatch) {
     return (
-      <DetailView
-        dispatch={detailViewDispatch}
-        onBack={() => setDetailViewDispatch(null)}
-      />
+      <Box flexDirection="column" height={stdout.rows}>
+        <DetailView
+          dispatch={detailViewDispatch}
+          onBack={() => setDetailViewDispatch(null)}
+        />
+      </Box>
     );
   }
 
   if (logViewDispatch) {
     return (
-      <LogViewer
-        dispatch={logViewDispatch}
-        onBack={() => setLogViewDispatch(null)}
-      />
+      <Box flexDirection="column" height={stdout.rows}>
+        <LogViewer
+          dispatch={logViewDispatch}
+          onBack={() => setLogViewDispatch(null)}
+        />
+      </Box>
     );
   }
 
   if (actionDispatch) {
     return (
-      <ActionMenu
-        dispatch={actionDispatch}
-        selectedAction={actionIndex}
-        onSelect={handleActionSelect}
-        onBack={handleActionBack}
-      />
+      <Box flexDirection="column" height={stdout.rows}>
+        <ActionMenu
+          dispatch={actionDispatch}
+          selectedAction={actionIndex}
+          onSelect={handleActionSelect}
+          onBack={handleActionBack}
+        />
+      </Box>
     );
   }
 
   if (dispatchStatus === 'confirming' && dispatchPending && trustWarnings) {
     return (
-      <TrustConfirm
-        item={dispatchPending}
-        warnings={trustWarnings}
-        onConfirm={() => { setTrustWarnings(null); runDispatch(dispatchPending); }}
-        onCancel={() => { setDispatchPending(null); setTrustWarnings(null); setDispatchStatus(null); }}
-      />
+      <Box flexDirection="column" height={stdout.rows}>
+        <TrustConfirm
+          item={dispatchPending}
+          warnings={trustWarnings}
+          onConfirm={() => { setTrustWarnings(null); runDispatch(dispatchPending); }}
+          onCancel={() => { setDispatchPending(null); setTrustWarnings(null); setDispatchStatus(null); }}
+        />
+      </Box>
     );
   }
 
   if (dispatchStatus && dispatchPending) {
-    return <DispatchStatus item={dispatchPending} status={dispatchStatus} message={dispatchMessage} />;
+    return (
+      <Box flexDirection="column" height={stdout.rows}>
+        <DispatchStatus item={dispatchPending} status={dispatchStatus} message={dispatchMessage} />
+      </Box>
+    );
   }
 
   if (browseMode === 'items' && browseProject) {
     return (
-      <ProjectItemPicker
+      <Box flexDirection="column" height={stdout.rows}>
+        <ProjectItemPicker
         project={browseProject}
         _fetchIssues={_fetchIssues}
         _fetchPrs={_fetchPrs}
@@ -379,25 +392,28 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
           setBrowseProject(null);
         }}
       />
+      </Box>
     );
   }
 
   if (browseMode === 'projects') {
     return (
-      <ProjectBrowser
-        _listOnboardedRepos={_listOnboardedRepos}
-        onSelectProject={(proj) => {
-          setBrowseProject(proj);
-          setBrowseMode('items');
-        }}
-        onAddProject={() => {
-          if (onAddProject) {
-            onAddProject();
-          }
-          exit();
-        }}
-        onBack={() => setBrowseMode(null)}
-      />
+      <Box flexDirection="column" height={stdout.rows}>
+        <ProjectBrowser
+          _listOnboardedRepos={_listOnboardedRepos}
+          onSelectProject={(proj) => {
+            setBrowseProject(proj);
+            setBrowseMode('items');
+          }}
+          onAddProject={() => {
+            if (onAddProject) {
+              onAddProject();
+            }
+            exit();
+          }}
+          onBack={() => setBrowseMode(null)}
+        />
+      </Box>
     );
   }
 

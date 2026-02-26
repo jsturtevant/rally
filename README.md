@@ -407,7 +407,7 @@ CLI flags take precedence over config settings. For example, `rally dispatch iss
 
 ### Security note on deny_tools
 
-The `deny_tools_copilot` and `deny_tools_sandbox` values must be arrays of strings. Empty arrays are rejected as a validation error — this is a security measure to prevent accidentally removing all tool restrictions. If you don't want to customize the deny lists, omit them entirely and the defaults will be used.
+The `deny_tools_copilot` and `deny_tools_sandbox` values must be arrays of strings. It is recommended to always include at least one denied tool — see the default list for recommended values. If you don't want to customize the deny lists, omit them entirely and the defaults will be used.
 
 ## Dispatch Status Model
 

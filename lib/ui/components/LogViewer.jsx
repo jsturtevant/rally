@@ -36,21 +36,30 @@ export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFi
   const visible = lines.slice(scrollOffset, scrollOffset + visibleLines);
   const issueRef = dispatch.type === 'pr' ? `PR #${dispatch.number}` : `Issue #${dispatch.number}`;
 
+  const isEmpty = lines.length <= 1 && (lines[0] === 'No log file available.' || lines[0] === '' || lines[0] === 'Failed to read log file.');
+
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
       <Box marginBottom={1}>
-        <Text bold>Logs for </Text>
+        <Text bold>📋 Logs for </Text>
         <Text bold color="cyan">{issueRef}</Text>
         <Text bold> ({dispatch.repo})</Text>
       </Box>
-      <Box flexDirection="column">
-        {visible.map((line, i) => (
-          <Text key={scrollOffset + i} wrap="truncate">{line}</Text>
-        ))}
-      </Box>
+      {isEmpty ? (
+        <Box flexDirection="column" paddingY={1}>
+          <Text dimColor>No log output yet.</Text>
+          <Text dimColor>Logs appear here once the Copilot session produces output.</Text>
+        </Box>
+      ) : (
+        <Box flexDirection="column">
+          {visible.map((line, i) => (
+            <Text key={scrollOffset + i} wrap="truncate">{line}</Text>
+          ))}
+        </Box>
+      )}
       <Box marginTop={1}>
         <Text dimColor>
-          ↑/↓ scroll · Esc back · Line {scrollOffset + 1}–{Math.min(scrollOffset + visibleLines, lines.length)} of {lines.length}
+          ↑/↓ scroll · Esc back{!isEmpty ? ` · Line ${scrollOffset + 1}–${Math.min(scrollOffset + visibleLines, lines.length)} of ${lines.length}` : ''}
         </Text>
       </Box>
     </Box>

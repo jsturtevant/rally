@@ -34,7 +34,7 @@ describe('LogViewer', () => {
         _existsSync: () => false,
       })
     );
-    assert.ok(lastInstance.lastFrame().includes('No log file available'));
+    assert.ok(lastInstance.lastFrame().includes('No log output yet'));
   });
 
   it('starts scrolled to the bottom for long logs', () => {

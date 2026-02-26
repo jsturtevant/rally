@@ -112,11 +112,14 @@ function createExecWithPr(prData) {
     if (cmd === 'gh' && args[0] === 'copilot') {
       return '';
     }
-    // Simulate refs/pull/N/head fetch — in tests, fetch the PR branch directly
-    if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
-      const cFlag = args.indexOf('-C');
-      const cwd = cFlag >= 0 ? args[cFlag + 1] : opts?.cwd;
-      return execFileSync('git', ['-C', cwd, 'fetch', 'origin', prData?.headRefName || 'main'], opts);
+    // Simulate gh pr checkout --detach — in tests, just fetch the PR branch
+    if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'checkout') {
+      const cwd = opts?.cwd;
+      if (cwd) {
+        execFileSync('git', ['-C', cwd, 'fetch', 'origin', prData?.headRefName || 'main'], opts);
+        execFileSync('git', ['-C', cwd, 'checkout', 'FETCH_HEAD', '--detach'], opts);
+      }
+      return '';
     }
     return execFileSync(cmd, args, opts);
   };

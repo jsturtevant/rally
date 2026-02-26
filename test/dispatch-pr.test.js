@@ -91,11 +91,12 @@ function createExecWithPr(prData) {
     if (cmd === 'gh' && args[0] === 'copilot') {
       return ''; // Copilot is "available" in tests
     }
-    // Simulate refs/pull/N/head fetch — in tests, fetch the PR branch directly
-    if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
-      const cFlag = args.indexOf('-C');
-      const cwd = cFlag >= 0 ? args[cFlag + 1] : opts?.cwd;
-      return execFileSync('git', ['-C', cwd, 'fetch', 'origin', prData?.headRefName || 'main'], opts);
+    // Simulate gh pr checkout --detach — in tests, fetch the PR branch and reset
+    if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'checkout' && args.includes('--detach')) {
+      const cwd = opts?.cwd;
+      execFileSync('git', ['-C', cwd, 'fetch', 'origin', prData?.headRefName || 'main'], opts);
+      execFileSync('git', ['-C', cwd, 'reset', '--hard', 'FETCH_HEAD'], opts);
+      return '';
     }
     // Delegate git commands to real git
     return execFileSync(cmd, args, opts);
@@ -288,14 +289,14 @@ describe('dispatchPr error paths', () => {
     );
   });
 
-  test('throws when git fetch of PR head ref fails', async () => {
+  test('throws when gh pr checkout fails', async () => {
     setupRallyHome();
     const pr = makePr();
-    const fetchError = new Error('Could not resolve ref refs/pull/42/head');
+    const checkoutError = new Error('Could not checkout PR 42');
     const base = createExecWithPr(pr);
     const exec = (cmd, args, opts) => {
-      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
-        throw fetchError;
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'checkout' && args.includes('--detach')) {
+        throw checkoutError;
       }
       return base(cmd, args, opts);
     };
@@ -305,56 +306,26 @@ describe('dispatchPr error paths', () => {
     await assert.rejects(
       () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
       (err) => {
-        assert.ok(err.message.includes('Failed to fetch PR #42 head ref'), 'should mention fetch failure and PR number');
-        assert.ok(err.message.includes(fetchError.message), 'should preserve original error message');
+        assert.ok(err.message.includes('Failed to checkout PR #42 head'), 'should mention checkout failure and PR number');
+        assert.ok(err.message.includes(checkoutError.message), 'should preserve original error message');
         return true;
       }
     );
 
     // Verify rollback: worktree directory removed and branch deleted
     const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
-    assert.ok(!existsSync(wtPath), 'worktree directory should be removed after fetch failure');
+    assert.ok(!existsSync(wtPath), 'worktree directory should be removed after checkout failure');
     const branches = execFileSync('git', ['branch', '--list', 'rally/pr-42-fix-login-validation'], { cwd: repoPath, encoding: 'utf8' });
-    assert.strictEqual(branches.trim(), '', 'rally/pr-* branch should be deleted after fetch failure');
+    assert.strictEqual(branches.trim(), '', 'rally/pr-* branch should be deleted after checkout failure');
   });
 
-  test('throws when git reset --hard FETCH_HEAD fails', async () => {
-    setupRallyHome();
-    const pr = makePr();
-    const resetError = new Error('Failed to read object FETCH_HEAD');
-    const base = createExecWithPr(pr);
-    const exec = (cmd, args, opts) => {
-      if (cmd === 'git' && args.includes('reset') && args.includes('--hard') && args.includes('FETCH_HEAD')) {
-        throw resetError;
-      }
-      return base(cmd, args, opts);
-    };
-
-    mkdirSync(join(repoPath, '.squad'), { recursive: true });
-
-    await assert.rejects(
-      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
-      (err) => {
-        assert.ok(err.message.includes('Failed to reset worktree to PR #42 head'), 'should mention reset failure and PR number');
-        assert.ok(err.message.includes(resetError.message), 'should preserve original error message');
-        return true;
-      }
-    );
-
-    // Verify rollback: worktree directory removed and branch deleted
-    const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
-    assert.ok(!existsSync(wtPath), 'worktree directory should be removed after reset failure');
-    const branches = execFileSync('git', ['branch', '--list', 'rally/pr-42-fix-login-validation'], { cwd: repoPath, encoding: 'utf8' });
-    assert.strictEqual(branches.trim(), '', 'rally/pr-* branch should be deleted after reset failure');
-  });
-
-  test('fetch failure preserves original error message with PR context', async () => {
+  test('checkout failure preserves original error message with PR context', async () => {
     setupRallyHome();
     const pr = makePr();
     const originalMsg = 'network timeout after 30000ms';
     const base = createExecWithPr(pr);
     const exec = (cmd, args, opts) => {
-      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'checkout' && args.includes('--detach')) {
         throw new Error(originalMsg);
       }
       return base(cmd, args, opts);
@@ -366,7 +337,7 @@ describe('dispatchPr error paths', () => {
       () => dispatchPr({ prNumber: 7, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
       (err) => {
         // The wrapper should include both the context (PR number) and the original error
-        assert.ok(err.message.startsWith('Failed to fetch PR #7 head ref:'), 'should start with contextual prefix');
+        assert.ok(err.message.startsWith('Failed to checkout PR #7 head:'), 'should start with contextual prefix');
         assert.ok(err.message.endsWith(originalMsg), 'should end with original error message');
         return true;
       }
@@ -415,7 +386,7 @@ describe('dispatchPr error paths', () => {
 // =====================================================
 
 describe('dispatchPr happy path', () => {
-  test('full workflow: fetch → branch → worktree → context → active.yaml', async () => {
+  test('full workflow: checkout → branch → worktree → context → active.yaml', async () => {
     const rallyHome = setupRallyHome();
     const pr = makePr({ title: 'Fix login validation' });
     const exec = createExecWithPr(pr);
@@ -780,10 +751,11 @@ describe('dispatchPr with custom prompt file', () => {
       if (cmd === 'gh' && args[0] === 'copilot') {
         return '';
       }
-      if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
-        const cFlag = args.indexOf('-C');
-        const cwd = cFlag >= 0 ? args[cFlag + 1] : opts?.cwd;
-        return execFileSync('git', ['-C', cwd, 'fetch', 'origin', pr.headRefName], opts);
+      if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'checkout' && args.includes('--detach')) {
+        const cwd = opts?.cwd;
+        execFileSync('git', ['-C', cwd, 'fetch', 'origin', pr.headRefName], opts);
+        execFileSync('git', ['-C', cwd, 'reset', '--hard', 'FETCH_HEAD'], opts);
+        return '';
       }
       return execFileSync(cmd, args, opts);
     };

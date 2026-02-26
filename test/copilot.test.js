@@ -274,6 +274,42 @@ describe('launchCopilot', () => {
       );
     }
   });
+
+  test('includes --disallow-temp-dir by default', () => {
+    let captured;
+    const mockSpawn = (cmd, args) => {
+      captured = { cmd, args };
+      return { pid: 42, unref() {} };
+    };
+
+    launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn });
+
+    assert.ok(captured.args.includes('--disallow-temp-dir'), 'should include --disallow-temp-dir by default');
+  });
+
+  test('omits --disallow-temp-dir when disallowTempDir is false', () => {
+    let captured;
+    const mockSpawn = (cmd, args) => {
+      captured = { cmd, args };
+      return { pid: 42, unref() {} };
+    };
+
+    launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn, disallowTempDir: false });
+
+    assert.ok(!captured.args.includes('--disallow-temp-dir'), 'should not include --disallow-temp-dir when disabled');
+  });
+
+  test('includes --disallow-temp-dir when disallowTempDir is true', () => {
+    let captured;
+    const mockSpawn = (cmd, args) => {
+      captured = { cmd, args };
+      return { pid: 42, unref() {} };
+    };
+
+    launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn, disallowTempDir: true });
+
+    assert.ok(captured.args.includes('--disallow-temp-dir'), 'should include --disallow-temp-dir when enabled');
+  });
 });
 
 // =====================================================

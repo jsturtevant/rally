@@ -265,6 +265,7 @@ describe('getSettings', () => {
       require_trust: 'ask',
       deny_tools_copilot: DEFAULT_DENY_TOOLS,
       deny_tools_sandbox: DEFAULT_DENY_TOOLS,
+      disallow_temp_dir: true,
     });
   });
 
@@ -278,6 +279,7 @@ describe('getSettings', () => {
       require_trust: 'ask',
       deny_tools_copilot: DEFAULT_DENY_TOOLS,
       deny_tools_sandbox: DEFAULT_DENY_TOOLS,
+      disallow_temp_dir: true,
     });
   });
 
@@ -297,6 +299,7 @@ describe('getSettings', () => {
       require_trust: 'never',
       deny_tools_copilot: DEFAULT_DENY_TOOLS,
       deny_tools_sandbox: DEFAULT_DENY_TOOLS,
+      disallow_temp_dir: true,
     });
   });
 
@@ -455,5 +458,28 @@ describe('getSettings', () => {
       settings: { deny_tools_sandbox: [] }
     }), 'utf8');
     assert.throws(() => getSettings(), /Invalid deny_tools_sandbox: must not be empty/);
+  });
+
+  test('returns disallow_temp_dir true by default', (t) => {
+    withTempRallyHome(t);
+    const settings = getSettings();
+    assert.strictEqual(settings.disallow_temp_dir, true);
+  });
+
+  test('reads disallow_temp_dir false from config', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { disallow_temp_dir: false }
+    }), 'utf8');
+    const settings = getSettings();
+    assert.strictEqual(settings.disallow_temp_dir, false);
+  });
+
+  test('validates disallow_temp_dir must be boolean', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { disallow_temp_dir: 'yes' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid disallow_temp_dir value: must be a boolean/);
   });
 });

@@ -517,7 +517,16 @@ Before dispatching, Rally checks whether the issue/PR was authored by someone ot
 
 Each dispatch gets its own **git worktree** — an independent working directory with its own branch. This prevents cross-contamination between concurrent dispatches and keeps your main working tree untouched.
 
-> **Note:** Without the Docker sandbox, the agent's working directory is set to the worktree but filesystem access is **not** restricted to it. The agent could potentially read files outside the worktree (e.g., `~/.ssh`, `~/rally/config.yaml`). For sensitive environments, use the Docker sandbox which provides true filesystem isolation.
+Copilot CLI's built-in [path permissions](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/configure-copilot-cli#setting-path-permissions) restrict agents to the worktree directory by default (since Rally sets `cwd` to the worktree path). Rally also passes `--disallow-temp-dir` to further tighten isolation by removing temp directory access.
+
+You can disable this in `config.yaml` if agents need temp directory access:
+
+```yaml
+settings:
+  disallow_temp_dir: false
+```
+
+> **Note:** For maximum filesystem isolation, use the Docker sandbox which provides a full container boundary.
 
 ### Docker sandbox
 

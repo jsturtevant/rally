@@ -173,7 +173,7 @@ describe('formatPrChoice', () => {
 // =====================================================
 
 describe('pickRepo', () => {
-  test('auto-selects when only one repo', async () => {
+  test('pickProject auto-selects when only one repo', async () => {
     const result = await pickRepo({
       _readProjects: () => ({
         projects: [{ name: 'rally', repo: 'jsturtevant/rally', path: '/tmp/rally' }],

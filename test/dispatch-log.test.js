@@ -115,7 +115,7 @@ describe('dispatchLog', () => {
     );
   });
 
-  test('disambiguates with --repo flag', async (t) => {
+  test('showLog disambiguates with --repo flag', async (t) => {
     const mockGetActive = () => [
       {
         id: 'issue-42-a',

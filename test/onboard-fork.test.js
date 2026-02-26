@@ -84,7 +84,7 @@ describe('configureForkRemotes', () => {
     };
   }
 
-  test('renames origin to upstream and adds fork as origin', () => {
+  test('configureForkRemotes renames origin to upstream and adds fork as origin', () => {
     const repoPath = createRepoWithOrigin('test-repo', 'https://github.com/upstream-org/project.git');
     const exec = makeExecNoFetch(repoPath);
 

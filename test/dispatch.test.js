@@ -127,7 +127,7 @@ describe('resolveRepo', () => {
     assert.strictEqual(result.project.name, 'rally');
   });
 
-  test('--repo flag uses owner from flag, not remote', () => {
+  test('--repo uses owner from flag, not remote', () => {
     const repoPath = createGitRepo('rally');
     writeProjects([{ name: 'rally', path: repoPath }]);
 
@@ -137,7 +137,7 @@ describe('resolveRepo', () => {
     assert.strictEqual(result.fullName, 'someuser/rally');
   });
 
-  test('--repo flag errors when repo not onboarded', () => {
+  test('--repo throws when repo not onboarded', () => {
     writeProjects([]);
 
     assert.throws(
@@ -150,7 +150,7 @@ describe('resolveRepo', () => {
     );
   });
 
-  test('--repo flag errors on invalid format', () => {
+  test('--repo throws on invalid format', () => {
     assert.throws(
       () => resolveRepo({ repo: 'just-a-name' }),
       (err) => err.message.includes('Invalid repo format')
@@ -247,7 +247,7 @@ describe('resolveRepo', () => {
 
   // --- Edge cases ---
 
-  test('--repo flag takes priority over cwd', () => {
+  test('--repo takes priority over cwd', () => {
     const repoA = createGitRepo('repo-a');
     const repoB = createGitRepo('repo-b');
     writeProjects([
@@ -273,7 +273,7 @@ describe('resolveRepo', () => {
     assert.strictEqual(result.repo, 'injected-project');
   });
 
-  test('--repo flag matches full owner/repo before name-only', () => {
+  test('--repo matches full owner/repo before name-only', () => {
     const repoA = createGitRepo('utils');
     const repoB = createGitRepo('utils-b');
     writeProjects([
@@ -286,7 +286,7 @@ describe('resolveRepo', () => {
     assert.strictEqual(result.project.path, repoB);
   });
 
-  test('--repo flag falls back to name-only for legacy entries without repo field', () => {
+  test('--repo falls back to name-only for legacy entries without repo field', () => {
     const repoPath = createGitRepo('legacy-repo');
     writeProjects([{ name: 'legacy-repo', path: repoPath }]);
 
@@ -349,7 +349,7 @@ describe('resolveRepo', () => {
     assert.strictEqual(result.repo, 'my-fork-project');
   });
 
-  test('non-fork project with repo field still uses project.repo', () => {
+  test('resolveRepo uses project.repo for non-fork project with repo field', () => {
     const repoPath = createGitRepo('normal-project');
     writeProjects([{
       name: 'normal-project',

@@ -220,7 +220,7 @@ describe('atomic yaml writes', () => {
     assert.ok(existsSync(join(rallyHome, 'active.yaml')), 'active.yaml should exist');
   });
 
-  test('active.yaml content is valid after write', () => {
+  test('addDispatch writes valid active.yaml content', () => {
     const rallyHome = process.env.RALLY_HOME;
     mkdirSync(rallyHome, { recursive: true });
 

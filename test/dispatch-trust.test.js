@@ -158,7 +158,7 @@ describe('checkDispatchTrust', () => {
     assert.strictEqual(result, true);
   });
 
-  test('prompts when author differs from current user', async () => {
+  test('checkTrust prompts when author differs from current user', async () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'issue' && args[1] === 'view') return 'bob\n';
@@ -189,7 +189,7 @@ describe('checkDispatchTrust', () => {
     assert.strictEqual(result, false);
   });
 
-  test('prompts when user is not an org member', async () => {
+  test('checkTrust prompts when user is not an org member', async () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'issue' && args[1] === 'view') return 'alice\n';
@@ -233,7 +233,7 @@ describe('checkDispatchTrust', () => {
     assert.ok(promptMsg, 'should have been prompted');
   });
 
-  test('works for PR type', async () => {
+  test('checkTrust works for PR type', async () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'pr' && args[1] === 'view') return 'bob\n';
@@ -250,7 +250,7 @@ describe('checkDispatchTrust', () => {
     assert.strictEqual(result, true);
   });
 
-  test('case-insensitive username comparison', async () => {
+  test('checkTrust uses case-insensitive username comparison', async () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'Alice\n';
       if (args[0] === 'issue' && args[1] === 'view') return 'alice\n';
@@ -268,7 +268,7 @@ describe('checkDispatchTrust', () => {
   // Non-TTY behavior (issue #236)
   // =====================================================
 
-  test('non-TTY + author mismatch + no --trust → returns false with stderr', async () => {
+  test('checkTrust returns false with stderr on non-TTY author mismatch without --trust', async () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'issue' && args[1] === 'view') return 'mallory\n';
@@ -293,7 +293,7 @@ describe('checkDispatchTrust', () => {
     }
   });
 
-  test('non-TTY + author mismatch (type=pr) → returns false with correct message', async () => {
+  test('checkTrust returns false with correct message on non-TTY PR author mismatch', async () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'pr' && args[1] === 'view') return 'mallory\n';
@@ -318,7 +318,7 @@ describe('checkDispatchTrust', () => {
     }
   });
 
-  test('non-TTY + author matches → returns true', async () => {
+  test('checkTrust returns true on non-TTY when author matches', async () => {
     const exec = (cmd, args) => {
       if (args[0] === 'api' && args[1] === 'user') return 'alice\n';
       if (args[0] === 'issue' && args[1] === 'view') return 'alice\n';
@@ -332,7 +332,7 @@ describe('checkDispatchTrust', () => {
     assert.strictEqual(result, true);
   });
 
-  test('non-TTY + --trust → returns true', async () => {
+  test('checkTrust returns true on non-TTY with --trust', async () => {
     const result = await checkDispatchTrust({
       type: 'issue', number: 1, repo: 'o/r',
       trust: true, _isTTY: false,
@@ -340,7 +340,7 @@ describe('checkDispatchTrust', () => {
     assert.strictEqual(result, true);
   });
 
-  test('--trust logs a warning to stderr', async () => {
+  test('--trust logs warning to stderr', async () => {
     const original = console.error;
     const messages = [];
     console.error = (...args) => messages.push(args.join(' '));

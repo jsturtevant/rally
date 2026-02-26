@@ -114,7 +114,7 @@ describe('onboard', () => {
 
   // --- Acceptance Criteria: Registers project in projects.yaml ---
 
-  test('registers project in projects.yaml', async () => {
+  test('onboard registers project in projects.yaml', async () => {
     const { teamDir } = setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
@@ -134,7 +134,7 @@ describe('onboard', () => {
 
   // --- Acceptance Criteria: Idempotent on re-run ---
 
-  test('idempotent: re-run skips existing symlinks and project registration', async () => {
+  test('onboard skips existing symlinks and project registration on re-run', async () => {
     setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
@@ -146,7 +146,7 @@ describe('onboard', () => {
     assert.strictEqual(projects.projects.length, 1, 'should not duplicate project entry');
   });
 
-  test('idempotent: re-run does not throw', async () => {
+  test('onboard does not throw on re-run', async () => {
     setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 
@@ -204,7 +204,7 @@ describe('onboard', () => {
 
   // --- Default path (cwd) behavior ---
 
-  test('defaults to cwd when no path argument given', async () => {
+  test('onboard defaults to cwd when no path argument given', async () => {
     setupTeam();
     const repoPath = createRepo(join(tempDir, 'cwd-repo'));
 
@@ -322,7 +322,7 @@ describe('onboard', () => {
 
   // --- Interactive prompt reachability (review issue PR#34) ---
 
-  test('onboard without --team calls selectTeam interactive prompt', async () => {
+  test('onboard calls selectTeam when --team not provided', async () => {
     const { teamDir } = setupTeam();
     const repoPath = createRepo(join(tempDir, 'my-repo'));
 

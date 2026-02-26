@@ -103,7 +103,7 @@ describe('setup', () => {
 
   // --- Acceptance Criteria: Idempotent on re-run ---
 
-  test('idempotent: re-run skips existing directories and squad', async () => {
+  test('setup skips existing directories and squad on re-run', async () => {
     const teamDir = join(tempDir, 'team');
     mkdirSync(teamDir, { recursive: true });
     mkdirSync(join(teamDir, '.squad'), { recursive: true });
@@ -123,7 +123,7 @@ describe('setup', () => {
     assert.ok(existsSync(join(tempDir, 'projects')));
   });
 
-  test('idempotent: full re-run completes without error', async () => {
+  test('setup completes without error on full re-run', async () => {
     const teamDir = join(tempDir, 'team');
     mkdirSync(teamDir, { recursive: true });
     mkdirSync(join(teamDir, '.squad'), { recursive: true });
@@ -134,7 +134,7 @@ describe('setup', () => {
 
   // --- Error Cases ---
 
-  test('squad init failure is non-fatal (npx ENOENT)', async () => {
+  test('setup continues on squad init failure (npx ENOENT)', async () => {
     const fakeExec = () => {
       const err = new Error('spawn npx ENOENT');
       err.code = 'ENOENT';
@@ -149,7 +149,7 @@ describe('setup', () => {
     assert.ok(existsSync(configPath), 'config.yaml should still be written when squad init fails');
   });
 
-  test('squad init failure is non-fatal (exit code 128)', async () => {
+  test('setup continues on squad init failure (exit code 128)', async () => {
     const fakeExec = () => {
       throw new Error('Command failed with exit code 128');
     };
@@ -216,7 +216,7 @@ describe('setup', () => {
     assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
   });
 
-  test('replaces empty deny_tools arrays with defaults on re-run', async () => {
+  test('setup replaces empty deny_tools arrays with defaults on re-run', async () => {
     const teamDir = join(tempDir, 'team');
     mkdirSync(teamDir, { recursive: true });
     mkdirSync(join(teamDir, '.squad'), { recursive: true });

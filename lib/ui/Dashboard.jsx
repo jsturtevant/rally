@@ -7,6 +7,8 @@ import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
 import ProjectBrowser from './components/ProjectBrowser.jsx';
 import ProjectItemPicker from './components/ProjectItemPicker.jsx';
+import TrustConfirm from './components/TrustConfirm.jsx';
+import DispatchStatus from './components/DispatchStatus.jsx';
 import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 import { updateDispatchStatus as defaultUpdateDispatchStatus } from '../active.js';
@@ -36,7 +38,7 @@ function SummaryLine({ summary }) {
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, onAttachSession, onDispatchItem, onAddProject, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus, _listOnboardedRepos, _fetchIssues, _fetchPrs }) {
+export default function Dashboard({ project, onSelect, onAttachSession, onDispatchItem, onDispatch, getTrustWarnings: getTrustWarningsProp, onAddProject, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus, _listOnboardedRepos, _fetchIssues, _fetchPrs }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -47,6 +49,10 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   const [detailViewDispatch, setDetailViewDispatch] = useState(null);
   const [browseMode, setBrowseMode] = useState(null); // null | 'projects' | 'items'
   const [browseProject, setBrowseProject] = useState(null);
+  const [dispatchPending, setDispatchPending] = useState(null);
+  const [trustWarnings, setTrustWarnings] = useState(null);
+  const [dispatchStatus, setDispatchStatus] = useState(null); // null|'confirming'|'dispatching'|'done'|'error'
+  const [dispatchMessage, setDispatchMessage] = useState('');
 
   let data;
   let error;
@@ -76,14 +82,14 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     : [];
   const actionCount = actions.length;
 
-  // Auto-refresh at the configured interval (pause during action menu, log view, detail view, or browse mode)
+  // Auto-refresh at the configured interval (pause during action menu, log view, detail view, browse mode, or dispatch)
   useEffect(() => {
-    if (!refreshInterval || actionDispatch || logViewDispatch || detailViewDispatch || browseMode) return;
+    if (!refreshInterval || actionDispatch || logViewDispatch || detailViewDispatch || browseMode || dispatchStatus) return;
     const timer = setInterval(() => {
       setRefreshKey(k => k + 1);
     }, refreshInterval);
     return () => clearInterval(timer);
-  }, [refreshInterval, actionDispatch, logViewDispatch, detailViewDispatch, browseMode]);
+  }, [refreshInterval, actionDispatch, logViewDispatch, detailViewDispatch, browseMode, dispatchStatus]);
 
   // Clamp selectedIndex when dispatch count changes
   useEffect(() => {
@@ -91,6 +97,25 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       setSelectedIndex(count - 1);
     }
   }, [count, selectedIndex]);
+
+  async function runDispatch(item) {
+    setDispatchStatus('dispatching');
+    try {
+      const result = await onDispatch(item);
+      if (result && result.aborted) {
+        setDispatchMessage('Dispatch aborted.');
+        setDispatchStatus('error');
+      } else {
+        const title = result?.pr?.title || result?.issue?.title || '';
+        setDispatchMessage(`${title} → ${result?.worktreePath || ''}`);
+        setDispatchStatus('done');
+        setRefreshKey(k => k + 1);
+      }
+    } catch (err) {
+      setDispatchMessage(err.message);
+      setDispatchStatus('error');
+    }
+  }
 
   function openInVSCode(dispatch) {
     const worktreePath = dispatch.worktreePath ?? '';
@@ -223,8 +248,15 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   }
 
   useInput((input, key) => {
-    // Log view, detail view, action menu, and browse mode handle their own input
-    if (logViewDispatch || actionDispatch || detailViewDispatch || browseMode) return;
+    // Dispatch done/error — any key returns to dashboard
+    if (dispatchStatus === 'done' || dispatchStatus === 'error') {
+      setDispatchPending(null);
+      setDispatchStatus(null);
+      setDispatchMessage('');
+      return;
+    }
+    // Log view, detail view, action menu, browse mode, and dispatch handle their own input
+    if (logViewDispatch || actionDispatch || detailViewDispatch || browseMode || dispatchStatus) return;
 
     if (key.upArrow) {
       setSelectedIndex(i => (i > 0 ? i - 1 : 0));
@@ -302,6 +334,21 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     );
   }
 
+  if (dispatchStatus === 'confirming' && dispatchPending && trustWarnings) {
+    return (
+      <TrustConfirm
+        item={dispatchPending}
+        warnings={trustWarnings}
+        onConfirm={() => { setTrustWarnings(null); runDispatch(dispatchPending); }}
+        onCancel={() => { setDispatchPending(null); setTrustWarnings(null); setDispatchStatus(null); }}
+      />
+    );
+  }
+
+  if (dispatchStatus && dispatchPending) {
+    return <DispatchStatus item={dispatchPending} status={dispatchStatus} message={dispatchMessage} />;
+  }
+
   if (browseMode === 'items' && browseProject) {
     return (
       <ProjectItemPicker
@@ -309,10 +356,26 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         _fetchIssues={_fetchIssues}
         _fetchPrs={_fetchPrs}
         onSelectItem={(item, repo) => {
-          if (onDispatchItem) {
-            onDispatchItem({ type: item.itemType, number: item.number, repo });
+          const pending = { type: item.itemType, number: item.number, repo };
+          if (onDispatch) {
+            setDispatchPending(pending);
+            setBrowseMode(null);
+            setBrowseProject(null);
+            if (getTrustWarningsProp) {
+              const warnings = getTrustWarningsProp(pending);
+              if (warnings.length > 0) {
+                setTrustWarnings(warnings);
+                setDispatchStatus('confirming');
+                return;
+              }
+            }
+            runDispatch(pending);
+          } else {
+            if (onDispatchItem) {
+              onDispatchItem({ type: item.itemType, number: item.number, repo });
+            }
+            exit();
           }
-          exit();
         }}
         onBack={() => {
           setBrowseMode('projects');

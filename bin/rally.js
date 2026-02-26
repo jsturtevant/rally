@@ -108,58 +108,49 @@ const dashboard = program
         const React = await import('react');
         const { render } = await import('ink');
         const { default: Dashboard } = await import('../lib/ui/Dashboard.js');
+        const { getTrustWarnings: _getTrustWarnings } = await import('../lib/dispatch-trust.js');
+        const { resolveRepo } = await import('../lib/dispatch.js');
+        const { getSettings, getConfigDir } = await import('../lib/config.js');
+        const settings = getSettings();
+
         let attachDispatch = null;
-        let pendingDispatch = null;
         let pendingAddProject = false;
         const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
-        const onDispatchItem = (item) => { pendingDispatch = item; };
         const onAddProject = () => { pendingAddProject = true; };
+
+        const onDispatch = async (item) => {
+          const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
+          const resolved = resolveRepo({ repo: item.repo });
+          if (item.type === 'issue') {
+            const { dispatchIssue } = await import('../lib/dispatch-issue.js');
+            return dispatchIssue({
+              issueNumber: item.number, repo: resolved.fullName, repoPath: resolved.project.path,
+              sandbox, trust: true,
+              denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
+              disallowTempDir: settings.disallow_temp_dir,
+            });
+          }
+          const { dispatchPr } = await import('../lib/dispatch-pr.js');
+          const promptFile = settings.review_template ? join(getConfigDir(), settings.review_template) : undefined;
+          return dispatchPr({
+            prNumber: item.number, repo: resolved.fullName, repoPath: resolved.project.path,
+            sandbox, trust: true, promptFile,
+            denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
+            disallowTempDir: settings.disallow_temp_dir,
+          });
+        };
+
+        const trustFn = settings.require_trust === 'never' ? null : (item) => _getTrustWarnings({ type: item.type, number: item.number, repo: item.repo });
+
         const app = render(
-          React.createElement(Dashboard, { project: opts.project, onAttachSession, onDispatchItem, onAddProject }),
+          React.createElement(Dashboard, {
+            project: opts.project, onAttachSession, onAddProject,
+            onDispatch, getTrustWarnings: trustFn,
+          }),
           { fullScreen: true }
         );
         await app.waitUntilExit();
-        if (pendingDispatch) {
-          const { resolveRepo } = await import('../lib/dispatch.js');
-          const { getSettings, getConfigDir } = await import('../lib/config.js');
-          const settings = getSettings();
-          const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
-          const trust = settings.require_trust === 'never' ? true : undefined;
-          const resolved = resolveRepo({ repo: pendingDispatch.repo });
-          if (pendingDispatch.type === 'issue') {
-            const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-            const result = await dispatchIssue({
-              issueNumber: pendingDispatch.number,
-              repo: resolved.fullName,
-              repoPath: resolved.project.path,
-              sandbox,
-              trust,
-              denyToolsCopilot: settings.deny_tools_copilot,
-              denyToolsSandbox: settings.deny_tools_sandbox,
-              disallowTempDir: settings.disallow_temp_dir,
-            });
-            if (!result.aborted) {
-              console.log(`Dispatched issue #${pendingDispatch.number}: ${result.issue.title} → ${result.worktreePath}`);
-            }
-          } else {
-            const { dispatchPr } = await import('../lib/dispatch-pr.js');
-            const promptFile = settings.review_template ? join(getConfigDir(), settings.review_template) : undefined;
-            const result = await dispatchPr({
-              prNumber: pendingDispatch.number,
-              repo: resolved.fullName,
-              repoPath: resolved.project.path,
-              sandbox,
-              trust,
-              promptFile,
-              denyToolsCopilot: settings.deny_tools_copilot,
-              denyToolsSandbox: settings.deny_tools_sandbox,
-              disallowTempDir: settings.disallow_temp_dir,
-            });
-            if (!result.aborted) {
-              console.log(`Dispatched PR #${pendingDispatch.number}: ${result.pr.title} → ${result.worktreePath}`);
-            }
-          }
-        } else if (pendingAddProject) {
+        if (pendingAddProject) {
           console.log('To add a project, run: rally onboard <path-or-url>');
         } else if (attachDispatch) {
           const { dispatchContinue } = await import('../lib/dispatch-continue.js');

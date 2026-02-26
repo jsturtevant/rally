@@ -128,7 +128,7 @@ test('getStatus outputs valid JSON via --json flag', (t) => {
   assert.ok(Array.isArray(parsed.dispatches));
 });
 
-test('formatStatus includes key sections in CLI text output', (t) => {
+test('status --json outputs valid JSON', (t) => {
   const tempDir = withTempRallyHome(t);
 
   const binPath = join(__dirname, '..', 'bin', 'rally.js');

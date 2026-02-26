@@ -106,7 +106,7 @@ describe('enrichWithStats', () => {
     teardownTestEnv();
   });
 
-  test('enrichDispatch enriches dispatch with stats from log file for done status', () => {
+  test('enrichWithStats enriches dispatch with stats from log file for done status', () => {
     const logPath = join(TEST_DIR, 'dispatch.log');
     writeFileSync(logPath, 'Total code changes:     +42 -7\n', 'utf8');
     

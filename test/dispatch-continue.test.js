@@ -161,7 +161,7 @@ test('continueDispatch includes dispatch id context in resume message', async (t
   assert.ok(msg.includes('rally-42'), `Expected dispatch id in message, got: ${msg}`);
 });
 
-test('continueDispatch works with --repo filter for disambiguation', async (t) => {
+test('dispatchContinue works with --repo filter for disambiguation', async (t) => {
   t.mock.method(console, 'log', () => {});
   let resumedId = null;
 

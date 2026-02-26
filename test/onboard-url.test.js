@@ -204,7 +204,7 @@ describe('onboard URL cloning', () => {
     assert.ok(existsSync(join(projectsDir, 'existing-repo', '.squad')), '.squad symlink should exist');
   });
 
-  test('onboardUrl proceeds with normal onboard flow after clone', async () => {
+  test('onboard proceeds with normal onboard flow after clone', async () => {
     const { rallyHome, teamDir } = setupTeam();
     const barePath = createBareRepo('flow-test');
 
@@ -273,7 +273,7 @@ describe('onboard URL cloning', () => {
     );
   });
 
-  test('onboardUrl allows reuse when directory exists with matching owner (HTTPS)', async () => {
+  test('onboard allows reuse when directory exists with matching owner (HTTPS)', async () => {
     const { rallyHome } = setupTeam();
     const projectsDir = join(rallyHome, 'projects');
     mkdirSync(projectsDir, { recursive: true });
@@ -292,7 +292,7 @@ describe('onboard URL cloning', () => {
     assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
   });
 
-  test('onboardUrl allows reuse when directory exists with matching owner (SSH)', async () => {
+  test('onboard allows reuse when directory exists with matching owner (SSH)', async () => {
     const { rallyHome } = setupTeam();
     const projectsDir = join(rallyHome, 'projects');
     mkdirSync(projectsDir, { recursive: true });
@@ -311,7 +311,7 @@ describe('onboard URL cloning', () => {
     assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
   });
 
-  test('onboardUrl passes local path unchanged', async () => {
+  test('onboard passes local path unchanged', async () => {
     setupTeam();
     const repoPath = join(tempDir, 'local-repo');
     mkdirSync(repoPath, { recursive: true });

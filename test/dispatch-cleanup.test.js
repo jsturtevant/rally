@@ -29,7 +29,7 @@ function makeOpts(overrides = {}) {
 }
 
 describe('STALE_PID_MS', () => {
-  test('STALE_THRESHOLD equals 7 days in milliseconds', () => {
+  test('STALE_PID_MS equals 7 days in milliseconds', () => {
     assert.strictEqual(STALE_PID_MS, 7 * 24 * 60 * 60 * 1000);
   });
 });

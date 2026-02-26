@@ -62,7 +62,7 @@ owner/otherapp
 c connect IDE · l logs · n new dispatch · p pushed · x delete · r refresh · q quit
 ```
 
-Key shortcuts from the dashboard:
+Common keyboard shortcuts from the dashboard:
 
 - **`n`** — dispatch a new issue or PR
 - **`o`** — open in the browser

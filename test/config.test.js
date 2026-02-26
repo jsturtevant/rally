@@ -375,4 +375,12 @@ describe('getSettings', () => {
     }), 'utf8');
     assert.throws(() => getSettings(), /Invalid deny_tools_sandbox: must be an array/);
   });
+
+  test('validates deny_tools elements are strings', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { deny_tools_copilot: ['shell(gh)', 123] }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid deny_tools_copilot: must be an array of strings/);
+  });
 });

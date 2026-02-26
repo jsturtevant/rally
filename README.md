@@ -532,7 +532,7 @@ settings:
 
 For maximum isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM. The agent executes in a lightweight container with no access to the host filesystem beyond the worktree.
 
-Requires [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support and `GH_TOKEN` or `GITHUB_TOKEN` set globally.
+Requires [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support and `GH_TOKEN` or `GITHUB_TOKEN` set globally. Learn to creat one for [Github Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli#authenticating-with-environment-variables).
 
 ```bash
 rally dispatch issue 42 --sandbox

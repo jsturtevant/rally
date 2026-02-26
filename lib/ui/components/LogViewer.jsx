@@ -42,19 +42,19 @@ export default function LogViewer({ dispatch, onBack, terminalRows, visibleLines
   const isEmpty = lines.length <= 1 && (lines[0] === 'No log file available.' || lines[0] === '' || lines[0] === 'Failed to read log file.');
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} flexGrow={1}>
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} height={terminalRows || undefined}>
       <Box marginBottom={1}>
         <Text bold>📋 Logs for </Text>
         <Text bold color="cyan">{issueRef}</Text>
         <Text bold> ({dispatch.repo})</Text>
       </Box>
       {isEmpty ? (
-        <Box flexDirection="column" paddingY={1}>
+        <Box flexDirection="column" height={visibleLines} paddingY={1}>
           <Text dimColor>No log output yet.</Text>
           <Text dimColor>Logs appear here once the Copilot session produces output.</Text>
         </Box>
       ) : (
-        <Box flexDirection="column" flexGrow={1}>
+        <Box flexDirection="column" height={visibleLines}>
           {visible.map((line, i) => (
             <Text key={scrollOffset + i} wrap="truncate">{line}</Text>
           ))}

@@ -2174,3 +2174,104 @@ When dispatching issues/PRs, the content (title, body, labels, comments) is fed 
 - **Default deny** (confirm default: false) — user must actively opt in when processing untrusted content
 - **Non-TTY passthrough** — CI/automation users should use `--trust` explicitly; when stdin isn't a TTY there's no way to prompt anyway
 - **Fail-open on API errors** — better to let the user proceed than to block on transient API failures
+
+---
+
+## Decision: Permanent exclusion — Issue #330
+
+**By:** James Sturtevant (via Copilot)
+**Date:** 2026-02-25
+**Status:** Accepted
+
+### Decision
+
+Always ignore issue #330. Never work on it, never triage it, never assign it. This is a permanent exclusion that overrides any automated pickup or Ralph scan that would surface #330.
+
+### Impact
+
+All agents: skip #330 in any issue scanning, triage, or dispatch workflow.
+
+---
+
+## Decision: Skip Copilot re-reviews after addressing comments
+
+**By:** James Sturtevant (via Copilot)
+**Date:** 2026-02-25
+**Status:** Accepted
+
+### Decision
+
+No longer need to wait for Copilot re-reviews after addressing review comments. Address the initial review, then merge if CI is green. User will say if they want to stop a specific PR.
+
+### Impact
+
+All agents handling PRs: after addressing Copilot review comments, proceed to merge once CI passes. Do not wait for a second review cycle.
+
+---
+
+## Decision: PR dispatch initial status changed to `implementing`
+
+**By:** Kaylee (Core Dev)
+**Date:** 2026-02-25
+**Issue:** #321
+**Status:** Accepted
+
+### Decision
+
+Changed `initialStatus` for PR dispatches from `'reviewing'` to `'implementing'`. The existing `refreshDispatchStatuses()` mechanism handles the transition to `'reviewing'` when Copilot finishes. Also renamed the `implementing` dashboard label from "working" to "copilot working" for clarity.
+
+### Impact
+
+PR dispatches now follow the same lifecycle as issue dispatches. Dashboard accurately reflects Copilot's working state. No new statuses or state machine changes needed.
+
+---
+
+## Decision: Dashboard Pickers — Exit-and-Run Pattern for Dispatch
+
+**By:** Kaylee (Core Dev)
+**Date:** 2026-02-25
+**Status:** Proposed
+
+### Decision
+
+For issue/PR pickers from the dashboard (issue #278), follow the existing `onAttachSession` exit-and-run pattern: the Ink app stores a `pendingDispatch` object (type, number, repo), calls `exit()`, and the outer code in `rally.js` handles the actual dispatch after `waitUntilExit()`. This keeps the Ink lifecycle clean and reuses existing dispatch functions unchanged.
+
+### Impact
+
+- New dashboard callbacks: `onDispatchItem`, `onAddProject` (in addition to existing `onAttachSession`)
+- Any future "do something after dashboard exit" features should follow this same pattern
+- Components use DI props (`_fetchIssues`, `_fetchPrs`, `_listOnboardedRepos`) for testability
+
+---
+
+## Decision: onboard() decomposition — private helpers, not exported
+
+**By:** Kaylee (Core Dev)
+**Date:** 2026-02-25
+**Issue:** #292
+**Status:** Accepted
+
+### Decision
+
+Extracted 5 helper functions from `onboard()` but kept them as private (non-exported) functions in `lib/onboard.js` rather than moving them to separate modules. All helpers are tightly coupled to the onboard flow and none are large enough to warrant their own module. Also replaced inline regex for GitHub URL parsing with the already-imported `parseGitHubRemoteUrl()` from `lib/github-url.js`.
+
+### Impact
+
+If any helper grows or is needed elsewhere, it can be extracted to its own module at that point. Tests exercise helpers through the public `onboard()` API.
+
+---
+
+## Decision: Agent skill path convention
+
+**By:** Mal (Lead)
+**Date:** 2026-02-25
+**Issue:** #332
+**Status:** Accepted
+
+### Decision
+
+Use `.claude/skills/<tool>/SKILL.md` as the skill file location. Both Claude Code and GitHub Copilot CLI read from this path, so one file serves both tools. No need to duplicate into `.github/skills/`.
+
+### Impact
+
+Any future skill files should follow this pattern: `.claude/skills/<tool>/SKILL.md`. This keeps skills discoverable by both AI coding tools without duplication.

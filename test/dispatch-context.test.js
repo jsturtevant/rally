@@ -150,9 +150,10 @@ describe('dispatch-context', () => {
         number: 7, title: 'Permissions test', labels: [], assignees: [], body: 'test',
       });
       const contextPath = join(worktreePath, '.squad', 'dispatch-context.md');
-      const stats = statSync(contextPath);
-      // 0o100600 = regular file with owner read/write only
-      assert.strictEqual(stats.mode & 0o777, 0o600, 'context file should have 0o600 permissions');
+      if (process.platform !== 'win32') {
+        const stats = statSync(contextPath);
+        assert.strictEqual(stats.mode & 0o777, 0o600, 'context file should have 0o600 permissions');
+      }
     });
   });
 
@@ -302,8 +303,10 @@ describe('dispatch-context', () => {
         number: 2, title: 'Perm test', baseRefName: 'main', headRefName: 'fix', files: [], body: 'test',
       });
       const contextPath = join(worktreePath, '.squad', 'dispatch-context.md');
-      const stats = statSync(contextPath);
-      assert.strictEqual(stats.mode & 0o777, 0o600, 'context file should have 0o600 permissions');
+      if (process.platform !== 'win32') {
+        const stats = statSync(contextPath);
+        assert.strictEqual(stats.mode & 0o777, 0o600, 'context file should have 0o600 permissions');
+      }
     });
   });
 

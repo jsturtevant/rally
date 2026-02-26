@@ -54,7 +54,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
     } else if (key.escape || input === 'q') {
       onBack();
     }
-  });
+  }, { isActive: true });
 
   const issueRef = dispatch.type === 'pr' ? `PR #${dispatch.number}` : `Issue #${dispatch.number}`;
 

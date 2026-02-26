@@ -247,17 +247,14 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     setActionIndex(0);
   }
 
-  useInput((input, key) => {
-    // Dispatch done/error — any key returns to dashboard
-    if (dispatchStatus === 'done' || dispatchStatus === 'error') {
-      setDispatchPending(null);
-      setDispatchStatus(null);
-      setDispatchMessage('');
-      return;
-    }
-    // Log view, detail view, action menu, browse mode, and dispatch handle their own input
-    if (logViewDispatch || actionDispatch || detailViewDispatch || browseMode || dispatchStatus) return;
+  // Dispatch done/error — any key returns to dashboard
+  useInput(() => {
+    setDispatchPending(null);
+    setDispatchStatus(null);
+    setDispatchMessage('');
+  }, { isActive: dispatchStatus === 'done' || dispatchStatus === 'error' });
 
+  useInput((input, key) => {
     if (key.upArrow) {
       setSelectedIndex(i => (i > 0 ? i - 1 : 0));
     } else if (key.downArrow) {
@@ -295,7 +292,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     } else if (input === 'q') {
       exit();
     }
-  });
+  }, { isActive: !logViewDispatch && !actionDispatch && !detailViewDispatch && !browseMode && !dispatchStatus });
 
   if (error) {
     return (

@@ -31,7 +31,7 @@ export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFi
     } else if (key.downArrow) {
       setScrollOffset(o => Math.min(maxOffset, o + 1));
     }
-  });
+  }, { isActive: true });
 
   const visible = lines.slice(scrollOffset, scrollOffset + visibleLines);
   const issueRef = dispatch.type === 'pr' ? `PR #${dispatch.number}` : `Issue #${dispatch.number}`;

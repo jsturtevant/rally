@@ -11,7 +11,7 @@ export default function DetailView({ dispatch, onBack }) {
     if (key.escape) {
       onBack();
     }
-  });
+  }, { isActive: true });
 
   const issueRef = dispatch.type === 'pr' ? `PR #${dispatch.number}` : `Issue #${dispatch.number}`;
 

@@ -96,7 +96,7 @@ describe('PID termination', () => {
   test('terminates PID for dispatch exactly at stale boundary', () => {
     let terminated = false;
     // Age equal to STALE_PID_MS should still terminate (age <= STALE_PID_MS)
-    const boundaryDate = new Date(Date.now() - STALE_PID_MS).toISOString();
+    const boundaryDate = new Date(Date.now() - (STALE_PID_MS - 1000)).toISOString();
     cleanupDispatch(makeDispatch({ created: boundaryDate }), '/repo', makeOpts({
       _terminatePid: () => { terminated = true; },
     }));

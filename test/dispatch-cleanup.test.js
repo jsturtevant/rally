@@ -29,7 +29,7 @@ function makeOpts(overrides = {}) {
 }
 
 describe('STALE_PID_MS', () => {
-  test('equals 7 days in milliseconds', () => {
+  test('STALE_PID_MS equals 7 days in milliseconds', () => {
     assert.strictEqual(STALE_PID_MS, 7 * 24 * 60 * 60 * 1000);
   });
 });
@@ -113,7 +113,7 @@ describe('PID termination', () => {
     assert.strictEqual(terminated, false);
   });
 
-  test('continues cleanup when PID termination throws', () => {
+  test('cleanupDispatch continues cleanup when PID termination throws', () => {
     const calls = [];
     cleanupDispatch(makeDispatch(), '/repo', makeOpts({
       _terminatePid: () => { throw new Error('kill failed'); },
@@ -160,7 +160,7 @@ describe('worktree removal', () => {
     assert.strictEqual(removed, false);
   });
 
-  test('continues cleanup when worktree removal throws', () => {
+  test('cleanupDispatch continues cleanup when worktree removal throws', () => {
     const calls = [];
     cleanupDispatch(makeDispatch(), '/repo', makeOpts({
       _removeWorktree: () => { throw new Error('worktree already removed'); },
@@ -198,7 +198,7 @@ describe('branch deletion', () => {
     assert.strictEqual(executed, false);
   });
 
-  test('continues without throwing when branch deletion fails', () => {
+  test('cleanupDispatch continues without throwing when branch deletion fails', () => {
     assert.doesNotThrow(() => {
       cleanupDispatch(makeDispatch(), '/repo', makeOpts({
         _exec: () => { throw new Error('branch not found'); },
@@ -206,7 +206,7 @@ describe('branch deletion', () => {
     });
   });
 
-  test('passes correct arguments to exec for branch deletion', () => {
+  test('cleanupDispatch passes correct arguments to exec for branch deletion', () => {
     let capturedArgs;
     cleanupDispatch(makeDispatch({ branch: 'rally/99-feature' }), '/my/repo', makeOpts({
       _exec: (cmd, args, opts) => { capturedArgs = { cmd, args, encoding: opts.encoding, cwd: opts.cwd }; },

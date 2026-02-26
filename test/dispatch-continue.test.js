@@ -126,7 +126,7 @@ test('sets status to implementing before resume, restores to reviewing after', a
   assert.deepEqual(statusUpdates, ['implementing', 'reviewing']);
 });
 
-test('passes message option through to resumeCopilot', async (t) => {
+test('continueDispatch passes message option through to resumeCopilot', async (t) => {
   t.mock.method(console, 'log', () => {});
   let capturedOpts = null;
 
@@ -144,7 +144,7 @@ test('passes message option through to resumeCopilot', async (t) => {
   assert.strictEqual(capturedOpts.message, 'focus on tests');
 });
 
-test('resume message includes dispatch id context', async (t) => {
+test('continueDispatch includes dispatch id context in resume message', async (t) => {
   const mockLog = t.mock.method(console, 'log', () => {});
 
   await dispatchContinue(42, {
@@ -161,7 +161,7 @@ test('resume message includes dispatch id context', async (t) => {
   assert.ok(msg.includes('rally-42'), `Expected dispatch id in message, got: ${msg}`);
 });
 
-test('works with --repo filter for disambiguation', async (t) => {
+test('dispatchContinue works with --repo filter for disambiguation', async (t) => {
   t.mock.method(console, 'log', () => {});
   let resumedId = null;
 

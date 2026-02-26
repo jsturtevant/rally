@@ -735,7 +735,7 @@ describe('buildReviewPrompt', () => {
     }
   });
 
-  test('REVIEW.md template includes structured issue format fields', () => {
+  test('buildReviewPrompt includes structured issue format fields in REVIEW.md template', () => {
     const pr = makePr();
     const prompt = buildReviewPrompt({ ...pr, number: 42 });
     for (const field of ['**File:**', '**Reported By:**', '**Problem:**', '**Evidence:**', '**Suggested Fix:**']) {

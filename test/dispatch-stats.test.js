@@ -106,7 +106,7 @@ describe('enrichWithStats', () => {
     teardownTestEnv();
   });
 
-  test('enriches dispatch with stats from log file for done status', () => {
+  test('enrichWithStats enriches dispatch with stats from log file for done status', () => {
     const logPath = join(TEST_DIR, 'dispatch.log');
     writeFileSync(logPath, 'Total code changes:     +42 -7\n', 'utf8');
     
@@ -117,7 +117,7 @@ describe('enrichWithStats', () => {
     assert.strictEqual(result[0].changes, '+42 -7');
   });
 
-  test('enriches dispatch with stats for reviewing status', () => {
+  test('enrichDispatch enriches dispatch with stats for reviewing status', () => {
     const logPath = join(TEST_DIR, 'dispatch.log');
     writeFileSync(logPath, 'Total code changes:     +100 -50\n', 'utf8');
     
@@ -127,7 +127,7 @@ describe('enrichWithStats', () => {
     assert.strictEqual(result[0].changes, '+100 -50');
   });
 
-  test('enriches dispatch with stats for cleaned status', () => {
+  test('enrichDispatch enriches dispatch with stats for cleaned status', () => {
     const logPath = join(TEST_DIR, 'dispatch.log');
     writeFileSync(logPath, 'Total code changes:     +20 -10\n', 'utf8');
     

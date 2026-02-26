@@ -67,7 +67,7 @@ describe('refreshDispatchStatuses — session ID auto-resolution', () => {
     assert.strictEqual(fieldUpdates.length, 0);
   });
 
-  test('continues processing when updateDispatchField throws during session resolve', () => {
+  test('refreshDispatchStatuses continues processing when updateDispatchField throws during session resolve', () => {
     const dispatches = [
       { id: 'rally-42', status: 'implementing', session_id: '11111', logPath: '/tmp/a.log' },
       { id: 'rally-43', status: 'planning', session_id: '22222', logPath: '/tmp/b.log' },
@@ -162,7 +162,7 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result[0].status, 'reviewing');
   });
 
-  test('leaves status unchanged when PID is dead but log is still active', () => {
+  test('refreshDispatchStatuses leaves status unchanged when PID is dead but log is still active', () => {
     const dispatches = [
       { id: 'issue-42', status: 'implementing', session_id: '99999', type: 'issue', logPath: '/tmp/test.log' },
     ];
@@ -179,7 +179,7 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result.length, 0);
   });
 
-  test('leaves status unchanged when PID is still running', () => {
+  test('refreshDispatchStatuses leaves status unchanged when PID is still running', () => {
     const dispatches = [
       { id: 'issue-10', status: 'planning', session_id: '12345', type: 'issue' },
     ];
@@ -285,7 +285,7 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result.length, 2);
   });
 
-  test('continues when updateDispatchStatus throws', () => {
+  test('refreshDispatchStatuses continues when updateDispatchStatus throws', () => {
     const dispatches = [
       { id: 'x', status: 'planning', session_id: '500', type: 'issue' },
       { id: 'y', status: 'planning', session_id: '600', type: 'issue' },

@@ -3,23 +3,23 @@ import assert from 'node:assert/strict';
 import { parseCopilotStats, formatStatsSummary } from '../lib/copilot-stats.js';
 
 describe('parseCopilotStats', () => {
-  test('returns null for undefined input', () => {
+  test('parseCopilotStats returns null for undefined input', () => {
     assert.strictEqual(parseCopilotStats(undefined), null);
   });
 
-  test('returns null for null input', () => {
+  test('parseCopilotStats returns null for null input', () => {
     assert.strictEqual(parseCopilotStats(null), null);
   });
 
-  test('returns null for empty string', () => {
+  test('parseCopilotStats returns null for empty string', () => {
     assert.strictEqual(parseCopilotStats(''), null);
   });
 
-  test('returns null for content with no stats block', () => {
+  test('parseCopilotStats returns null for content with no stats block', () => {
     assert.strictEqual(parseCopilotStats('Just some random output.'), null);
   });
 
-  test('handles malformed stats gracefully — garbled values', () => {
+  test('parseCopilotStats handles malformed stats gracefully with garbled values', () => {
     const input = [
       'Total usage est:        not-a-number',
       'API time spent:         xyz',
@@ -32,7 +32,7 @@ describe('parseCopilotStats', () => {
     assert.strictEqual(result, null);
   });
 
-  test('extracts only premium requests when other fields missing', () => {
+  test('parseCopilotStats extracts only premium requests when other fields missing', () => {
     const input = 'Total usage est:        5 Premium requests\n';
     const result = parseCopilotStats(input);
     assert.notStrictEqual(result, null);

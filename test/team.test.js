@@ -61,7 +61,7 @@ describe('team selection', () => {
   // --- selectTeam unit tests ---
 
   describe('selectTeam', () => {
-    test('--team flag skips prompt and creates team directory', async () => {
+    test('--team skips prompt and creates team directory', async () => {
       setupRallyHome();
 
       const result = await selectTeam({
@@ -76,7 +76,7 @@ describe('team selection', () => {
       assert.ok(existsSync(join(expectedDir, '.squad')), '.squad should be initialized');
     });
 
-    test('--team flag reuses existing team directory', async () => {
+    test('--team reuses existing team directory', async () => {
       const { rallyHome } = setupRallyHome();
       const teamDir = join(rallyHome, 'teams', 'existing-team');
       mkdirSync(join(teamDir, '.squad'), { recursive: true });
@@ -116,7 +116,7 @@ describe('team selection', () => {
       );
     });
 
-    test('interactive select: shared team returns config team dir', async () => {
+    test('selectTeam returns config team dir for shared team', async () => {
       const { teamDir } = setupRallyHome();
 
       const result = await selectTeam({
@@ -128,7 +128,7 @@ describe('team selection', () => {
       assert.strictEqual(result.teamType, 'shared');
     });
 
-    test('interactive select: new project team creates directory', async () => {
+    test('selectTeam creates directory for new project team', async () => {
       setupRallyHome();
 
       const result = await selectTeam({
@@ -147,7 +147,7 @@ describe('team selection', () => {
   // --- Integration with onboard ---
 
   describe('onboard with --team', () => {
-    test('--team flag creates project team and records in projects.yaml', async () => {
+    test('--team creates project team and records in projects.yaml', async () => {
       setupRallyHome();
       const repoPath = createRepo(join(tempDir, 'my-repo'));
 
@@ -165,7 +165,7 @@ describe('team selection', () => {
       assert.ok(projects.projects[0].teamDir.includes('my-team'));
     });
 
-    test('--team flag creates symlinks pointing to project team dir', async () => {
+    test('--team creates symlinks pointing to project team dir', async () => {
       setupRallyHome();
       const repoPath = createRepo(join(tempDir, 'my-repo'));
 
@@ -186,7 +186,7 @@ describe('team selection', () => {
       );
     });
 
-    test('onboard without --team uses selectTeam interactive prompt', async () => {
+    test('onboard calls selectTeam interactive prompt without --team', async () => {
       const { teamDir } = setupRallyHome();
       const repoPath = createRepo(join(tempDir, 'my-repo'));
 
@@ -198,7 +198,7 @@ describe('team selection', () => {
       assert.strictEqual(projects.projects[0].teamDir, teamDir);
     });
 
-    test('--team with invalid name errors before touching filesystem', async () => {
+    test('--team rejects invalid name before touching filesystem', async () => {
       setupRallyHome();
       const repoPath = createRepo(join(tempDir, 'my-repo'));
 
@@ -240,7 +240,7 @@ describe('team selection', () => {
       assert.ok(existsSync(join(partialDir, '.squad')), '.squad should now exist');
     });
 
-    test('interactive re-inits when dir exists but .squad/ is missing', async () => {
+    test('selectTeam re-inits when dir exists but .squad/ is missing', async () => {
       setupRallyHome();
       const teamsDir = join(process.env.RALLY_HOME, 'teams');
       const partialDir = join(teamsDir, 'half-done');
@@ -261,7 +261,7 @@ describe('team selection', () => {
       assert.ok(existsSync(join(partialDir, '.squad')), '.squad should now exist');
     });
 
-    test('squad init failure is non-fatal and keeps team directory', async () => {
+    test('setupTeam keeps team directory on squad init failure', async () => {
       setupRallyHome();
 
       const failingExec = () => { throw new Error('squad init exploded'); };

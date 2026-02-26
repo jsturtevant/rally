@@ -40,7 +40,7 @@ describe('checkCopilotAvailable', () => {
     assert.strictEqual(checkCopilotAvailable({ _exec: exec }), false);
   });
 
-  test('passes correct args to exec', () => {
+  test('spawnCopilot passes correct args to exec', () => {
     let captured;
     const exec = (cmd, args, opts) => {
       captured = { cmd, args, opts };
@@ -87,7 +87,7 @@ describe('launchCopilot', () => {
     assert.strictEqual(captured.opts.detached, true);
   });
 
-  test('redirects stdout/stderr to log file when logPath is provided', () => {
+  test('spawnCopilot redirects stdout/stderr to log file when logPath provided', () => {
     let captured;
     let openCalls = [];
     let closeCalls = [];
@@ -168,7 +168,7 @@ describe('launchCopilot', () => {
     assert.strictEqual(result.logPath, null);
   });
 
-  test('re-throws non-ENOENT errors', () => {
+  test('checkCopilotCli re-throws non-ENOENT errors', () => {
     const mockSpawn = () => {
       throw new Error('permission denied');
     };
@@ -321,7 +321,7 @@ describe('DENY_TOOLS / DEFAULT_DENY_TOOLS', () => {
     assert.strictEqual(DENY_TOOLS, DEFAULT_DENY_TOOLS);
   });
 
-  test('is a non-empty array of strings', () => {
+  test('DENY_TOOLS contains a non-empty array of strings', () => {
     assert.ok(Array.isArray(DEFAULT_DENY_TOOLS));
     assert.ok(DEFAULT_DENY_TOOLS.length > 0);
     for (const t of DEFAULT_DENY_TOOLS) {
@@ -329,15 +329,15 @@ describe('DENY_TOOLS / DEFAULT_DENY_TOOLS', () => {
     }
   });
 
-  test('blocks git push', () => {
+  test('DENY_TOOLS blocks git push', () => {
     assert.ok(DENY_TOOLS.includes('shell(git push)'));
   });
 
-  test('blocks all gh commands with broad shell(gh) rule', () => {
+  test('DENY_TOOLS blocks all gh commands with broad shell(gh) rule', () => {
     assert.ok(DENY_TOOLS.includes('shell(gh)'));
   });
 
-  test('blocks network exfiltration tools', () => {
+  test('DENY_TOOLS blocks network exfiltration tools', () => {
     assert.ok(DENY_TOOLS.includes('shell(curl)'));
     assert.ok(DENY_TOOLS.includes('shell(wget)'));
     assert.ok(DENY_TOOLS.includes('shell(nc)'));
@@ -369,15 +369,15 @@ describe('getReadOnlyPolicy', () => {
     assert.ok(policy.includes('Read-Only Policy'));
   });
 
-  test('prohibits git push', () => {
+  test('SANDBOX_DENY_TOOLS prohibits git push', () => {
     assert.ok(getReadOnlyPolicy().includes('git push'));
   });
 
-  test('allows local code changes', () => {
+  test('SANDBOX_DENY_TOOLS allows local code changes', () => {
     assert.ok(getReadOnlyPolicy().includes('local code changes'));
   });
 
-  test('directs to MCP tools for remote reads', () => {
+  test('SANDBOX_DENY_TOOLS directs to MCP tools for remote reads', () => {
     const policy = getReadOnlyPolicy();
     assert.ok(policy.includes('MCP read-only tools'));
     assert.ok(policy.includes('github-mcp-server'));
@@ -476,7 +476,7 @@ describe('resumeCopilot', () => {
     assert.deepStrictEqual(captured.args, ['copilot', '--resume']);
   });
 
-  test('passes message option as -p flag', () => {
+  test('resumeCopilot passes message option as -p flag', () => {
     let captured;
     const mockSpawnSync = (cmd, args) => {
       captured = { cmd, args };
@@ -494,7 +494,7 @@ describe('resumeCopilot', () => {
     );
   });
 
-  test('re-throws non-ENOENT errors', () => {
+  test('resumeCopilot re-throws non-ENOENT errors', () => {
     const mockSpawnSync = () => ({ error: new Error('boom') });
     assert.throws(
       () => resumeCopilot('/tmp/wt', 'sess-1', { _spawnSync: mockSpawnSync }),

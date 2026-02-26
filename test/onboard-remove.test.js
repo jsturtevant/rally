@@ -104,7 +104,7 @@ describe('onboard remove', () => {
 
   // --- Keeps other projects intact ---
 
-  test('only removes the specified project, keeps others', async () => {
+  test('removeProject only removes the specified project and keeps others', async () => {
     const repo1 = createRepo(join(tempDir, 'repo-a'));
     const repo2 = createRepo(join(tempDir, 'repo-b'));
     const entry1 = setupOnboardedProject('repo-a', repo1);
@@ -251,7 +251,7 @@ describe('onboard remove', () => {
 
   // --- Handles missing project path gracefully ---
 
-  test('succeeds even if project path no longer exists', async () => {
+  test('removeProject succeeds even if project path no longer exists', async () => {
     const fakePath = join(tempDir, 'gone-repo');
     writeProjectsYaml([{
       name: 'gone-repo',

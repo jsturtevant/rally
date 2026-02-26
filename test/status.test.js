@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // --- Acceptance Criteria: Shows all config paths ---
 
-test('status: shows all config paths', (t) => {
+test('getStatus returns all config paths', (t) => {
   const tempDir = withTempRallyHome(t);
 
   const status = getStatus();
@@ -26,7 +26,7 @@ test('status: shows all config paths', (t) => {
   assert.ok(status.configPaths.active.path.endsWith('active.yaml'));
 });
 
-test('status: config paths report existence correctly', (t) => {
+test('getStatus reports config path existence correctly', (t) => {
   const tempDir = withTempRallyHome(t);
 
   // No files exist yet
@@ -42,7 +42,7 @@ test('status: config paths report existence correctly', (t) => {
   assert.strictEqual(after.configPaths.projects.exists, false);
 });
 
-test('status: directories from config', (t) => {
+test('getStatus returns directories from config', (t) => {
   withTempRallyHome(t);
 
   writeConfig({ teamDir: '/home/user/.rally/team', projectsDir: '/home/user/.rally/projects', version: '0.1.0' });
@@ -51,7 +51,7 @@ test('status: directories from config', (t) => {
   assert.strictEqual(status.projectsDir, '/home/user/.rally/projects');
 });
 
-test('status: directories null when no config', (t) => {
+test('getStatus returns null directories when no config', (t) => {
   withTempRallyHome(t);
 
   const status = getStatus();
@@ -61,14 +61,14 @@ test('status: directories null when no config', (t) => {
 
 // --- Acceptance Criteria: Shows onboarded projects ---
 
-test('status: shows onboarded projects (empty)', (t) => {
+test('getStatus returns empty onboarded projects', (t) => {
   withTempRallyHome(t);
 
   const status = getStatus();
   assert.deepEqual(status.projects, []);
 });
 
-test('status: shows onboarded projects (populated)', (t) => {
+test('getStatus returns populated onboarded projects', (t) => {
   withTempRallyHome(t);
 
   const projects = {
@@ -86,14 +86,14 @@ test('status: shows onboarded projects (populated)', (t) => {
 
 // --- Acceptance Criteria: Shows active dispatches ---
 
-test('status: shows active dispatches (empty)', (t) => {
+test('getStatus returns empty active dispatches', (t) => {
   withTempRallyHome(t);
 
   const status = getStatus();
   assert.deepEqual(status.dispatches, []);
 });
 
-test('status: shows active dispatches (populated)', (t) => {
+test('getStatus returns populated active dispatches', (t) => {
   const tempDir = withTempRallyHome(t);
 
   const active = {
@@ -112,7 +112,7 @@ test('status: shows active dispatches (populated)', (t) => {
 
 // --- Acceptance Criteria: --json flag works ---
 
-test('status: --json flag outputs valid JSON via CLI', (t) => {
+test('getStatus outputs valid JSON via --json flag', (t) => {
   const tempDir = withTempRallyHome(t);
 
   writeConfig({ teamDir: '/tmp/team', version: '0.1.0' });
@@ -128,7 +128,7 @@ test('status: --json flag outputs valid JSON via CLI', (t) => {
   assert.ok(Array.isArray(parsed.dispatches));
 });
 
-test('status: CLI text output includes key sections', (t) => {
+test('status --json outputs valid JSON', (t) => {
   const tempDir = withTempRallyHome(t);
 
   const binPath = join(__dirname, '..', 'bin', 'rally.js');
@@ -144,7 +144,7 @@ test('status: CLI text output includes key sections', (t) => {
 
 // --- Error handling / edge cases ---
 
-test('status: formatStatus handles empty status correctly', () => {
+test('formatStatus handles empty status correctly', () => {
   const status = {
     configDir: '/tmp/test',
     configPaths: {
@@ -163,7 +163,7 @@ test('status: formatStatus handles empty status correctly', () => {
   assert.ok(output.includes('✗ config:'));
 });
 
-test('status: formatStatus renders projects and dispatches', () => {
+test('formatStatus renders projects and dispatches', () => {
   const status = {
     configDir: '/tmp/test',
     configPaths: {

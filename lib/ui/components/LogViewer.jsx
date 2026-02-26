@@ -3,10 +3,13 @@ import { Box, Text, useInput } from 'ink';
 import { readFileSync, existsSync } from 'node:fs';
 
 /**
- * Inline log viewer — shows .copilot-output.log content for a dispatch.
+ * Fullscreen log viewer — shows .copilot-output.log content for a dispatch.
  * ↑/↓ to scroll, Escape to return to the dashboard.
+ * @param {number} terminalRows - Terminal height (passed from Dashboard)
  */
-export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFile = readFileSync, _existsSync = existsSync }) {
+export default function LogViewer({ dispatch, onBack, terminalRows, visibleLines: visibleLinesProp, _readFile = readFileSync, _existsSync = existsSync }) {
+  // 6 lines reserved: border top/bottom (2) + header with margin (2) + footer with margin (2)
+  const visibleLines = visibleLinesProp || (terminalRows ? Math.max(5, terminalRows - 6) : 20);
   const lines = useMemo(() => {
     if (!dispatch.logPath || !_existsSync(dispatch.logPath)) {
       return ['No log file available.'];
@@ -39,7 +42,7 @@ export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFi
   const isEmpty = lines.length <= 1 && (lines[0] === 'No log file available.' || lines[0] === '' || lines[0] === 'Failed to read log file.');
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} flexGrow={1}>
       <Box marginBottom={1}>
         <Text bold>📋 Logs for </Text>
         <Text bold color="cyan">{issueRef}</Text>
@@ -51,7 +54,7 @@ export default function LogViewer({ dispatch, onBack, visibleLines = 20, _readFi
           <Text dimColor>Logs appear here once the Copilot session produces output.</Text>
         </Box>
       ) : (
-        <Box flexDirection="column">
+        <Box flexDirection="column" flexGrow={1}>
           {visible.map((line, i) => (
             <Text key={scrollOffset + i} wrap="truncate">{line}</Text>
           ))}

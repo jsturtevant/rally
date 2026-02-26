@@ -319,6 +319,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         <LogViewer
           dispatch={logViewDispatch}
           onBack={() => setLogViewDispatch(null)}
+          terminalRows={stdout.rows}
         />
       </Box>
     );

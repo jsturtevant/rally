@@ -320,4 +320,14 @@ describe('getSettings', () => {
     const fullPath = join(getConfigDir(), settings.review_template);
     assert.strictEqual(fullPath, join(tempDir, 'prompts/review.md'));
   });
+
+  test('accepts never value for docker_sandbox and require_trust', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { docker_sandbox: 'never', require_trust: 'never' }
+    }), 'utf8');
+    const settings = getSettings();
+    assert.strictEqual(settings.docker_sandbox, 'never');
+    assert.strictEqual(settings.require_trust, 'never');
+  });
 });

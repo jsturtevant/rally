@@ -4,6 +4,7 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
 import { setup } from '../lib/setup.js';
+import { DEFAULT_DENY_TOOLS } from '../lib/copilot.js';
 import { withTempRallyHome } from './helpers/temp-env.js';
 
 describe('setup', () => {
@@ -175,5 +176,43 @@ describe('setup', () => {
         return true;
       }
     );
+  });
+
+  // --- Acceptance Criteria: Writes deny_tools defaults to config.yaml ---
+
+  test('writes deny_tools defaults to config.yaml', async () => {
+    const teamDir = join(tempDir, 'team');
+    mkdirSync(teamDir, { recursive: true });
+    mkdirSync(join(teamDir, '.squad'), { recursive: true });
+
+    await setup();
+
+    const configPath = join(tempDir, 'config.yaml');
+    const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
+    assert.deepEqual(config.settings.deny_tools_copilot, DEFAULT_DENY_TOOLS);
+    assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
+  });
+
+  test('preserves existing deny_tools on re-run', async () => {
+    const teamDir = join(tempDir, 'team');
+    mkdirSync(teamDir, { recursive: true });
+    mkdirSync(join(teamDir, '.squad'), { recursive: true });
+
+    // Write config with custom deny_tools
+    const configPath = join(tempDir, 'config.yaml');
+    const customTools = ['shell(rm)'];
+    writeFileSync(configPath, yaml.dump({
+      teamDir,
+      projectsDir: join(tempDir, 'projects'),
+      version: '0.1.0',
+      settings: { deny_tools_copilot: customTools },
+    }), 'utf8');
+
+    await setup();
+
+    const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
+    assert.deepEqual(config.settings.deny_tools_copilot, customTools);
+    // deny_tools_sandbox was missing, so it gets the default
+    assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
   });
 });

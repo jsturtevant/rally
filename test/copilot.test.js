@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkCopilotAvailable, checkDockerSandboxAvailable, launchCopilot, resumeCopilot, DENY_TOOLS, getReadOnlyPolicy, parseSessionIdFromLog } from '../lib/copilot.js';
+import { checkCopilotAvailable, checkDockerSandboxAvailable, launchCopilot, resumeCopilot, DENY_TOOLS, DEFAULT_DENY_TOOLS, getReadOnlyPolicy, parseSessionIdFromLog } from '../lib/copilot.js';
 
 // =====================================================
 // checkDockerSandboxAvailable
@@ -228,17 +228,49 @@ describe('launchCopilot', () => {
     launchCopilot('/wt', 'prompt', { _spawn: mockSpawn });
     assert.strictEqual(unrefCalled, true);
   });
+
+  test('uses custom denyTools when provided in opts', () => {
+    let captured;
+    const mockSpawn = (cmd, args, opts) => {
+      captured = { cmd, args, opts };
+      return { pid: 42, unref() {} };
+    };
+    const customDeny = ['shell(rm)', 'shell(dd)'];
+
+    launchCopilot('/path/to/worktree', 'my prompt', { _spawn: mockSpawn, denyTools: customDeny });
+
+    // Custom deny tools should be present
+    for (const tool of customDeny) {
+      assert.ok(
+        captured.args.some((a, i) => a === '--deny-tool' && captured.args[i + 1] === tool),
+        `Expected --deny-tool ${tool}`
+      );
+    }
+    // Default deny tools should NOT be present (unless overlapping)
+    for (const tool of DEFAULT_DENY_TOOLS) {
+      if (!customDeny.includes(tool)) {
+        assert.ok(
+          !captured.args.includes(tool),
+          `Default tool ${tool} should not be in args when custom denyTools provided`
+        );
+      }
+    }
+  });
 });
 
 // =====================================================
 // DENY_TOOLS constant
 // =====================================================
 
-describe('DENY_TOOLS', () => {
+describe('DENY_TOOLS / DEFAULT_DENY_TOOLS', () => {
+  test('DENY_TOOLS is an alias for DEFAULT_DENY_TOOLS', () => {
+    assert.strictEqual(DENY_TOOLS, DEFAULT_DENY_TOOLS);
+  });
+
   test('is a non-empty array of strings', () => {
-    assert.ok(Array.isArray(DENY_TOOLS));
-    assert.ok(DENY_TOOLS.length > 0);
-    for (const t of DENY_TOOLS) {
+    assert.ok(Array.isArray(DEFAULT_DENY_TOOLS));
+    assert.ok(DEFAULT_DENY_TOOLS.length > 0);
+    for (const t of DEFAULT_DENY_TOOLS) {
       assert.strictEqual(typeof t, 'string');
     }
   });

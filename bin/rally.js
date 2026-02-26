@@ -134,6 +134,8 @@ const dashboard = program
               repoPath: resolved.project.path,
               sandbox,
               trust,
+              denyToolsCopilot: settings.deny_tools_copilot,
+              denyToolsSandbox: settings.deny_tools_sandbox,
             });
             if (!result.aborted) {
               console.log(`Dispatched issue #${pendingDispatch.number}: ${result.issue.title} → ${result.worktreePath}`);
@@ -148,6 +150,8 @@ const dashboard = program
               sandbox,
               trust,
               promptFile,
+              denyToolsCopilot: settings.deny_tools_copilot,
+              denyToolsSandbox: settings.deny_tools_sandbox,
             });
             if (!result.aborted) {
               console.log(`Dispatched PR #${pendingDispatch.number}: ${result.pr.title} → ${result.worktreePath}`);
@@ -223,6 +227,8 @@ dispatch
         teamDir: opts.teamDir,
         sandbox,
         trust,
+        denyToolsCopilot: settings.deny_tools_copilot,
+        denyToolsSandbox: settings.deny_tools_sandbox,
       });
       if (result.aborted) return;
       console.log(`Dispatched issue #${number}: ${result.issue.title} → ${result.worktreePath}`);
@@ -274,6 +280,8 @@ dispatch
         sandbox,
         promptFile,
         trust,
+        denyToolsCopilot: settings.deny_tools_copilot,
+        denyToolsSandbox: settings.deny_tools_sandbox,
       });
       if (result.aborted) return;
       console.log(`Dispatched PR #${number}: ${result.pr.title} → ${result.worktreePath}`);

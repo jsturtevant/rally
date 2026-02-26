@@ -437,7 +437,7 @@ When `--repo` is omitted, Rally resolves the target repo in this order:
 
 ## Security & Safety
 
-Rally enforces multiple layers of protection so dispatched agents can't push code, leak data, or tamper with external state.
+> **⚠️ Use your best judgement.** Rally makes an effort to enforce multiple layers of protection, but no system is foolproof. Always review agent output before merging, and use the Docker sandbox for maximum isolation when working with untrusted content.
 
 ### Read-only dispatch policy
 
@@ -462,6 +462,8 @@ Before dispatching, Rally checks whether the issue/PR was authored by someone ot
 ### Worktree isolation
 
 Each dispatch gets its own **git worktree** — an independent working directory with its own branch. This prevents cross-contamination between concurrent dispatches and keeps your main working tree untouched.
+
+> **Note:** Without the Docker sandbox, the agent's working directory is set to the worktree but filesystem access is **not** restricted to it. The agent could potentially read files outside the worktree (e.g., `~/.ssh`, `~/rally/config.yaml`). For sensitive environments, use the Docker sandbox which provides true filesystem isolation.
 
 ### Docker sandbox
 

@@ -435,19 +435,56 @@ When `--repo` is omitted, Rally resolves the target repo in this order:
 3. Single-project fallback (if only one project is registered)
 4. Error with list of registered projects
 
-## Docker Sandbox (Optional)
+## Security & Safety
 
-For enhanced isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM:
+Rally enforces multiple layers of protection so dispatched agents can't push code, leak data, or tamper with external state.
 
-- [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support
-- `GH_TOKEN` or `GITHUB_TOKEN` set globally in shell config
-- Docker Desktop restarted after setting the token
+### Read-only dispatch policy
 
-Use `--sandbox` with dispatch commands:
+Every dispatched Copilot session runs under a **read-only policy** that is prepended to the prompt. The agent can read code, make local edits, and run tests — but cannot publish anything. Specific tool denials enforced via `--deny-tool` flags:
+
+| Blocked tool | Why |
+|---|---|
+| `git push` | Prevents agents from pushing commits |
+| `gh` (all subcommands) | Blocks PR creation, issue comments, and other GitHub mutations |
+| `curl`, `wget`, `nc`, `ssh`, `scp` | Prevents network exfiltration of repo data |
+
+Agents can still use MCP read-only tools (`github-mcp-server-issue_read`, `pull_request_read`, etc.) for safe remote data access.
+
+### Trust checks
+
+Before dispatching, Rally checks whether the issue/PR was authored by someone other than the current user. If there's a mismatch, it warns about **prompt injection risk** — untrusted issue/PR content could contain instructions that trick the agent. Rally also checks org membership for org-owned repos.
+
+- **Interactive mode:** Shows warnings and prompts for confirmation
+- **Non-interactive mode:** Auto-rejects author mismatches (pass `--trust` to override)
+- **Config:** Set `require_trust: never` in `config.yaml` to skip checks entirely
+
+### Worktree isolation
+
+Each dispatch gets its own **git worktree** — an independent working directory with its own branch. This prevents cross-contamination between concurrent dispatches and keeps your main working tree untouched.
+
+### Docker sandbox
+
+For maximum isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM. The agent executes in a lightweight container with no access to the host filesystem beyond the worktree.
+
+Requires [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support and `GH_TOKEN` or `GITHUB_TOKEN` set globally.
+
 ```bash
 rally dispatch issue 42 --sandbox
 rally dispatch pr 10 --sandbox
 ```
+
+Or set `docker_sandbox: always` in `config.yaml` to enable it for all dispatches.
+
+### Input sanitization
+
+- **Git ref names** are stripped to `[a-zA-Z0-9/_.-]` before interpolation into prompts
+- **Worktree paths** must be absolute with no `..` traversal segments
+- **GitHub usernames/orgs** are validated against `[A-Za-z0-9_.-]` before API calls
+
+### Config file safety
+
+Rally's config directory (`~/rally/`) is created with **0700 permissions** (user-only access). All config writes use **atomic rename** (write to temp file, then rename) to prevent corruption from crashes or concurrent access.
 
 ## Future Work
 

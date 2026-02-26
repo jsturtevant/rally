@@ -121,6 +121,10 @@ const dashboard = program
         await app.waitUntilExit();
         if (pendingDispatch) {
           const { resolveRepo } = await import('../lib/dispatch.js');
+          const { getSettings, getConfigDir } = await import('../lib/config.js');
+          const settings = getSettings();
+          const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
+          const trust = settings.require_trust === 'never' ? true : undefined;
           const resolved = resolveRepo({ repo: pendingDispatch.repo });
           if (pendingDispatch.type === 'issue') {
             const { dispatchIssue } = await import('../lib/dispatch-issue.js');
@@ -128,16 +132,22 @@ const dashboard = program
               issueNumber: pendingDispatch.number,
               repo: resolved.fullName,
               repoPath: resolved.project.path,
+              sandbox,
+              trust,
             });
             if (!result.aborted) {
               console.log(`Dispatched issue #${pendingDispatch.number}: ${result.issue.title} → ${result.worktreePath}`);
             }
           } else {
             const { dispatchPr } = await import('../lib/dispatch-pr.js');
+            const promptFile = settings.review_template ? join(getConfigDir(), settings.review_template) : undefined;
             const result = await dispatchPr({
               prNumber: pendingDispatch.number,
               repo: resolved.fullName,
               repoPath: resolved.project.path,
+              sandbox,
+              trust,
+              promptFile,
             });
             if (!result.aborted) {
               console.log(`Dispatched PR #${pendingDispatch.number}: ${result.pr.title} → ${result.worktreePath}`);
@@ -190,6 +200,8 @@ dispatch
     try {
       const { resolveRepo } = await import('../lib/dispatch.js');
       const { dispatchIssue } = await import('../lib/dispatch-issue.js');
+      const { getSettings } = await import('../lib/config.js');
+      const settings = getSettings();
       let resolved;
       if (!number) {
         const { pickRepo, pickIssue } = await import('../lib/picker.js');
@@ -202,13 +214,15 @@ dispatch
       } else {
         resolved = resolveRepo({ repo: opts.repo });
       }
+      const sandbox = opts.sandbox ? true : (settings.docker_sandbox === 'always' ? true : undefined);
+      const trust = opts.trust ? true : (settings.require_trust === 'never' ? true : undefined);
       const result = await dispatchIssue({
         issueNumber: number,
         repo: resolved.fullName,
         repoPath: opts.repoPath || resolved.project.path,
         teamDir: opts.teamDir,
-        sandbox: !!opts.sandbox,
-        trust: !!opts.trust,
+        sandbox,
+        trust,
       });
       if (result.aborted) return;
       console.log(`Dispatched issue #${number}: ${result.issue.title} → ${result.worktreePath}`);
@@ -235,6 +249,8 @@ dispatch
     try {
       const { resolveRepo } = await import('../lib/dispatch.js');
       const { dispatchPr } = await import('../lib/dispatch-pr.js');
+      const { getSettings, getConfigDir } = await import('../lib/config.js');
+      const settings = getSettings();
       let resolved;
       if (!number) {
         const { pickRepo, pickPr } = await import('../lib/picker.js');
@@ -247,14 +263,17 @@ dispatch
       } else {
         resolved = resolveRepo({ repo: opts.repo });
       }
+      const sandbox = opts.sandbox ? true : (settings.docker_sandbox === 'always' ? true : undefined);
+      const trust = opts.trust ? true : (settings.require_trust === 'never' ? true : undefined);
+      const promptFile = opts.prompt || (settings.review_template ? join(getConfigDir(), settings.review_template) : undefined);
       const result = await dispatchPr({
         prNumber: number,
         repo: resolved.fullName,
         repoPath: opts.repoPath || resolved.project.path,
         teamDir: opts.teamDir,
-        sandbox: !!opts.sandbox,
-        promptFile: opts.prompt,
-        trust: !!opts.trust,
+        sandbox,
+        promptFile,
+        trust,
       });
       if (result.aborted) return;
       console.log(`Dispatched PR #${number}: ${result.pr.title} → ${result.worktreePath}`);

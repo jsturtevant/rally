@@ -14,6 +14,7 @@ import {
   validateOnboarded,
   ensureConfigDir,
   atomicWrite,
+  getSettings,
 } from '../lib/config.js';
 import { withTempRallyHome, withTempHome } from './helpers/temp-env.js';
 
@@ -250,5 +251,73 @@ describe('atomicWrite', () => {
     assert.throws(() => atomicWrite(join(badDir, 'file'), 'x'));
     const tmps = readdirSync(tempDir).filter(f => f.endsWith('.tmp'));
     assert.equal(tmps.length, 0);
+  });
+});
+
+describe('getSettings', () => {
+  test('returns defaults when no config', (t) => {
+    withTempRallyHome(t);
+    const settings = getSettings();
+    assert.deepEqual(settings, {
+      docker_sandbox: 'ask',
+      review_template: null,
+      require_trust: 'ask',
+    });
+  });
+
+  test('returns defaults when config has no settings key', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({ version: '0.1.0' }), 'utf8');
+    const settings = getSettings();
+    assert.deepEqual(settings, {
+      docker_sandbox: 'ask',
+      review_template: null,
+      require_trust: 'ask',
+    });
+  });
+
+  test('reads settings from config.yaml', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: {
+        docker_sandbox: 'always',
+        review_template: 'prompts/review.md',
+        require_trust: 'never',
+      }
+    }), 'utf8');
+    const settings = getSettings();
+    assert.deepEqual(settings, {
+      docker_sandbox: 'always',
+      review_template: 'prompts/review.md',
+      require_trust: 'never',
+    });
+  });
+
+  test('validates docker_sandbox values', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { docker_sandbox: 'invalid' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid docker_sandbox value: "invalid"/);
+  });
+
+  test('validates require_trust values', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { require_trust: 'bad' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /Invalid require_trust value: "bad"/);
+  });
+
+  test('resolves review_template path relative to config dir', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: 'prompts/review.md' }
+    }), 'utf8');
+    const settings = getSettings();
+    assert.strictEqual(settings.review_template, 'prompts/review.md');
+    // Full path resolution is done at call site using getConfigDir()
+    const fullPath = join(getConfigDir(), settings.review_template);
+    assert.strictEqual(fullPath, join(tempDir, 'prompts/review.md'));
   });
 });

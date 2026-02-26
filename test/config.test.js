@@ -328,6 +328,38 @@ describe('getSettings', () => {
     assert.strictEqual(fullPath, join(tempDir, 'prompts/review.md'));
   });
 
+  test('rejects review_template with path traversal', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: '../../.ssh/id_rsa' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must not traverse outside config directory/);
+  });
+
+  test('rejects review_template with absolute path', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: '/etc/passwd' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a relative path/);
+  });
+
+  test('rejects review_template with non-string type', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: true }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a string path or null/);
+  });
+
+  test('rejects review_template with array type', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: ['../../etc/passwd'] }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a string path or null/);
+  });
+
   test('accepts never value for docker_sandbox and require_trust', (t) => {
     const tempDir = withTempRallyHome(t);
     writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({

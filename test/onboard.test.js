@@ -282,12 +282,12 @@ describe('onboard', () => {
     mkdirSync(join(repoPath, '.squad'), { recursive: true });
 
     const warnings = [];
-    const origWarn = console.warn;
-    console.warn = (msg) => warnings.push(msg);
+    const origError = console.error;
+    console.error = (msg) => warnings.push(msg);
     try {
       await onboard({ path: repoPath, _select: sharedSelect });
     } finally {
-      console.warn = origWarn;
+      console.error = origError;
     }
 
     assert.ok(
@@ -306,12 +306,12 @@ describe('onboard', () => {
     symlinkSync(wrongTarget, join(repoPath, '.squad'));
 
     const warnings = [];
-    const origWarn = console.warn;
-    console.warn = (msg) => warnings.push(msg);
+    const origError = console.error;
+    console.error = (msg) => warnings.push(msg);
     try {
       await onboard({ path: repoPath, _select: sharedSelect });
     } finally {
-      console.warn = origWarn;
+      console.error = origError;
     }
 
     assert.ok(

@@ -215,4 +215,26 @@ describe('setup', () => {
     // deny_tools_sandbox was missing, so it gets the default
     assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
   });
+
+  test('replaces empty deny_tools arrays with defaults on re-run', async () => {
+    const teamDir = join(tempDir, 'team');
+    mkdirSync(teamDir, { recursive: true });
+    mkdirSync(join(teamDir, '.squad'), { recursive: true });
+
+    // Write config with empty deny_tools arrays
+    const configPath = join(tempDir, 'config.yaml');
+    writeFileSync(configPath, yaml.dump({
+      teamDir,
+      projectsDir: join(tempDir, 'projects'),
+      version: '0.1.0',
+      settings: { deny_tools_copilot: [], deny_tools_sandbox: [] },
+    }), 'utf8');
+
+    await setup();
+
+    const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
+    // Empty arrays should be replaced with defaults, not preserved
+    assert.deepEqual(config.settings.deny_tools_copilot, DEFAULT_DENY_TOOLS);
+    assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
+  });
 });

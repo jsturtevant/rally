@@ -136,6 +136,7 @@ const dashboard = program
               trust,
               denyToolsCopilot: settings.deny_tools_copilot,
               denyToolsSandbox: settings.deny_tools_sandbox,
+              disallowTempDir: settings.disallow_temp_dir,
             });
             if (!result.aborted) {
               console.log(`Dispatched issue #${pendingDispatch.number}: ${result.issue.title} → ${result.worktreePath}`);
@@ -152,6 +153,7 @@ const dashboard = program
               promptFile,
               denyToolsCopilot: settings.deny_tools_copilot,
               denyToolsSandbox: settings.deny_tools_sandbox,
+              disallowTempDir: settings.disallow_temp_dir,
             });
             if (!result.aborted) {
               console.log(`Dispatched PR #${pendingDispatch.number}: ${result.pr.title} → ${result.worktreePath}`);
@@ -229,6 +231,7 @@ dispatch
         trust,
         denyToolsCopilot: settings.deny_tools_copilot,
         denyToolsSandbox: settings.deny_tools_sandbox,
+        disallowTempDir: settings.disallow_temp_dir,
       });
       if (result.aborted) return;
       console.log(`Dispatched issue #${number}: ${result.issue.title} → ${result.worktreePath}`);
@@ -282,6 +285,7 @@ dispatch
         trust,
         denyToolsCopilot: settings.deny_tools_copilot,
         denyToolsSandbox: settings.deny_tools_sandbox,
+        disallowTempDir: settings.disallow_temp_dir,
       });
       if (result.aborted) return;
       console.log(`Dispatched PR #${number}: ${result.pr.title} → ${result.worktreePath}`);

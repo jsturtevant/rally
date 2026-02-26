@@ -328,6 +328,63 @@ describe('getSettings', () => {
     assert.strictEqual(fullPath, join(tempDir, 'prompts/review.md'));
   });
 
+  test('rejects review_template with path traversal', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: '../../.ssh/id_rsa' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must not traverse outside config directory/);
+  });
+
+  test('rejects review_template with absolute path', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: '/etc/passwd' }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a relative path/);
+  });
+
+  test('rejects review_template with non-string type', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: true }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a string path or null/);
+  });
+
+  test('rejects review_template with array type', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: ['../../etc/passwd'] }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a string path or null/);
+  });
+
+  test('rejects review_template with numeric type', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: 42 }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a string path or null/);
+  });
+
+  test('rejects review_template with object type', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: {} }
+    }), 'utf8');
+    assert.throws(() => getSettings(), /must be a string path or null/);
+  });
+
+  test('treats empty string review_template as null', (t) => {
+    const tempDir = withTempRallyHome(t);
+    writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({
+      settings: { review_template: '' }
+    }), 'utf8');
+    const settings = getSettings();
+    assert.strictEqual(settings.review_template, null);
+  });
+
   test('accepts never value for docker_sandbox and require_trust', (t) => {
     const tempDir = withTempRallyHome(t);
     writeFileSync(join(tempDir, 'config.yaml'), yaml.dump({

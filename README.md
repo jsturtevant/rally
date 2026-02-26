@@ -62,7 +62,15 @@ owner/otherapp
 c connect IDE · l logs · n new dispatch · p pushed · x delete · r refresh · q quit
 ```
 
-From the dashboard, press **`n`** to dispatch a new issue or PR, **`o`** to open in the browser, **`a`** to attach to a running Copilot session, **`l`** to view logs, and **`d`** for dispatch details. See the [Dashboard](#dashboard) section for the full keyboard shortcut reference.
+Common keyboard shortcuts from the dashboard:
+
+- **`n`** — dispatch a new issue or PR
+- **`o`** — open in the browser
+- **`a`** — attach to a running Copilot session
+- **`l`** — view logs
+- **`d`** — dispatch details
+
+See the [Dashboard](#dashboard) section for the full keyboard shortcut reference.
 
 ### Onboarding a project
 

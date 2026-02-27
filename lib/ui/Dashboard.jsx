@@ -446,25 +446,16 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     );
   }
 
-  // Compute pad to fill terminal. DispatchTable renders: header(1) + empty(1) or groups+rows.
-  // We count actual rendered lines to avoid mismatch.
-  const tableRows = data.dispatches.length === 0
-    ? 2  // header + "No active dispatches"
-    : 1 + data.dispatches.length + new Set(data.dispatches.map(d => d.repo || '(unknown)')).size;
-  // Fixed overhead: border(2) + title(1) + titleMargin(1) + summaryMargin(1) + summary(1) + navMargin(1) + nav(2) = 9
-  const padCount = Math.max(0, termRows - tableRows - 9);
-
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
-      <Box marginBottom={1}>
-        <Text bold>🚀 Rally Dashboard</Text>
+    <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={termRows}>
+      <Box flexDirection="column">
+        <Box marginBottom={1}>
+          <Text bold>🚀 Rally Dashboard</Text>
+        </Box>
+        <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
+        <SummaryLine summary={data.summary} />
       </Box>
-      <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
-      <SummaryLine summary={data.summary} />
-      {Array.from({ length: padCount }, (_, i) => (
-        <Text key={`pad-${i}`}>{' '}</Text>
-      ))}
-      <Box marginTop={1} flexDirection="column" alignItems="center">
+      <Box flexDirection="column" alignItems="center">
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>
         <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
       </Box>

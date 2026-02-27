@@ -75,7 +75,7 @@ function TableRow({ cells, columns, selected }) {
       </Box>
       {columns.map((col) => (
         <Box key={col.key} width={col.width} paddingRight={1}>
-          <Text bold={selected}>
+          <Text bold={selected} wrap="truncate">
             {cells[col.key] ?? ''}
           </Text>
         </Box>

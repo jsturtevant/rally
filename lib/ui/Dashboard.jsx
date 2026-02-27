@@ -415,9 +415,9 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       <Box flexDirection="column" height={termRows}>
         <OnboardInput
           terminalRows={termRows}
-          onSubmit={(repoPath) => {
+          onSubmit={(repoPath, team) => {
             if (onAddProject) {
-              return onAddProject(repoPath);
+              return onAddProject(repoPath, team);
             }
           }}
           onBack={() => setBrowseMode('projects')}

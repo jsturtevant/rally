@@ -115,7 +115,7 @@ const dashboard = program
 
         let attachDispatch = null;
         const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
-        const onAddProject = (repoPath) => onboard({ path: repoPath });
+        const onAddProject = (repoPath, team) => onboard({ path: repoPath, team });
 
         const onDispatch = async (item) => {
           const sandbox = settings.docker_sandbox === 'always' ? true : undefined;

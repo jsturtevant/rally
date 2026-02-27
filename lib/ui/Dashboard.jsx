@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { spawn as defaultSpawn } from 'node:child_process';
 import DispatchTable from './components/DispatchTable.jsx';
@@ -41,8 +41,8 @@ function SummaryLine({ summary }) {
 export default function Dashboard({ project, onSelect, onAttachSession, onDispatchItem, onDispatch, getTrustWarnings: getTrustWarningsProp, onAddProject, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus, _listOnboardedRepos, _fetchIssues, _fetchPrs }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  const [termRows, setTermRows] = useState(stdout?.rows || 25);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0); // eslint-disable-line -- state setter triggers re-render to refresh data
   const [actionDispatch, setActionDispatch] = useState(null);
   const [actionIndex, setActionIndex] = useState(0);
   const [logViewDispatch, setLogViewDispatch] = useState(null);
@@ -59,27 +59,51 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   });
   const [error, setError] = useState(null);
 
-  // Refresh data only when refreshKey changes — compare JSON to avoid unnecessary re-renders
-  const prevJsonRef = useRef('');
+  // Poll for data changes — only triggers re-render when data actually changes
+  const prevJsonRef = useRef(JSON.stringify(data));
   useEffect(() => {
+    if (!refreshInterval || actionDispatch || logViewDispatch || detailViewDispatch || browseMode || dispatchStatus) return;
+    const timer = setInterval(() => {
+      try {
+        const fresh = getDashboardData({ project });
+        const json = JSON.stringify(fresh);
+        if (json !== prevJsonRef.current) {
+          prevJsonRef.current = json;
+          setData(fresh);
+          setError(null);
+        }
+      } catch (err) {
+        setError(err.message);
+      }
+    }, refreshInterval);
+    return () => clearInterval(timer);
+  }, [refreshInterval, project, actionDispatch, logViewDispatch, detailViewDispatch, browseMode, dispatchStatus]);
+
+  // Manual refresh — reload data immediately (used after actions like remove, push, dispatch)
+  function reloadData() {
     try {
       const fresh = getDashboardData({ project });
-      const json = JSON.stringify(fresh);
-      if (json !== prevJsonRef.current) {
-        prevJsonRef.current = json;
-        setData(fresh);
-        setError(null);
-      }
+      prevJsonRef.current = JSON.stringify(fresh);
+      setData(fresh);
+      setError(null);
     } catch (err) {
       setError(err.message);
     }
-  }, [refreshKey, project]);
+  }
 
   const count = data ? data.dispatches.length : 0;
 
   // A session ID is connectable if it looks like a UUID (not a PID or 'pending')
   const hasConnectableSession = actionDispatch?.session_id &&
     UUID_RE.test(actionDispatch.session_id);
+
+  // Track terminal resize
+  useEffect(() => {
+    if (!stdout) return;
+    const onResize = () => setTermRows(stdout.rows);
+    stdout.on('resize', onResize);
+    return () => stdout.off('resize', onResize);
+  }, [stdout]);
 
   // Derive the action list once — used for both count and selection
   const actions = actionDispatch
@@ -93,15 +117,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       ]
     : [];
   const actionCount = actions.length;
-
-  // Auto-refresh at the configured interval (pause during action menu, log view, detail view, browse mode, or dispatch)
-  useEffect(() => {
-    if (!refreshInterval || actionDispatch || logViewDispatch || detailViewDispatch || browseMode || dispatchStatus) return;
-    const timer = setInterval(() => {
-      setRefreshKey(k => k + 1);
-    }, refreshInterval);
-    return () => clearInterval(timer);
-  }, [refreshInterval, actionDispatch, logViewDispatch, detailViewDispatch, browseMode, dispatchStatus]);
 
   // Clamp selectedIndex when dispatch count changes
   useEffect(() => {
@@ -121,7 +136,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         const title = result?.pr?.title || result?.issue?.title || '';
         setDispatchMessage(`${title} → ${result?.worktreePath || ''}`);
         setDispatchStatus('done');
-        setRefreshKey(k => k + 1);
+        reloadData();
       }
     } catch (err) {
       setDispatchMessage(err.message);
@@ -196,7 +211,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   function removeSelectedDispatch(dispatch) {
     _dispatchRemove(dispatch.number, { repo: dispatch.repo })
-      .then(() => setRefreshKey(k => k + 1))
+      .then(() => reloadData())
       .catch((err) => {
         console.error(`Failed to remove dispatch: ${err.message}`);
       });
@@ -206,7 +221,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     if (dispatch.status !== 'reviewing') return;
     try {
       _updateDispatchStatus(dispatch.id, 'pushed');
-      setRefreshKey(k => k + 1);
+      reloadData();
     } catch (err) {
       console.error(`Failed to mark dispatch as pushed: ${err.message}`);
     }
@@ -294,7 +309,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     } else if (input === 'l' && count > 0) {
       viewLogs(data.dispatches[selectedIndex]);
     } else if (input === 'r') {
-      setRefreshKey(k => k + 1);
+      reloadData();
     } else if (input === 'n') {
       setBrowseMode('projects');
     } else if (input === 'x' && count > 0) {
@@ -316,11 +331,11 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (detailViewDispatch) {
     return (
-      <Box flexDirection="column" height={stdout.rows}>
+      <Box flexDirection="column" height={termRows}>
         <DetailView
           dispatch={detailViewDispatch}
           onBack={() => setDetailViewDispatch(null)}
-          terminalRows={stdout.rows}
+          terminalRows={termRows}
         />
       </Box>
     );
@@ -328,11 +343,11 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (logViewDispatch) {
     return (
-      <Box flexDirection="column" height={stdout.rows}>
+      <Box flexDirection="column" height={termRows}>
         <LogViewer
           dispatch={logViewDispatch}
           onBack={() => setLogViewDispatch(null)}
-          terminalRows={stdout.rows}
+          terminalRows={termRows}
         />
       </Box>
     );
@@ -340,7 +355,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (actionDispatch) {
     return (
-      <Box flexDirection="column" height={stdout.rows}>
+      <Box flexDirection="column" height={termRows}>
         <ActionMenu
           dispatch={actionDispatch}
           selectedAction={actionIndex}
@@ -353,7 +368,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (dispatchStatus === 'confirming' && dispatchPending && trustWarnings) {
     return (
-      <Box flexDirection="column" height={stdout.rows}>
+      <Box flexDirection="column" height={termRows}>
         <TrustConfirm
           item={dispatchPending}
           warnings={trustWarnings}
@@ -366,7 +381,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (dispatchStatus && dispatchPending) {
     return (
-      <Box flexDirection="column" height={stdout.rows}>
+      <Box flexDirection="column" height={termRows}>
         <DispatchStatus item={dispatchPending} status={dispatchStatus} message={dispatchMessage} />
       </Box>
     );
@@ -374,7 +389,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (browseMode === 'items' && browseProject) {
     return (
-      <Box flexDirection="column" height={stdout.rows}>
+      <Box flexDirection="column" height={termRows}>
         <ProjectItemPicker
         project={browseProject}
         _fetchIssues={_fetchIssues}
@@ -412,7 +427,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   if (browseMode === 'projects') {
     return (
-      <Box flexDirection="column" height={stdout.rows}>
+      <Box flexDirection="column" height={termRows}>
         <ProjectBrowser
           _listOnboardedRepos={_listOnboardedRepos}
           onSelectProject={(proj) => {
@@ -431,15 +446,25 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     );
   }
 
+  // Compute pad to fill terminal. DispatchTable renders: header(1) + empty(1) or groups+rows.
+  // We count actual rendered lines to avoid mismatch.
+  const tableRows = data.dispatches.length === 0
+    ? 2  // header + "No active dispatches"
+    : 1 + data.dispatches.length + new Set(data.dispatches.map(d => d.repo || '(unknown)')).size;
+  // Fixed overhead: border(2) + title(1) + titleMargin(1) + summaryMargin(1) + summary(1) + navMargin(1) + nav(2) = 9
+  const padCount = Math.max(0, termRows - tableRows - 9);
+
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} height={stdout.rows}>
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
       <Box marginBottom={1}>
         <Text bold>🚀 Rally Dashboard</Text>
       </Box>
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
-      <Box flexGrow={1}><Text>{' '}</Text></Box>
-      <Box flexDirection="column" alignItems="center">
+      {Array.from({ length: padCount }, (_, i) => (
+        <Text key={`pad-${i}`}>{' '}</Text>
+      ))}
+      <Box marginTop={1} flexDirection="column" alignItems="center">
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>
         <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
       </Box>

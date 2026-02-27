@@ -173,25 +173,61 @@ Use `termRows` everywhere instead of `stdout.rows`. This ensures React re-render
 
 **Rule:** Never read `stdout.rows` directly in render logic or memoization deps. Use a state variable updated by a resize listener.
 
-### 8. Fill Vertical Space with Explicit Pad Nodes
+### 8. Fill Vertical Space with `justifyContent="space-between"` (Preferred)
 
-**Problem:** `<Box flexGrow={1}>` causes flicker — Ink recalculates the spacer height on every render, producing different line counts that trigger full repaints. Manual row counting with `height` prop doesn't render blank rows.
+**Problem:** `<Box flexGrow={1}>` causes flicker. Manual row counting breaks when text wraps at narrow widths (project headers, long PR titles). The row count you calculate never matches reality.
 
-**Fix:** Compute pad count from terminal height minus content rows, render explicit `<Text>` nodes:
+**Fix:** Use Yoga's `justifyContent="space-between"` with an explicit `height` on the outer Box:
 
 ```jsx
-// Count actual rendered rows (must match what the child components produce)
-const tableRows = dispatches.length === 0
-  ? 2  // header + "No active dispatches"
-  : 1 + dispatches.length + new Set(dispatches.map(d => d.repo)).size;
-const padCount = Math.max(0, termRows - tableRows - OVERHEAD);
+<Box
+  flexDirection="column"
+  height={termRows}
+  justifyContent="space-between"
+  borderStyle="round"
+  paddingX={1}
+>
+  {/* Content floats to top */}
+  <Box flexDirection="column">
+    <DispatchTable dispatches={dispatches} ... />
+  </Box>
 
-{Array.from({ length: padCount }, (_, i) => (
-  <Text key={`pad-${i}`}>{' '}</Text>
+  {/* Nav stays at bottom */}
+  <Box justifyContent="center">
+    <Text dimColor>↑/↓ navigate · l logs · d details · enter actions · q quit</Text>
+  </Box>
+</Box>
+```
+
+Yoga handles all spacing — no row counting, no padding math, no flicker. Content sits at the top, nav sits at the bottom, and the gap fills automatically.
+
+**Fallback — explicit pad nodes (for sub-views like LogViewer):**
+When you DO need to fill exact rows (e.g., scrollable log content), pad with real `<Text>` nodes:
+
+```jsx
+while (visible.length < visibleLines) visible.push('');
+{visible.map((line, i) => (
+  <Text key={i} wrap="truncate">{line || ' '}</Text>
 ))}
 ```
 
-**Rule:** Use calculated pad with explicit `<Text>` nodes, not `flexGrow`. The pad count must only depend on values that change when content changes (dispatch count), not on every render (like selectedIndex).
+**Rule:** For main layout (content + nav), use `justifyContent="space-between"`. For scrollable content areas, pad with `<Text>` nodes. Never use `flexGrow` spacers. Never rely on manual row counting for the overall layout.
+
+### 8b. Prevent Text Wrapping in Tables
+
+**Problem:** At narrow terminal widths, long PR titles or issue refs wrap to extra lines, breaking row counts and making the table look messy.
+
+**Fix:** Add `wrap="truncate"` to `<Text>` elements inside table cells:
+
+```jsx
+<Box key={col.key} width={col.width} paddingRight={1}>
+  <Text bold={selected} wrap="truncate">
+    {cells[col.key] ?? ''}
+  </Text>
+</Box>
+```
+
+**Rule:** Always use `wrap="truncate"` on `<Text>` inside fixed-width table columns. Let Ink truncate rather than wrap.
 
 ### 9. JSX Build Pipeline
 
@@ -237,7 +273,9 @@ assert.ok(frame.includes('Logs for'), 'should show log viewer');
 |-------|------------|
 | `useInput(handler)` without isActive | `useInput(handler, { isActive: condition })` |
 | `<Box height={N}>` to fill space | Render N explicit `<Text>` nodes |
-| `<Box flexGrow={1}>` for spacers | Calculate pad count, render `<Text>` nodes |
+| `<Box flexGrow={1}>` for spacers | `justifyContent="space-between"` on outer Box |
+| Manual row counting for layout | `justifyContent="space-between"` — let Yoga handle gaps |
+| Unwrapped text in table columns | `wrap="truncate"` on `<Text>` inside fixed-width cells |
 | `useStdout()` in child components | Pass `terminalRows` as prop from parent |
 | `stdout.rows` in render/memo deps | `useState` + resize listener → `termRows` |
 | `setRefreshKey(k => k+1)` to refresh | Poll in `setInterval`, compare JSON before `setData` |
@@ -260,4 +298,5 @@ When an Ink UI bug appears:
 6. **Flicker on refresh?** → Compare data JSON before `setData`, remove refresh counter state
 7. **Flicker on arrow keys?** → Pad count must not depend on `selectedIndex`; avoid `flexGrow` spacers
 8. **Layout wrong after terminal resize?** → Use `useState` + resize listener, not `stdout.rows` directly
-9. **Header pushed off top?** → Pad count is too high; verify row counting matches actual rendered output
+9. **Header pushed off top?** → Use `justifyContent="space-between"` instead of manual padding; row counting is unreliable
+10. **Table text wrapping?** → Add `wrap="truncate"` to `<Text>` inside table cells

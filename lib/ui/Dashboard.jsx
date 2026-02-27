@@ -308,6 +308,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         <DetailView
           dispatch={detailViewDispatch}
           onBack={() => setDetailViewDispatch(null)}
+          terminalRows={stdout.rows}
         />
       </Box>
     );

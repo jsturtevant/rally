@@ -476,13 +476,17 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     );
   }
 
+  // Compute effective width inside the bordered box (border: 2 chars, paddingX: 2 chars)
+  const terminalWidth = stdout?.columns ?? 80;
+  const effectiveWidth = terminalWidth - 4;
+
   return (
     <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={termRows}>
       <Box flexDirection="column">
         <Box marginBottom={1}>
           <Text bold>🚀 Rally Dashboard</Text>
         </Box>
-        <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} onboardedProjects={data.onboardedProjects} />
+        <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} onboardedProjects={data.onboardedProjects} width={effectiveWidth} />
       </Box>
       <Box flexDirection="column" alignItems="center">
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>

@@ -96,9 +96,10 @@ function ProjectHeader({ project }) {
   );
 }
 
-export default function DispatchTable({ dispatches = [], selectedIndex = -1, onboardedProjects }) {
+export default function DispatchTable({ dispatches = [], selectedIndex = -1, onboardedProjects, width }) {
   const { stdout } = useStdout();
-  const terminalWidth = stdout?.columns ?? DEFAULT_WIDTH;
+  // Use explicit width prop if provided, otherwise fall back to terminal columns
+  const terminalWidth = width ?? stdout?.columns ?? DEFAULT_WIDTH;
   const columns = computeColumnWidths(terminalWidth);
 
   const groups = groupByProject(dispatches, onboardedProjects);

@@ -114,9 +114,8 @@ const dashboard = program
         const settings = getSettings();
 
         let attachDispatch = null;
-        let pendingAddProject = false;
         const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
-        const onAddProject = () => { pendingAddProject = true; };
+        const onAddProject = (repoPath) => onboard({ path: repoPath });
 
         const onDispatch = async (item) => {
           const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
@@ -150,15 +149,7 @@ const dashboard = program
           { fullScreen: true }
         );
         await app.waitUntilExit();
-        if (pendingAddProject) {
-          const { input: promptInput } = await import('@inquirer/prompts');
-          const repoPath = await promptInput({
-            message: 'Enter a GitHub URL, owner/repo, or local path to onboard:',
-          });
-          if (repoPath && repoPath.trim()) {
-            await onboard({ path: repoPath.trim() });
-          }
-        } else if (attachDispatch) {
+        if (attachDispatch) {
           const { dispatchContinue } = await import('../lib/dispatch-continue.js');
           await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });
         }

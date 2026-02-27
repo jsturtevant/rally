@@ -7,6 +7,7 @@ import LogViewer from './components/LogViewer.jsx';
 import DetailView from './components/DetailView.jsx';
 import ProjectBrowser from './components/ProjectBrowser.jsx';
 import ProjectItemPicker from './components/ProjectItemPicker.jsx';
+import OnboardInput from './components/OnboardInput.jsx';
 import TrustConfirm from './components/TrustConfirm.jsx';
 import DispatchStatus from './components/DispatchStatus.jsx';
 import { getDashboardData, renderPlainDashboard } from './dashboard-data.js';
@@ -30,7 +31,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   const [actionIndex, setActionIndex] = useState(0);
   const [logViewDispatch, setLogViewDispatch] = useState(null);
   const [detailViewDispatch, setDetailViewDispatch] = useState(null);
-  const [browseMode, setBrowseMode] = useState(null); // null | 'projects' | 'items'
+  const [browseMode, setBrowseMode] = useState(null); // null | 'projects' | 'items' | 'onboard'
   const [browseProject, setBrowseProject] = useState(null);
   const [dispatchPending, setDispatchPending] = useState(null);
   const [trustWarnings, setTrustWarnings] = useState(null);
@@ -409,6 +410,22 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     );
   }
 
+  if (browseMode === 'onboard') {
+    return (
+      <Box flexDirection="column" height={termRows}>
+        <OnboardInput
+          terminalRows={termRows}
+          onSubmit={(repoPath) => {
+            if (onAddProject) {
+              return onAddProject(repoPath);
+            }
+          }}
+          onBack={() => setBrowseMode('projects')}
+        />
+      </Box>
+    );
+  }
+
   if (browseMode === 'projects') {
     return (
       <Box flexDirection="column" height={termRows}>
@@ -420,10 +437,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
             setBrowseMode('items');
           }}
           onAddProject={() => {
-            if (onAddProject) {
-              onAddProject();
-            }
-            exit();
+            setBrowseMode('onboard');
           }}
           onBack={() => setBrowseMode(null)}
         />

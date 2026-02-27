@@ -48,7 +48,6 @@ const COLUMN_DEFS = [
 ];
 
 const SELECTOR_WIDTH = 2;
-const ROW_INDENT = 2;
 const DEFAULT_WIDTH = 80;
 
 function computeColumnWidths(terminalWidth) {
@@ -60,7 +59,7 @@ function computeColumnWidths(terminalWidth) {
     (sum, col) => sum + (col.flex ? 0 : col.minWidth),
     0,
   );
-  const remaining = Math.max(0, width - SELECTOR_WIDTH - ROW_INDENT - fixedTotal);
+  const remaining = Math.max(0, width - SELECTOR_WIDTH - fixedTotal);
   return COLUMN_DEFS.map((col) => ({
     ...col,
     width: col.flex ? Math.max(col.minWidth, remaining) : col.minWidth,
@@ -70,7 +69,6 @@ function computeColumnWidths(terminalWidth) {
 function TableRow({ cells, columns, selected }) {
   return (
     <Box>
-      <Box width={ROW_INDENT}><Text> </Text></Box>
       <Box width={SELECTOR_WIDTH}>
         <Text color="cyan">{selected ? '❯' : ' '}</Text>
       </Box>
@@ -105,7 +103,6 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1, onb
     <Box flexDirection="column" width={terminalWidth}>
       {/* Header */}
       <Box>
-        <Box width={ROW_INDENT}><Text> </Text></Box>
         <Box width={SELECTOR_WIDTH}><Text> </Text></Box>
         {columns.map((col) => (
           <Box key={col.key} width={col.width} paddingRight={1}>
@@ -127,7 +124,6 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1, onb
               <ProjectHeader project={group.project} />
               {group.dispatches.length === 0 ? (
                 <Box>
-                  <Box width={ROW_INDENT}><Text> </Text></Box>
                   <Box width={SELECTOR_WIDTH}><Text> </Text></Box>
                   <Text dimColor>No active dispatches</Text>
                 </Box>

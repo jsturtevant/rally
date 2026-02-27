@@ -194,8 +194,8 @@ describe('computeColumnWidths', () => {
     const cols = computeColumnWidths(120);
     const issueRef = cols.find(c => c.key === 'issueRef');
     // Fixed columns: type(7) + status(20) + changes(10) + age(6) = 43
-    // selector = 2, row indent = 2, remaining = 120 - 2 - 2 - 43 = 73
-    assert.equal(issueRef.width, 73, 'Issue/PR should get remaining terminal width');
+    // selector = 2, remaining = 120 - 2 - 43 = 75
+    assert.equal(issueRef.width, 75, 'Issue/PR should get remaining terminal width');
   });
 
   it('uses minimum widths for non-flex columns', () => {
@@ -213,8 +213,8 @@ describe('computeColumnWidths', () => {
   it('defaults to 80 columns when terminal width is undefined', () => {
     const cols = computeColumnWidths(undefined);
     const issueRef = cols.find(c => c.key === 'issueRef');
-    // remaining = 80 - 2 - 2 - 43 = 33
-    assert.equal(issueRef.width, 33);
+    // remaining = 80 - 2 - 43 = 35
+    assert.equal(issueRef.width, 35);
   });
 
   it('never shrinks Issue/PR below its minimum width', () => {

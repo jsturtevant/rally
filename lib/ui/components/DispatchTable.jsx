@@ -19,6 +19,10 @@ function truncate(str, maxLen) {
 }
 
 function formatIssueRef(dispatch, maxWidth) {
+  if (dispatch.type === 'branch') {
+    if (!dispatch.title) return '';
+    return truncate(dispatch.title, maxWidth);
+  }
   const ref = `#${dispatch.number}`;
   if (!dispatch.title) return ref;
   const titleSpace = maxWidth - ref.length - 2; // 2 for "  " separator
@@ -131,7 +135,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1, onb
                 const idx = flatIndex++;
                 const issueRefCol = columns.find(c => c.key === 'issueRef');
                 const row = {
-                  type: d.type === 'pr' ? 'PR' : 'Issue',
+                  type: d.type === 'pr' ? 'PR' : d.type === 'branch' ? 'Branch' : 'Issue',
                   issueRef: formatIssueRef(d, issueRefCol?.width ?? 40),
                   status: formatStatus(d.status),
                   changes: d.changes ?? '',

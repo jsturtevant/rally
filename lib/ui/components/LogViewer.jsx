@@ -37,26 +37,31 @@ export default function LogViewer({ dispatch, onBack, terminalRows, visibleLines
   }, { isActive: true });
 
   const visible = lines.slice(scrollOffset, scrollOffset + visibleLines);
+  // Pad to fill the full content area — Ink only renders actual <Text> nodes
+  while (visible.length < visibleLines) visible.push('');
   const issueRef = dispatch.type === 'pr' ? `PR #${dispatch.number}` : `Issue #${dispatch.number}`;
 
   const isEmpty = lines.length <= 1 && (lines[0] === 'No log file available.' || lines[0] === '' || lines[0] === 'Failed to read log file.');
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} height={terminalRows || undefined}>
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
       <Box marginBottom={1}>
         <Text bold>📋 Logs for </Text>
         <Text bold color="cyan">{issueRef}</Text>
         <Text bold> ({dispatch.repo})</Text>
       </Box>
       {isEmpty ? (
-        <Box flexDirection="column" height={visibleLines} paddingY={1}>
+        <Box flexDirection="column">
           <Text dimColor>No log output yet.</Text>
           <Text dimColor>Logs appear here once the Copilot session produces output.</Text>
+          {Array.from({ length: Math.max(0, visibleLines - 2) }, (_, i) => (
+            <Text key={`pad-${i}`}>{' '}</Text>
+          ))}
         </Box>
       ) : (
-        <Box flexDirection="column" height={visibleLines}>
+        <Box flexDirection="column">
           {visible.map((line, i) => (
-            <Text key={scrollOffset + i} wrap="truncate">{line}</Text>
+            <Text key={scrollOffset + i} wrap="truncate">{line || ' '}</Text>
           ))}
         </Box>
       )}

@@ -419,15 +419,25 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     );
   }
 
+  // 7 lines: border top/bottom (2) + header with margin (2) + summary with margin (1) + footer 2 lines with margin (3 - 1 shared with pad = 2)
+  const dispatchRows = data.dispatches.length + 1; // +1 for table header
+  const contentUsed = dispatchRows + 2 + 3; // dispatches + summary (margin+line) + nav (margin+2 lines)
+  const availableContent = stdout.rows ? Math.max(0, stdout.rows - 4) : 20; // 4 = border(2) + header margin(1) + header(1)
+  const padCount = Math.max(0, availableContent - contentUsed);
+
   return (
-    <Box flexDirection="column" height={stdout.rows}>
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
       <Box marginBottom={1}>
-        <Text bold>Rally Dashboard</Text>
+        <Text bold>🚀 Rally Dashboard</Text>
       </Box>
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
-      <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · v open · o browser · a attach · c connect IDE · l logs · n new dispatch · p pushed · x delete · r refresh · q quit</Text>
+      {Array.from({ length: padCount }, (_, i) => (
+        <Text key={`pad-${i}`}>{' '}</Text>
+      ))}
+      <Box marginTop={1} flexDirection="column" alignItems="center">
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>
+        <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

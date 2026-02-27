@@ -151,7 +151,13 @@ const dashboard = program
         );
         await app.waitUntilExit();
         if (pendingAddProject) {
-          console.log('To add a project, run: rally onboard <path-or-url>');
+          const { input: promptInput } = await import('@inquirer/prompts');
+          const repoPath = await promptInput({
+            message: 'Enter a GitHub URL, owner/repo, or local path to onboard:',
+          });
+          if (repoPath && repoPath.trim()) {
+            await onboard({ path: repoPath.trim() });
+          }
         } else if (attachDispatch) {
           const { dispatchContinue } = await import('../lib/dispatch-continue.js');
           await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });

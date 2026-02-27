@@ -11,7 +11,7 @@ const STATUS_ICONS = {
   cleaned: '⚪',
 };
 
-const PR_INDENT = '   ';
+const PR_INDENT = '';
 
 function truncate(str, maxLen) {
   if (!str || str.length <= maxLen) return str || '';
@@ -19,9 +19,7 @@ function truncate(str, maxLen) {
 }
 
 function formatIssueRef(dispatch, maxWidth) {
-  const prefix = dispatch.type === 'pr' ? 'PR' : 'Issue';
-  const indent = dispatch.type === 'pr' ? PR_INDENT : '';
-  const ref = `${indent}${prefix} #${dispatch.number}`;
+  const ref = `#${dispatch.number}`;
   if (!dispatch.title) return ref;
   const titleSpace = maxWidth - ref.length - 2; // 2 for "  " separator
   if (titleSpace <= 3) return ref;
@@ -42,6 +40,7 @@ function formatStatus(status) {
 
 // Minimum widths per column; issueRef is flexible and gets remaining space
 const COLUMN_DEFS = [
+  { key: 'type', label: 'Type', minWidth: 7 },
   { key: 'issueRef', label: 'Issue/PR', minWidth: 12, flex: true },
   { key: 'status', label: 'Status', minWidth: 20 },
   { key: 'changes', label: 'Changes', minWidth: 10 },
@@ -93,12 +92,12 @@ function ProjectHeader({ project }) {
   );
 }
 
-export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
+export default function DispatchTable({ dispatches = [], selectedIndex = -1, onboardedProjects }) {
   const { stdout } = useStdout();
   const terminalWidth = stdout?.columns ?? DEFAULT_WIDTH;
   const columns = computeColumnWidths(terminalWidth);
 
-  const groups = groupByProject(dispatches);
+  const groups = groupByProject(dispatches, onboardedProjects);
 
   return (
     <Box flexDirection="column" width={terminalWidth}>
@@ -113,7 +112,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
       </Box>
 
       {/* Data rows grouped by project */}
-      {dispatches.length === 0 ? (
+      {groups.length === 0 ? (
         <Box>
           <Text dimColor>No active dispatches</Text>
         </Box>
@@ -123,10 +122,16 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
           return groups.map((group) => (
             <Box key={group.project} flexDirection="column">
               <ProjectHeader project={group.project} />
-              {group.dispatches.map((d) => {
+              {group.dispatches.length === 0 ? (
+                <Box>
+                  <Box width={SELECTOR_WIDTH}><Text> </Text></Box>
+                  <Text dimColor>No active dispatches</Text>
+                </Box>
+              ) : group.dispatches.map((d) => {
                 const idx = flatIndex++;
                 const issueRefCol = columns.find(c => c.key === 'issueRef');
                 const row = {
+                  type: d.type === 'pr' ? 'PR' : 'Issue',
                   issueRef: formatIssueRef(d, issueRefCol?.width ?? 40),
                   status: formatStatus(d.status),
                   changes: d.changes ?? '',

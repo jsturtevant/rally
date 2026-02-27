@@ -183,7 +183,7 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
     const plain = renderPlainDashboard();
     assert.ok(plain.includes('Rally Dashboard'));
     assert.ok(plain.includes('owner/repo'));
-    assert.ok(plain.includes('Issue #42'));
+    assert.ok(plain.includes('#42'));
 
     // 4. Clean: remove dispatch
     const removed = removeDispatch('repo-issue-42');
@@ -470,7 +470,7 @@ describe('Integration: dashboard data and rendering', () => {
     assert.ok(output.includes('owner/repo'), 'should include project as group header');
     assert.ok(output.includes('Issue/PR'), 'should include headers');
     assert.ok(output.includes('owner/repo'), 'should include repo');
-    assert.ok(output.includes('Issue #5'), 'should include issue ref');
+    assert.ok(output.includes('#5'), 'should include issue ref');
     assert.ok(output.includes('rally/5-feature'), 'should include branch');
     assert.ok(output.includes('planning'), 'should include status');
 
@@ -558,8 +558,8 @@ describe('Integration: multiple dispatches', () => {
     assert.strictEqual(data.dispatches.length, 2);
 
     const plain = renderPlainDashboard();
-    assert.ok(plain.includes('Issue #1'));
-    assert.ok(plain.includes('Issue #2'));
+    assert.ok(plain.includes('#1'));
+    assert.ok(plain.includes('#2'));
 
     // Remove first, verify second remains
     removeDispatch('repo-issue-1');

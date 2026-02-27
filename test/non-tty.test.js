@@ -68,8 +68,8 @@ describe('renderPlainDashboard (non-TTY)', () => {
   it('includes dispatch data', () => {
     const output = renderPlainDashboard();
     assert.ok(output.includes('owner/repo-a'), 'should include repo name');
-    assert.ok(output.includes('Issue #42'), 'should include issue ref');
-    assert.ok(output.includes('PR #7'), 'should include PR ref');
+    assert.ok(output.includes('#42'), 'should include issue ref');
+    assert.ok(output.includes('#7'), 'should include PR ref');
     assert.ok(output.includes('rally/42-fix-bug'), 'should include branch');
     assert.ok(output.includes('worktree-check'), 'should include worktree path (possibly truncated)');
   });

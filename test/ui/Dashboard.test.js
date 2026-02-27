@@ -126,8 +126,10 @@ describe('Dashboard component', () => {
     instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
     const output = instance.lastFrame();
     assert.ok(output.includes('owner/repo-a'), 'should show repo name');
-    assert.ok(output.includes('Issue #42'), 'should show issue ref');
-    assert.ok(output.includes('PR #7'), 'should show PR ref');
+    assert.ok(output.includes('#42'), 'should show issue ref');
+    assert.ok(output.includes('#7'), 'should show PR ref');
+    assert.ok(output.includes('Issue'), 'should show Issue type');
+    assert.ok(output.includes('PR'), 'should show PR type');
   });
 
   it('filters by project prop', () => {
@@ -175,7 +177,7 @@ describe('Dashboard component', () => {
     await delay();
     const output = instance.lastFrame();
     assert.ok(output.includes('Actions for'), 'should show action menu title');
-    assert.ok(output.includes('Issue #42'), 'should show dispatch issue ref');
+    assert.ok(output.includes('#42'), 'should show dispatch issue ref');
     assert.ok(output.includes('(v) Open in VS Code'), 'should show VS Code option with shortcut hint');
     assert.ok(output.includes('Back'), 'should show Back option');
   });
@@ -277,7 +279,7 @@ describe('Dashboard component', () => {
     await delay();
     const output = instance.lastFrame();
     assert.ok(output.includes('Logs for'), 'should show log viewer title');
-    assert.ok(output.includes('Issue #42'), 'should show dispatch ref');
+    assert.ok(output.includes('#42'), 'should show dispatch ref');
     assert.ok(output.includes('Esc back'), 'should show escape hint');
   });
 
@@ -309,7 +311,7 @@ describe('Dashboard component', () => {
     await delay();
     const output = instance.lastFrame();
     assert.ok(output.includes('Details for'), 'should show detail view title');
-    assert.ok(output.includes('Issue #42'), 'should show dispatch issue ref');
+    assert.ok(output.includes('#42'), 'should show dispatch issue ref');
     assert.ok(output.includes('rally/42-fix-bug'), 'should show branch in detail view');
     assert.ok(output.includes('Esc back'), 'should show escape hint');
   });
@@ -374,7 +376,7 @@ describe('Dashboard component', () => {
     await delay();
     const output = instance.lastFrame();
     assert.ok(output.includes('Logs for'), 'should show log viewer');
-    assert.ok(output.includes('Issue #42'), 'should show dispatch ref');
+    assert.ok(output.includes('#42'), 'should show dispatch ref');
   });
 
   it('log viewer Escape returns to dashboard', async () => {

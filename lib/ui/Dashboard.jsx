@@ -451,7 +451,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         <Box marginBottom={1}>
           <Text bold>🚀 Rally Dashboard</Text>
         </Box>
-        <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
+        <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} onboardedProjects={data.onboardedProjects} />
       </Box>
       <Box flexDirection="column" alignItems="center">
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>

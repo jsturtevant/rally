@@ -177,6 +177,15 @@ Use `termRows` everywhere instead of `stdout.rows`. This ensures React re-render
 
 **Problem:** `<Box flexGrow={1}>` causes flicker. Manual row counting breaks when text wraps at narrow widths (project headers, long PR titles). The row count you calculate never matches reality.
 
+**Why row counting always fails:**
+We tried 4+ approaches to manually compute pad rows (dispatch count + header + group headers + overhead). Every approach broke at different terminal widths because:
+- DispatchTable renders project group headers (one per unique repo) — missed in early counts
+- At narrow widths (~85 cols), PR titles wrap to extra lines — invisible to any count based on data length
+- Border + padding steal columns (border=2 + paddingX=2 = 4 chars), so content is narrower than `stdout.columns`
+- `useMemo` with `stdout.rows` in deps doesn't re-run on resize (mutable object, same reference)
+
+The final reliable approach avoids counting entirely:
+
 **Fix:** Use Yoga's `justifyContent="space-between"` with an explicit `height` on the outer Box:
 
 ```jsx
@@ -202,7 +211,7 @@ Use `termRows` everywhere instead of `stdout.rows`. This ensures React re-render
 Yoga handles all spacing — no row counting, no padding math, no flicker. Content sits at the top, nav sits at the bottom, and the gap fills automatically.
 
 **Fallback — explicit pad nodes (for sub-views like LogViewer):**
-When you DO need to fill exact rows (e.g., scrollable log content), pad with real `<Text>` nodes:
+When you DO need to fill exact rows (e.g., scrollable log content where you control every line), pad with real `<Text>` nodes:
 
 ```jsx
 while (visible.length < visibleLines) visible.push('');
@@ -211,7 +220,7 @@ while (visible.length < visibleLines) visible.push('');
 ))}
 ```
 
-**Rule:** For main layout (content + nav), use `justifyContent="space-between"`. For scrollable content areas, pad with `<Text>` nodes. Never use `flexGrow` spacers. Never rely on manual row counting for the overall layout.
+**Rule:** For main layout (content + nav), use `justifyContent="space-between"`. For scrollable content areas where you own every line, pad with `<Text>` nodes. Never use `flexGrow` spacers. Never rely on manual row counting for the overall layout.
 
 ### 8b. Prevent Text Wrapping in Tables
 
@@ -228,6 +237,29 @@ while (visible.length < visibleLines) visible.push('');
 ```
 
 **Rule:** Always use `wrap="truncate"` on `<Text>` inside fixed-width table columns. Let Ink truncate rather than wrap.
+
+### 8c. Border Boxes Steal Columns — Account for Padding
+
+**Problem:** When a border box wraps content, the inner content area is narrower than `stdout.columns`. A `borderStyle="round"` box with `paddingX={1}` steals 4 columns (1 border char + 1 padding char on each side). Child components that use `useStdout().columns` for column width calculations will compute widths that are too wide, causing text to wrap.
+
+**Fix:** Either pass the available inner width as a prop, or subtract the border overhead in the child:
+
+```jsx
+// In Dashboard (parent with border)
+const BORDER_OVERHEAD = 4; // border (2) + paddingX (2)
+<DispatchTable availableWidth={stdout.columns - BORDER_OVERHEAD} />
+
+// Or in DispatchTable — be aware of the border
+const terminalWidth = availableWidth || (stdout?.columns || 80);
+```
+
+**Rule:** Any component inside a border box that calculates column widths must account for the border + padding overhead. Don't assume `stdout.columns` equals available content width.
+
+### 8d. Keep the UI Lean — Don't Add Unmonitored Status Indicators
+
+**Problem:** Summary lines (e.g., "3 active · 1 done · 2 orphaned") look useful but become stale when the underlying status fields aren't reliably updated by all code paths. Users see incorrect counts and lose trust in the dashboard.
+
+**Rule:** Don't add aggregate status indicators unless the underlying data is actively maintained by all dispatch lifecycle paths. If a status field isn't reliably set everywhere, don't surface it in the UI. It's better to show less than to show wrong information.
 
 ### 9. JSX Build Pipeline
 
@@ -277,12 +309,14 @@ assert.ok(frame.includes('Logs for'), 'should show log viewer');
 | Manual row counting for layout | `justifyContent="space-between"` — let Yoga handle gaps |
 | Unwrapped text in table columns | `wrap="truncate"` on `<Text>` inside fixed-width cells |
 | `useStdout()` in child components | Pass `terminalRows` as prop from parent |
+| `stdout.columns` inside border box | Subtract border overhead (border=2 + paddingX=2 = 4) |
 | `stdout.rows` in render/memo deps | `useState` + resize listener → `termRows` |
 | `setRefreshKey(k => k+1)` to refresh | Poll in `setInterval`, compare JSON before `setData` |
 | Exit Ink for interactive prompts | Build Ink components for confirmations |
 | Edit `.js` files directly | Edit `.jsx`, run `node test/build-jsx.mjs` |
 | Empty string `''` in `<Text>` | Space `' '` (empty = zero height) |
 | Single `useInput` for all views | Separate `useInput` per view with `isActive` guards |
+| Adding unmonitored status summaries | Only surface data that's reliably updated by all code paths |
 
 ---
 
@@ -300,3 +334,5 @@ When an Ink UI bug appears:
 8. **Layout wrong after terminal resize?** → Use `useState` + resize listener, not `stdout.rows` directly
 9. **Header pushed off top?** → Use `justifyContent="space-between"` instead of manual padding; row counting is unreliable
 10. **Table text wrapping?** → Add `wrap="truncate"` to `<Text>` inside table cells
+11. **Content wider than expected?** → Account for border + padding overhead (4 chars for `borderStyle="round"` + `paddingX={1}`)
+12. **Layout looks right at one width but breaks at another?** → Create a standalone debug Ink app to test; text wrapping at narrow widths is the usual culprit

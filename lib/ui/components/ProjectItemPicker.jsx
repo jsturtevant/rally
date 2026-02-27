@@ -12,7 +12,7 @@ function resolveRepo(project) {
   return repo;
 }
 
-export default function ProjectItemPicker({ project, onSelectItem, onBack, terminalRows, _fetchIssues, _fetchPrs }) {
+export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, onBack, terminalRows, _fetchIssues, _fetchPrs }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -37,6 +37,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onBack, termi
 
   const items = data
     ? [
+        { itemType: 'new-branch', label: '+ Dispatch new branch' },
         ...data.issues.map((i) => ({ ...i, itemType: 'issue' })),
         ...data.prs.map((p) => ({ ...p, itemType: 'pr' })),
       ]
@@ -53,7 +54,12 @@ export default function ProjectItemPicker({ project, onSelectItem, onBack, termi
     } else if (key.downArrow) {
       setSelectedIndex((i) => Math.min(items.length - 1, i + 1));
     } else if (key.return) {
-      onSelectItem(items[selectedIndex], repo);
+      const selected = items[selectedIndex];
+      if (selected.itemType === 'new-branch') {
+        if (onNewBranch) onNewBranch(repo);
+      } else {
+        onSelectItem(selected, repo);
+      }
     }
   });
 
@@ -83,7 +89,9 @@ export default function ProjectItemPicker({ project, onSelectItem, onBack, termi
     );
   }
 
-  if (items.length === 0) {
+  const hasIssuePrs = data && (data.issues.length > 0 || data.prs.length > 0);
+
+  if (data && !hasIssuePrs) {
     return (
       <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={terminalRows}>
         <Box flexDirection="column">
@@ -91,26 +99,37 @@ export default function ProjectItemPicker({ project, onSelectItem, onBack, termi
             <Text bold>{repo}</Text>
           </Box>
           <Text dimColor>No open issues or pull requests</Text>
+          <Box marginTop={1}>
+            <Text color="cyan">{selectedIndex === 0 ? '❯ ' : '  '}</Text>
+            <Text bold={selectedIndex === 0} color="green">+ Dispatch new branch</Text>
+          </Box>
         </Box>
         <Box justifyContent="center">
-          <Text dimColor>Esc back</Text>
+          <Text dimColor>Enter dispatch · Esc back</Text>
         </Box>
       </Box>
     );
   }
 
-  let flatIndex = 0;
+  // items[0] is always 'new-branch', followed by issues, then PRs
+  const newBranchIdx = 0;
+  let flatIndex = 1; // start after new-branch
 
   return (
     <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={terminalRows}>
       <Box flexDirection="column">
         <Box marginBottom={1}>
           <Text bold>{repo}</Text>
-          <Text> — select an issue or PR to dispatch</Text>
+          <Text> — select an issue, PR, or start a new branch</Text>
+        </Box>
+
+        <Box>
+          <Text color="cyan">{selectedIndex === newBranchIdx ? '❯ ' : '  '}</Text>
+          <Text bold={selectedIndex === newBranchIdx} color="green">+ Dispatch new branch</Text>
         </Box>
 
         {data.issues.length > 0 && (
-          <Box flexDirection="column">
+          <Box flexDirection="column" marginTop={1}>
             <Text bold color="yellow">Issues</Text>
             {data.issues.map((issue) => {
               const idx = flatIndex++;
@@ -130,7 +149,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onBack, termi
         )}
 
         {data.prs.length > 0 && (
-          <Box flexDirection="column" marginTop={data.issues.length > 0 ? 1 : 0}>
+          <Box flexDirection="column" marginTop={1}>
             <Text bold color="yellow">Pull Requests</Text>
             {data.prs.map((pr) => {
               const idx = flatIndex++;

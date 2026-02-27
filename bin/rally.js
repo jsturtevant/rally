@@ -141,10 +141,22 @@ const dashboard = program
 
         const trustFn = settings.require_trust === 'never' ? null : (item) => _getTrustWarnings({ type: item.type, number: item.number, repo: item.repo });
 
+        const onDispatchBranch = async (task, repo) => {
+          const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
+          const resolved = resolveRepo({ repo });
+          const { dispatchBranch } = await import('../lib/dispatch-branch.js');
+          return dispatchBranch({
+            task, repo: resolved.fullName, repoPath: resolved.project.path,
+            sandbox,
+            denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
+            disallowTempDir: settings.disallow_temp_dir,
+          });
+        };
+
         const app = render(
           React.createElement(Dashboard, {
             project: opts.project, onAttachSession, onAddProject,
-            onDispatch, getTrustWarnings: trustFn,
+            onDispatch, onDispatchBranch, getTrustWarnings: trustFn,
           }),
           { fullScreen: true }
         );

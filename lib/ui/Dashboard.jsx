@@ -8,6 +8,7 @@ import DetailView from './components/DetailView.jsx';
 import ProjectBrowser from './components/ProjectBrowser.jsx';
 import ProjectItemPicker from './components/ProjectItemPicker.jsx';
 import OnboardInput from './components/OnboardInput.jsx';
+import BranchDispatchInput from './components/BranchDispatchInput.jsx';
 import TrustConfirm from './components/TrustConfirm.jsx';
 import DispatchStatus from './components/DispatchStatus.jsx';
 import { getDashboardData, renderPlainDashboard } from './dashboard-data.js';
@@ -22,7 +23,7 @@ export { getDashboardData, renderPlainDashboard };
  * Supports keyboard navigation: ↑/↓ to select, Enter to open action menu, r to refresh, q to quit.
  * Auto-refreshes at the configured interval (default 5s).
  */
-export default function Dashboard({ project, onSelect, onAttachSession, onDispatchItem, onDispatch, getTrustWarnings: getTrustWarningsProp, onAddProject, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus, _listOnboardedRepos, _fetchIssues, _fetchPrs }) {
+export default function Dashboard({ project, onSelect, onAttachSession, onDispatchItem, onDispatch, onDispatchBranch, getTrustWarnings: getTrustWarningsProp, onAddProject, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus, _listOnboardedRepos, _fetchIssues, _fetchPrs }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [termRows, setTermRows] = useState(stdout?.rows || 25);
@@ -31,8 +32,9 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   const [actionIndex, setActionIndex] = useState(0);
   const [logViewDispatch, setLogViewDispatch] = useState(null);
   const [detailViewDispatch, setDetailViewDispatch] = useState(null);
-  const [browseMode, setBrowseMode] = useState(null); // null | 'projects' | 'items' | 'onboard'
+  const [browseMode, setBrowseMode] = useState(null); // null | 'projects' | 'items' | 'onboard' | 'new-branch'
   const [browseProject, setBrowseProject] = useState(null);
+  const [branchRepo, setBranchRepo] = useState(null);
   const [dispatchPending, setDispatchPending] = useState(null);
   const [trustWarnings, setTrustWarnings] = useState(null);
   const [dispatchStatus, setDispatchStatus] = useState(null); // null|'confirming'|'dispatching'|'done'|'error'
@@ -379,6 +381,10 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         terminalRows={termRows}
         _fetchIssues={_fetchIssues}
         _fetchPrs={_fetchPrs}
+        onNewBranch={(repo) => {
+          setBranchRepo(repo);
+          setBrowseMode('new-branch');
+        }}
         onSelectItem={(item, repo) => {
           const pending = { type: item.itemType, number: item.number, repo };
           if (onDispatch) {
@@ -406,6 +412,26 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
           setBrowseProject(null);
         }}
       />
+      </Box>
+    );
+  }
+
+  if (browseMode === 'new-branch' && branchRepo) {
+    return (
+      <Box flexDirection="column" height={termRows}>
+        <BranchDispatchInput
+          repo={branchRepo}
+          terminalRows={termRows}
+          onSubmit={(task) => {
+            if (onDispatchBranch) {
+              return onDispatchBranch(task, branchRepo);
+            }
+          }}
+          onBack={() => {
+            setBranchRepo(null);
+            setBrowseMode('items');
+          }}
+        />
       </Box>
     );
   }

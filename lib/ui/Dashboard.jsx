@@ -91,11 +91,13 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     return () => stdout.off('resize', onResize);
   }, [stdout]);
 
+  const isBranch = actionDispatch?.type === 'branch';
+
   // Derive the action list once — used for both count and selection
   const actions = actionDispatch
     ? [
         ACTIONS.OPEN_VSCODE,
-        ACTIONS.OPEN_BROWSER,
+        ...(!isBranch ? [ACTIONS.OPEN_BROWSER] : []),
         ...(hasConnectableSession ? [ACTIONS.CONNECT_IDE] : []),
         ...(actionDispatch.worktreePath ? [ACTIONS.ATTACH_SESSION] : []),
         ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
@@ -281,7 +283,10 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     } else if (input === 'v' && count > 0) {
       openInVSCode(data.dispatches[selectedIndex]);
     } else if (input === 'o' && count > 0) {
-      openInBrowser(data.dispatches[selectedIndex]);
+      const selected = data.dispatches[selectedIndex];
+      if (selected.type !== 'branch') {
+        openInBrowser(selected);
+      }
     } else if (input === 'c' && count > 0) {
       const selected = data.dispatches[selectedIndex];
       if (selected.session_id && UUID_RE.test(selected.session_id)) {

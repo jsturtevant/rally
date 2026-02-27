@@ -375,6 +375,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       <Box flexDirection="column" height={termRows}>
         <ProjectItemPicker
         project={browseProject}
+        terminalRows={termRows}
         _fetchIssues={_fetchIssues}
         _fetchPrs={_fetchPrs}
         onSelectItem={(item, repo) => {
@@ -413,6 +414,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       <Box flexDirection="column" height={termRows}>
         <ProjectBrowser
           _listOnboardedRepos={_listOnboardedRepos}
+          terminalRows={termRows}
           onSelectProject={(proj) => {
             setBrowseProject(proj);
             setBrowseMode('items');

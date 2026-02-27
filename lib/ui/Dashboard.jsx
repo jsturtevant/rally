@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { spawn as defaultSpawn } from 'node:child_process';
 import DispatchTable from './components/DispatchTable.jsx';
@@ -54,14 +54,26 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   const [dispatchStatus, setDispatchStatus] = useState(null); // null|'confirming'|'dispatching'|'done'|'error'
   const [dispatchMessage, setDispatchMessage] = useState('');
 
-  let data;
-  let error;
+  const [data, setData] = useState(() => {
+    try { return getDashboardData({ project }); } catch { return null; }
+  });
+  const [error, setError] = useState(null);
 
-  try {
-    data = getDashboardData({ project });
-  } catch (err) {
-    error = err.message;
-  }
+  // Refresh data only when refreshKey changes — compare JSON to avoid unnecessary re-renders
+  const prevJsonRef = useRef('');
+  useEffect(() => {
+    try {
+      const fresh = getDashboardData({ project });
+      const json = JSON.stringify(fresh);
+      if (json !== prevJsonRef.current) {
+        prevJsonRef.current = json;
+        setData(fresh);
+        setError(null);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [refreshKey, project]);
 
   const count = data ? data.dispatches.length : 0;
 
@@ -419,23 +431,15 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     );
   }
 
-  // 7 lines: border top/bottom (2) + header with margin (2) + summary with margin (1) + footer 2 lines with margin (3 - 1 shared with pad = 2)
-  const dispatchRows = data.dispatches.length + 1; // +1 for table header
-  const contentUsed = dispatchRows + 2 + 3; // dispatches + summary (margin+line) + nav (margin+2 lines)
-  const availableContent = stdout.rows ? Math.max(0, stdout.rows - 4) : 20; // 4 = border(2) + header margin(1) + header(1)
-  const padCount = Math.max(0, availableContent - contentUsed);
-
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} height={stdout.rows}>
       <Box marginBottom={1}>
         <Text bold>🚀 Rally Dashboard</Text>
       </Box>
       <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
       <SummaryLine summary={data.summary} />
-      {Array.from({ length: padCount }, (_, i) => (
-        <Text key={`pad-${i}`}>{' '}</Text>
-      ))}
-      <Box marginTop={1} flexDirection="column" alignItems="center">
+      <Box flexGrow={1}><Text>{' '}</Text></Box>
+      <Box flexDirection="column" alignItems="center">
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>
         <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
       </Box>

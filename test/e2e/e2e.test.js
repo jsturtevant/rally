@@ -104,7 +104,6 @@ describe('e2e: CLI basics', () => {
     const output = rally(['dashboard', '--json'], { rallyHome: tempDir, timeout: DISPATCH_TIMEOUT });
     const data = JSON.parse(output);
     assert.ok(Array.isArray(data.dispatches), 'should have dispatches array');
-    assert.ok(typeof data.summary === 'object', 'should have summary object');
   });
 
   test('rally nonexistent exits non-zero', { timeout: DEFAULT_TIMEOUT }, () => {

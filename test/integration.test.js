@@ -12,7 +12,7 @@ import yaml from 'js-yaml';
 import { dispatchIssue } from '../lib/dispatch-issue.js';
 import { dispatchPr } from '../lib/dispatch-pr.js';
 import { getActiveDispatches, removeDispatch } from '../lib/active.js';
-import { getDashboardData, computeSummary, renderPlainDashboard } from '../lib/ui/dashboard-data.js';
+import { getDashboardData, renderPlainDashboard } from '../lib/ui/dashboard-data.js';
 import { withTempRallyHome } from './helpers/temp-env.js';
 
 // =====================================================
@@ -178,15 +178,12 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
     assert.strictEqual(dashData.dispatches.length, 1);
     assert.strictEqual(dashData.dispatches[0].id, 'repo-issue-42');
     assert.strictEqual(dashData.dispatches[0].healthy, true);
-    assert.strictEqual(dashData.summary.active, 1);
-    assert.strictEqual(dashData.summary.done, 0);
 
     // 3. Verify plain dashboard output
     const plain = renderPlainDashboard();
     assert.ok(plain.includes('Rally Dashboard'));
     assert.ok(plain.includes('owner/repo'));
     assert.ok(plain.includes('Issue #42'));
-    assert.ok(plain.includes('1 active'));
 
     // 4. Clean: remove dispatch
     const removed = removeDispatch('repo-issue-42');
@@ -195,7 +192,6 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
     // Verify dashboard is now empty
     const afterClean = getDashboardData();
     assert.strictEqual(afterClean.dispatches.length, 0);
-    assert.strictEqual(afterClean.summary.active, 0);
   });
 });
 
@@ -444,24 +440,6 @@ describe('Integration: dashboard data and rendering', () => {
     assert.strictEqual(data.dispatches[1].healthy, false);
     assert.strictEqual(data.dispatches[2].healthy, false);
 
-    // Summary: d1 = active (healthy+implementing), d2 = done (reviewing), d3 = done
-    assert.strictEqual(data.summary.active, 1);
-    assert.strictEqual(data.summary.orphaned, 0);
-    assert.strictEqual(data.summary.done, 2);
-  });
-
-  test('computeSummary counts statuses correctly', () => {
-    const dispatches = [
-      { status: 'planning', healthy: true },
-      { status: 'implementing', healthy: true },
-      { status: 'done', healthy: true },
-      { status: 'cleaned', healthy: false },
-      { status: 'reviewing', healthy: false },
-    ];
-    const summary = computeSummary(dispatches);
-    assert.strictEqual(summary.active, 2);
-    assert.strictEqual(summary.done, 3);
-    assert.strictEqual(summary.orphaned, 0);
   });
 
   test('renderPlainDashboard outputs formatted text', () => {
@@ -495,7 +473,6 @@ describe('Integration: dashboard data and rendering', () => {
     assert.ok(output.includes('Issue #5'), 'should include issue ref');
     assert.ok(output.includes('rally/5-feature'), 'should include branch');
     assert.ok(output.includes('planning'), 'should include status');
-    assert.ok(output.includes('1 active'), 'should include summary');
 
     // No ANSI codes
     assert.ok(!output.includes('\x1B['), 'should not contain ANSI codes');
@@ -538,7 +515,6 @@ describe('Integration: dashboard data and rendering', () => {
   test('getDashboardData returns empty when no dispatches', () => {
     const data = getDashboardData();
     assert.strictEqual(data.dispatches.length, 0);
-    assert.deepStrictEqual(data.summary, { active: 0, done: 0, orphaned: 0 });
   });
 });
 
@@ -580,7 +556,6 @@ describe('Integration: multiple dispatches', () => {
 
     const data = getDashboardData();
     assert.strictEqual(data.dispatches.length, 2);
-    assert.strictEqual(data.summary.active, 2);
 
     const plain = renderPlainDashboard();
     assert.ok(plain.includes('Issue #1'));

@@ -9,29 +9,12 @@ import ProjectBrowser from './components/ProjectBrowser.jsx';
 import ProjectItemPicker from './components/ProjectItemPicker.jsx';
 import TrustConfirm from './components/TrustConfirm.jsx';
 import DispatchStatus from './components/DispatchStatus.jsx';
-import { computeSummary, getDashboardData, renderPlainDashboard } from './dashboard-data.js';
+import { getDashboardData, renderPlainDashboard } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 import { updateDispatchStatus as defaultUpdateDispatchStatus } from '../active.js';
 import { parseSessionIdFromLog as defaultParseSessionId, UUID_RE } from '../copilot.js';
 
-export { computeSummary, getDashboardData, renderPlainDashboard };
-
-/**
- * Summary line component.
- */
-function SummaryLine({ summary }) {
-  return (
-    <Box marginTop={1}>
-      <Text>
-        <Text bold color="green">{summary.active} active</Text>
-        <Text> · </Text>
-        <Text bold color="blue">{summary.done} done</Text>
-        <Text> · </Text>
-        <Text bold color="red">{summary.orphaned} orphaned</Text>
-      </Text>
-    </Box>
-  );
-}
+export { getDashboardData, renderPlainDashboard };
 
 /**
  * Main Dashboard component — full-screen Ink app.
@@ -453,7 +436,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
           <Text bold>🚀 Rally Dashboard</Text>
         </Box>
         <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} />
-        <SummaryLine summary={data.summary} />
       </Box>
       <Box flexDirection="column" alignItems="center">
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>

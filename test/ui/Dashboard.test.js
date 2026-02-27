@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
-import Dashboard, { getDashboardData, computeSummary } from '../../lib/ui/Dashboard.js';
+import Dashboard, { getDashboardData } from '../../lib/ui/Dashboard.js';
 import { withTempRallyHome } from '../helpers/temp-env.js';
 
 let TEST_DIR;
@@ -68,37 +68,6 @@ function setupWithDispatches(t) {
   mkdirSync(WORKTREE_DIR, { recursive: true });
 }
 
-describe('computeSummary', () => {
-  it('counts active, done, and orphaned dispatches', () => {
-    const dispatches = [
-      { status: 'implementing', healthy: true },
-      { status: 'done', healthy: true },
-      { status: 'cleaned', healthy: false },
-      { status: 'planning', healthy: false },
-    ];
-    const summary = computeSummary(dispatches);
-    assert.equal(summary.active, 1);
-    assert.equal(summary.done, 2);
-    assert.equal(summary.orphaned, 1);
-  });
-
-  it('returns zeros for empty array', () => {
-    const summary = computeSummary([]);
-    assert.equal(summary.active, 0);
-    assert.equal(summary.done, 0);
-    assert.equal(summary.orphaned, 0);
-  });
-
-  it('counts pushed dispatches in done bucket', () => {
-    const dispatches = [
-      { status: 'pushed', healthy: true },
-      { status: 'implementing', healthy: true },
-    ];
-    const summary = computeSummary(dispatches);
-    assert.equal(summary.done, 1, 'pushed should count as done');
-    assert.equal(summary.active, 1);
-  });
-});
 
 describe('getDashboardData', () => {
   beforeEach((t) => {
@@ -112,17 +81,6 @@ describe('getDashboardData', () => {
     assert.equal(data.dispatches[0].healthy, true);
     // d2 has a nonexistent path
     assert.equal(data.dispatches[1].healthy, false);
-  });
-
-  it('computes summary from dispatches', () => {
-    const data = getDashboardData();
-    assert.equal(typeof data.summary.active, 'number');
-    assert.equal(typeof data.summary.done, 'number');
-    assert.equal(typeof data.summary.orphaned, 'number');
-    // d1=implementing+healthy → active, d2=done → done, d3=planning+unhealthy → orphaned
-    assert.equal(data.summary.active, 1);
-    assert.equal(data.summary.done, 1);
-    assert.equal(data.summary.orphaned, 1);
   });
 
   it('filters by project name', () => {
@@ -140,7 +98,6 @@ describe('getDashboardData', () => {
     setupTestEnv(t, []);
     const data = getDashboardData();
     assert.equal(data.dispatches.length, 0);
-    assert.deepEqual(data.summary, { active: 0, done: 0, orphaned: 0 });
   });
 });
 
@@ -173,14 +130,6 @@ describe('Dashboard component', () => {
     assert.ok(output.includes('PR #7'), 'should show PR ref');
   });
 
-  it('renders summary line', () => {
-    instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
-    const output = instance.lastFrame();
-    assert.ok(output.includes('1 active'), 'should show active count');
-    assert.ok(output.includes('1 done'), 'should show done count');
-    assert.ok(output.includes('1 orphaned'), 'should show orphaned count');
-  });
-
   it('filters by project prop', () => {
     instance = render(
       React.createElement(Dashboard, { project: 'repo-b', refreshInterval: 0 })
@@ -195,7 +144,6 @@ describe('Dashboard component', () => {
     instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
     const output = instance.lastFrame();
     assert.ok(output.includes('No active dispatches'), 'should show empty state');
-    assert.ok(output.includes('0 active'), 'should show zero active');
   });
 
   it('accepts _spawn prop for testability', () => {

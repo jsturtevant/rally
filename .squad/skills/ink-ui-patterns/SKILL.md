@@ -123,7 +123,77 @@ if (dispatchState === 'confirming') {
 
 **Rule:** Never exit the Ink app for user interaction. Build all confirmation/status flows as Ink components rendered inside the existing fullscreen app.
 
-### 6. JSX Build Pipeline
+### 6. Eliminate Refresh Flicker — Never Use State Just to Trigger Re-render
+
+**Problem:** Using `setRefreshKey(k => k + 1)` to trigger a data refresh causes a React re-render even when data hasn't changed. Ink then repaints all lines, causing visible flicker.
+
+**Fix:** Poll data directly inside `setInterval`. Compare JSON before calling `setData` — no state change means no re-render:
+
+```jsx
+const [data, setData] = useState(() => getDashboardData({ project }));
+const prevJsonRef = useRef(JSON.stringify(data));
+
+useEffect(() => {
+  if (!refreshInterval) return;
+  const timer = setInterval(() => {
+    const fresh = getDashboardData({ project });
+    const json = JSON.stringify(fresh);
+    if (json !== prevJsonRef.current) {
+      prevJsonRef.current = json;
+      setData(fresh);
+    }
+  }, refreshInterval);
+  return () => clearInterval(timer);
+}, [refreshInterval, project]);
+```
+
+For manual refreshes (after user actions), use a `reloadData()` helper that does the same compare-then-set.
+
+**Rule:** Never use a "refresh counter" state variable. Poll data in an interval and only `setState` when the data actually changed.
+
+### 7. Track Terminal Size with useState + Resize Listener
+
+**Problem:** `stdout.rows` is a live property on a mutable object. React deps (`useMemo`, `useEffect`) compare by reference — they don't detect when `stdout.rows` changes. So `useMemo([stdout.rows])` won't re-run on terminal resize.
+
+**Fix:** Store terminal height in `useState` and update via a resize event listener:
+
+```jsx
+const { stdout } = useStdout();
+const [termRows, setTermRows] = useState(stdout?.rows || 25);
+
+useEffect(() => {
+  if (!stdout) return;
+  const onResize = () => setTermRows(stdout.rows);
+  stdout.on('resize', onResize);
+  return () => stdout.off('resize', onResize);
+}, [stdout]);
+```
+
+Use `termRows` everywhere instead of `stdout.rows`. This ensures React re-renders on resize.
+
+**Rule:** Never read `stdout.rows` directly in render logic or memoization deps. Use a state variable updated by a resize listener.
+
+### 8. Fill Vertical Space with Explicit Pad Nodes
+
+**Problem:** `<Box flexGrow={1}>` causes flicker — Ink recalculates the spacer height on every render, producing different line counts that trigger full repaints. Manual row counting with `height` prop doesn't render blank rows.
+
+**Fix:** Compute pad count from terminal height minus content rows, render explicit `<Text>` nodes:
+
+```jsx
+// Count actual rendered rows (must match what the child components produce)
+const tableRows = dispatches.length === 0
+  ? 2  // header + "No active dispatches"
+  : 1 + dispatches.length + new Set(dispatches.map(d => d.repo)).size;
+const padCount = Math.max(0, termRows - tableRows - OVERHEAD);
+
+{Array.from({ length: padCount }, (_, i) => (
+  <Text key={`pad-${i}`}>{' '}</Text>
+))}
+```
+
+**Rule:** Use calculated pad with explicit `<Text>` nodes, not `flexGrow`. The pad count must only depend on values that change when content changes (dispatch count), not on every render (like selectedIndex).
+
+### 9. JSX Build Pipeline
 
 Rally uses esbuild to compile JSX → JS. The `.js` files are what runs in production and tests.
 
@@ -137,7 +207,7 @@ git add -f lib/ui/Dashboard.js lib/ui/components/LogViewer.js
 
 **Rule:** Always rebuild after JSX changes. Always `git add -f` compiled `.js` files that are gitignored.
 
-### 7. Testing Ink Components
+### 10. Testing Ink Components
 
 **Timing:** Use `setImmediate` delays between keypress simulations:
 
@@ -167,7 +237,10 @@ assert.ok(frame.includes('Logs for'), 'should show log viewer');
 |-------|------------|
 | `useInput(handler)` without isActive | `useInput(handler, { isActive: condition })` |
 | `<Box height={N}>` to fill space | Render N explicit `<Text>` nodes |
+| `<Box flexGrow={1}>` for spacers | Calculate pad count, render `<Text>` nodes |
 | `useStdout()` in child components | Pass `terminalRows` as prop from parent |
+| `stdout.rows` in render/memo deps | `useState` + resize listener → `termRows` |
+| `setRefreshKey(k => k+1)` to refresh | Poll in `setInterval`, compare JSON before `setData` |
 | Exit Ink for interactive prompts | Build Ink components for confirmations |
 | Edit `.js` files directly | Edit `.jsx`, run `node test/build-jsx.mjs` |
 | Empty string `''` in `<Text>` | Space `' '` (empty = zero height) |
@@ -180,7 +253,11 @@ assert.ok(frame.includes('Logs for'), 'should show log viewer');
 When an Ink UI bug appears:
 
 1. **Shortcuts broken?** → Check `useInput` has `{ isActive }` and only one view is active
-2. **Old content visible after view switch?** → Wrap sub-view in `<Box height={stdout.rows}>`
+2. **Old content visible after view switch?** → Wrap sub-view in `<Box height={termRows}>`
 3. **Content doesn't fill terminal?** → Pad with `<Text>{' '}</Text>` nodes
 4. **Crashes in tests?** → Check for `useStdout()` calls — move to parent, pass as prop
 5. **JSX changes not taking effect?** → Run `node test/build-jsx.mjs`
+6. **Flicker on refresh?** → Compare data JSON before `setData`, remove refresh counter state
+7. **Flicker on arrow keys?** → Pad count must not depend on `selectedIndex`; avoid `flexGrow` spacers
+8. **Layout wrong after terminal resize?** → Use `useState` + resize listener, not `stdout.rows` directly
+9. **Header pushed off top?** → Pad count is too high; verify row counting matches actual rendered output

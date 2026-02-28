@@ -48,7 +48,7 @@ function makeSampleDispatches(logFile) {
 
 describe('Log view cycle — keyboard shortcut regression', { timeout: 30000 }, () => {
   let instance;
-  const delay = () => new Promise(r => setImmediate(r));
+  const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
   afterEach(() => {
     if (instance) {

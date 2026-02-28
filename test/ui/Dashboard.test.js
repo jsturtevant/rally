@@ -103,7 +103,7 @@ describe('getDashboardData', () => {
 
 describe('Dashboard component', () => {
   let instance;
-  const delay = () => new Promise(r => setImmediate(r));
+  const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
   beforeEach((t) => {
     setupWithDispatches(t);

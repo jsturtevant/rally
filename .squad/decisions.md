@@ -2275,3 +2275,39 @@ Use `.claude/skills/<tool>/SKILL.md` as the skill file location. Both Claude Cod
 ### Impact
 
 Any future skill files should follow this pattern: `.claude/skills/<tool>/SKILL.md`. This keeps skills discoverable by both AI coding tools without duplication.
+
+---
+
+## Decision: Squad Upgrade Strategy (#361)
+
+**By:** Mal (Lead)  
+**Date:** 2026-02-28  
+**Issue:** #361  
+**Status:** Accepted
+
+### Decision
+
+Upgrade Rally to use Squad from `jsturtevant/squad-pr#consult-mode-impl` branch with `@bradygaster/squad-sdk` in **two phases**:
+
+**Phase 1 (This PR)** — Minimal, fast-merging change:
+1. Add `github:jsturtevant/squad-pr#consult-mode-impl` to `package.json`
+2. Replace subprocess calls with SDK: `ensureSquadPath()` in `lib/setup.js` and `lib/team.js`
+3. Test full flow (setup → onboard → dispatch)
+4. Verify `.squad/` structure and `npx squad consult` CLI works
+
+**Phase 2 (Follow-up PR)** — Robustness improvements:
+1. Verify `.squad-templates` behavior in new squad
+2. Update `lib/dispatch-core.js` to use `resolveSquad()` for robust path resolution
+3. Clean up test fixtures if squad now auto-creates `.squad-templates`
+4. Adopt additional SDK features as needed
+
+### Rationale
+
+1. **SDK approach is cleaner:** No subprocess spawning, atomic creation, typed imports
+2. **Two-phase keeps momentum:** Phase 1 is a 2-line change per file, fast to merge
+3. **Phase 2 enables robustness:** `resolveSquad()` is more reliable than manual path logic
+4. **No breaking changes:** Directory structure is identical; teams remain compatible
+
+### Impact
+
+Team can begin Phase 1 implementation immediately. All existing tests pass without modification. Phase 2 will improve maintainability and error handling.

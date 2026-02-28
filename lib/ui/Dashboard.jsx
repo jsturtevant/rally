@@ -489,7 +489,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} onboardedProjects={data.onboardedProjects} width={effectiveWidth} />
       </Box>
       <Box flexDirection="column" alignItems="center">
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v open · o browser · c connect IDE</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser · c connect IDE</Text>
         <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
       </Box>
     </Box>

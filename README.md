@@ -148,9 +148,22 @@ Before dispatching, Rally checks whether the issue/PR was authored by someone ot
 
 Each dispatch gets its own **git worktree** — an independent working directory with its own branch. This prevents cross-contamination between concurrent dispatches and keeps your main working tree untouched.
 
+Copilot CLI's built-in [path permissions](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/configure-copilot-cli#setting-path-permissions) restrict agents to the worktree directory by default (since Rally sets `cwd` to the worktree path). Rally also passes `--disallow-temp-dir` to further tighten isolation by removing temp directory access.
+
+You can disable this in `config.yaml` if agents need temp directory access:
+
+```yaml
+settings:
+  disallow_temp_dir: false
+```
+
+> **Note:** For maximum filesystem isolation, use the Docker sandbox which provides a full container boundary.
+
 ### Docker sandbox
 
 For maximum isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM. The agent executes in a lightweight container with no access to the host filesystem beyond the worktree.
+
+Requires [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support and `GH_TOKEN` or `GITHUB_TOKEN` set globally. Learn to create one for [Github Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli#authenticating-with-environment-variables).
 
 ```bash
 rally dispatch issue 42 --sandbox
@@ -158,6 +171,16 @@ rally dispatch pr 10 --sandbox
 ```
 
 Or set `docker_sandbox: always` in `config.yaml` to enable it for all dispatches.
+
+### Input sanitization
+
+- **Git ref names** are stripped to `[a-zA-Z0-9/_.-]` before interpolation into prompts
+- **Worktree paths** must be absolute with no `..` traversal segments
+- **GitHub usernames/orgs** are validated against `[A-Za-z0-9_.-]` before API calls
+
+### Config file safety
+
+Rally's config directory (`~/rally/`) is created with **0700 permissions** (user-only access). All config writes use **atomic rename** (write to temp file, then rename) to prevent corruption from crashes or concurrent access.
 
 ## License
 

@@ -65,7 +65,7 @@ Common keyboard shortcuts from the dashboard:
 
 - **`n`** — dispatch a new issue or PR
 - **`o`** — open in the browser
-- **`v`** — open in VS Code
+- **`v`** — open in VSCode
 - **`a`** — attach to a running Copilot session
 - **`l`** — view logs
 - **`d`** — view details
@@ -119,7 +119,7 @@ rally dispatch clean                   # Clean up when done
 
 ## AI Safety
 
-> ** ⚠️ Use your best judgement. ** Rally makes an effort to enforce multiple layers of protection, but no system is foolproof. When working with untrusted content, always review agent output before merging, and use the Docker sandbox for maximum isolation.
+> **⚠️ Use your best judgement.** Rally makes an effort to enforce multiple layers of protection, but no system is foolproof. When working with untrusted content, always review agent output before merging, and use the Docker sandbox for maximum isolation.
 
 Rally enforces multiple layers of protection:
 

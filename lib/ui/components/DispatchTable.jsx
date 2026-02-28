@@ -3,7 +3,6 @@ import { Box, Text, useStdout } from 'ink';
 import { formatAge, groupByProject } from '../dashboard-data.js';
 
 const STATUS_ICONS = {
-  planning: '🔵',
   implementing: '⏳',
   reviewing: '🟡',
   pushed: '🟣',

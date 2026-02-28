@@ -52,7 +52,7 @@ function makeSampleDispatches() {
       type: 'issue',
       number: 10,
       branch: 'rally/10-feat',
-      status: 'planning',
+      status: 'implementing',
       worktreePath: '/another/nonexistent/path',
       session_id: 'ghi789',
       created: new Date(Date.now() - 7200000).toISOString(),

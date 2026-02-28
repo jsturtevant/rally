@@ -89,7 +89,7 @@ test('dispatchClean also cleans dispatches with status "cleaned"', async () => {
 });
 
 test('dispatchClean skips non-done dispatches without --all', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'planning' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'implementing' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
 
   const result = await dispatchClean({
@@ -108,7 +108,7 @@ test('dispatchClean skips non-done dispatches without --all', async () => {
 test('dispatchClean --all cleans all dispatches with --yes', async () => {
   addDispatch(makeRecord({ id: 'd1', status: 'done' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
-  addDispatch(makeRecord({ id: 'd3', status: 'planning' }));
+  addDispatch(makeRecord({ id: 'd3', status: 'implementing' }));
 
   const result = await dispatchClean({
     all: true,

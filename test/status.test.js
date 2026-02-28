@@ -99,7 +99,7 @@ test('getStatus returns populated active dispatches', (t) => {
   const active = {
     dispatches: [
       { id: 42, project: 'app-one', status: 'implementing' },
-      { id: 51, project: 'app-one', status: 'planning' },
+      { id: 51, project: 'app-one', status: 'implementing' },
     ]
   };
   writeFileSync(join(tempDir, 'active.yaml'), yaml.dump(active), 'utf8');

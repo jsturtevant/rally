@@ -248,7 +248,7 @@ describe('e2e: dispatch issue 54 (library)', () => {
     assert.ok(active.dispatches.length >= 1, 'should have at least one dispatch');
     const dispatch = active.dispatches.find(d => d.number === 54);
     assert.ok(dispatch, 'dispatch for issue 54 should exist');
-    assert.equal(dispatch.status, 'planning');
+    assert.equal(dispatch.status, 'implementing');
     assert.equal(dispatch.type, 'issue');
   });
 

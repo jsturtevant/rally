@@ -22,7 +22,7 @@ function makeRecord(overrides = {}) {
     type: 'issue',
     branch: 'rally/19-active-tracking',
     worktreePath: '/tmp/worktrees/rally-19',
-    status: 'planning',
+    status: 'implementing',
     session_id: 'sess-abc123',
     ...overrides,
   };
@@ -47,7 +47,7 @@ test('addDispatch creates a dispatch record', () => {
   assert.strictEqual(result.repo, 'jsturtevant/rally');
   assert.strictEqual(result.number, 19);
   assert.strictEqual(result.type, 'issue');
-  assert.strictEqual(result.status, 'planning');
+  assert.strictEqual(result.status, 'implementing');
   assert.ok(result.created);
 
   const dispatches = getActiveDispatches();
@@ -180,7 +180,7 @@ test('removeDispatch removes only the target record', () => {
 });
 
 test('VALID_STATUSES contains expected values', () => {
-  assert.deepEqual(VALID_STATUSES, ['planning', 'implementing', 'reviewing', 'pushed', 'done', 'cleaned']);
+  assert.deepEqual(VALID_STATUSES, ['implementing', 'reviewing', 'pushed', 'done', 'cleaned']);
 });
 
 test('lock is released even when wrapped function throws', () => {

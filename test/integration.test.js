@@ -171,7 +171,7 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
     const dispatches = getActiveDispatches();
     assert.strictEqual(dispatches.length, 1);
     assert.strictEqual(dispatches[0].id, 'repo-issue-42');
-    assert.strictEqual(dispatches[0].status, 'planning');
+    assert.strictEqual(dispatches[0].status, 'implementing');
 
     // 2. Verify dashboard sees the dispatch
     const dashData = getDashboardData();
@@ -312,7 +312,7 @@ describe('Integration: error cases', () => {
 
     // Register a matching dispatch so the code treats it as legitimately active
     writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
-      dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-test-issue', worktreePath: wtPath, status: 'planning' }],
+      dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-test-issue', worktreePath: wtPath, status: 'implementing' }],
     }), 'utf8');
 
     const result = await dispatchIssue({
@@ -456,7 +456,7 @@ describe('Integration: dashboard data and rendering', () => {
           type: 'issue',
           branch: 'rally/5-feature',
           worktreePath: worktreeDir,
-          status: 'planning',
+          status: 'implementing',
           session_id: 's5',
           created: new Date().toISOString(),
         },
@@ -472,7 +472,7 @@ describe('Integration: dashboard data and rendering', () => {
     assert.ok(output.includes('owner/repo'), 'should include repo');
     assert.ok(output.includes('#5'), 'should include issue ref');
     assert.ok(output.includes('rally/5-feature'), 'should include branch');
-    assert.ok(output.includes('planning'), 'should include status');
+    assert.ok(output.includes('implementing') || output.includes('copilot working'), 'should include status');
 
     // No ANSI codes
     assert.ok(!output.includes('\x1B['), 'should not contain ANSI codes');
@@ -489,7 +489,7 @@ describe('Integration: dashboard data and rendering', () => {
           type: 'issue',
           branch: 'rally/1-a',
           worktreePath: '/nope',
-          status: 'planning',
+          status: 'implementing',
           session_id: 's1',
           created: new Date().toISOString(),
         },
@@ -500,7 +500,7 @@ describe('Integration: dashboard data and rendering', () => {
           type: 'issue',
           branch: 'rally/2-b',
           worktreePath: '/nope2',
-          status: 'planning',
+          status: 'implementing',
           session_id: 's2',
           created: new Date().toISOString(),
         },

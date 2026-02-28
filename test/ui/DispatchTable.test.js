@@ -19,7 +19,7 @@ const SAMPLE_DISPATCHES = [
     type: 'issue',
     number: 42,
     branch: 'rally/42-fix-bug',
-    status: 'planning',
+    status: 'implementing',
     worktreePath: '/home/user/projects/repo-a',
     session_id: 'abc123',
     title: 'Fix the login bug',
@@ -91,7 +91,7 @@ describe('DispatchTable', () => {
   });
 
   it('renders status icons for each status', () => {
-    const statuses = ['planning', 'implementing', 'reviewing', 'pushed', 'done', 'cleaned'];
+    const statuses = ['implementing', 'reviewing', 'pushed', 'done', 'cleaned'];
     const dispatches = statuses.map((status, i) => ({
       repo: 'o/r',
       type: 'issue',

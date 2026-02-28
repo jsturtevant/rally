@@ -211,7 +211,7 @@ describe('atomic yaml writes', () => {
       type: 'issue',
       branch: 'rally/1-test',
       worktreePath: '/tmp/wt',
-      status: 'planning',
+      status: 'implementing',
       session_id: 'sess-1',
     });
 
@@ -231,7 +231,7 @@ describe('atomic yaml writes', () => {
       type: 'issue',
       branch: 'rally/2-test',
       worktreePath: '/tmp/wt2',
-      status: 'planning',
+      status: 'implementing',
       session_id: 'sess-2',
     });
 

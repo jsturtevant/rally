@@ -88,7 +88,7 @@ describe('DetailView', () => {
       repo: 'owner/repo',
       type: 'issue',
       number: 1,
-      status: 'planning',
+      status: 'implementing',
     };
     lastInstance = render(
       React.createElement(DetailView, { dispatch: minimalDispatch, onBack: () => {} })

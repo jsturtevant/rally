@@ -51,7 +51,7 @@ describe('refreshDispatchStatuses — session ID auto-resolution', () => {
 
   test('skips session_id update when parseSessionIdFromLog returns null', () => {
     const dispatches = [
-      { id: 'rally-42', status: 'planning', session_id: '12345', logPath: '/tmp/copilot.log' },
+      { id: 'rally-42', status: 'implementing', session_id: '12345', logPath: '/tmp/copilot.log' },
     ];
     const fieldUpdates = [];
 
@@ -70,7 +70,7 @@ describe('refreshDispatchStatuses — session ID auto-resolution', () => {
   test('refreshDispatchStatuses continues processing when updateDispatchField throws during session resolve', () => {
     const dispatches = [
       { id: 'rally-42', status: 'implementing', session_id: '11111', logPath: '/tmp/a.log' },
-      { id: 'rally-43', status: 'planning', session_id: '22222', logPath: '/tmp/b.log' },
+      { id: 'rally-43', status: 'implementing', session_id: '22222', logPath: '/tmp/b.log' },
     ];
     const statusUpdates = [];
 
@@ -143,7 +143,7 @@ describe('isLogFileActive', () => {
 describe('refreshDispatchStatuses', () => {
   test('updates status to reviewing when PID is not running and log is stale', () => {
     const dispatches = [
-      { id: 'issue-42', status: 'planning', session_id: '99999', type: 'issue' },
+      { id: 'issue-42', status: 'implementing', session_id: '99999', type: 'issue' },
     ];
     const updates = [];
 
@@ -181,7 +181,7 @@ describe('refreshDispatchStatuses', () => {
 
   test('refreshDispatchStatuses leaves status unchanged when PID is still running', () => {
     const dispatches = [
-      { id: 'issue-10', status: 'planning', session_id: '12345', type: 'issue' },
+      { id: 'issue-10', status: 'implementing', session_id: '12345', type: 'issue' },
     ];
     const updates = [];
 
@@ -198,7 +198,7 @@ describe('refreshDispatchStatuses', () => {
 
   test('skips dispatches with non-PID session_id', () => {
     const dispatches = [
-      { id: 'issue-5', status: 'planning', session_id: 'pending', type: 'issue' },
+      { id: 'issue-5', status: 'implementing', session_id: 'pending', type: 'issue' },
       { id: 'issue-6', status: 'implementing', session_id: 'sess-abc', type: 'issue' },
     ];
     const updates = [];
@@ -258,11 +258,11 @@ describe('refreshDispatchStatuses', () => {
 
   test('handles multiple dispatches with mixed states', () => {
     const dispatches = [
-      { id: 'a', status: 'planning', session_id: '100', type: 'issue' },
+      { id: 'a', status: 'implementing', session_id: '100', type: 'issue' },
       { id: 'b', status: 'implementing', session_id: '200', type: 'issue' },
       { id: 'c', status: 'done', session_id: '300', type: 'pr' },
-      { id: 'd', status: 'planning', session_id: 'pending', type: 'issue' },
-      { id: 'e', status: 'planning', session_id: '400', type: 'issue' },
+      { id: 'd', status: 'implementing', session_id: 'pending', type: 'issue' },
+      { id: 'e', status: 'implementing', session_id: '400', type: 'issue' },
     ];
     const updates = [];
     const runningPids = new Set([100]); // only PID 100 is alive
@@ -287,8 +287,8 @@ describe('refreshDispatchStatuses', () => {
 
   test('refreshDispatchStatuses continues when updateDispatchStatus throws', () => {
     const dispatches = [
-      { id: 'x', status: 'planning', session_id: '500', type: 'issue' },
-      { id: 'y', status: 'planning', session_id: '600', type: 'issue' },
+      { id: 'x', status: 'implementing', session_id: '500', type: 'issue' },
+      { id: 'y', status: 'implementing', session_id: '600', type: 'issue' },
     ];
     let callCount = 0;
 

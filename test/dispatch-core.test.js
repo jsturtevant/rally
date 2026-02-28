@@ -79,7 +79,7 @@ function baseOpts(overrides = {}) {
     repo: 'owner/repo',
     number: 99,
     type: 'issue',
-    initialStatus: 'planning',
+    initialStatus: 'implementing',
     copilotPrompt: 'test prompt',
     preSymlinkFn: null,
     postSymlinkFn: null,

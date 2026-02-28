@@ -201,7 +201,7 @@ describe('dispatchIssue error paths', () => {
 
     // Register a matching dispatch so the code treats it as legitimately active
     writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
-      dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-existing', worktreePath: wtPath, status: 'planning' }],
+      dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-existing', worktreePath: wtPath, status: 'implementing' }],
     }), 'utf8');
 
     const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
@@ -222,7 +222,7 @@ describe('dispatchIssue error paths', () => {
         execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-race-winner'], { cwd: repoPath, stdio: 'ignore' });
         // Register the concurrent dispatch so the code treats it as legitimate
         writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
-          dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-race-winner', worktreePath: wtPath, status: 'planning' }],
+          dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-race-winner', worktreePath: wtPath, status: 'implementing' }],
         }), 'utf8');
         return JSON.stringify(issue);
       }
@@ -329,7 +329,7 @@ describe('dispatchIssue happy path', () => {
     assert.strictEqual(dispatch.number, 42);
     assert.strictEqual(dispatch.type, 'issue');
     assert.strictEqual(dispatch.branch, 'rally/42-add-login-form');
-    assert.strictEqual(dispatch.status, 'planning');
+    assert.strictEqual(dispatch.status, 'implementing');
   });
 
   test('creates branch with correct naming pattern', async () => {

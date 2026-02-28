@@ -118,7 +118,9 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   // Clamp selectedIndex when dispatch count changes
   useEffect(() => {
-    if (count > 0 && selectedIndex >= count) {
+    if (count === 0) {
+      setSelectedIndex(0);
+    } else if (selectedIndex >= count) {
       setSelectedIndex(count - 1);
     }
   }, [count, selectedIndex]);
@@ -198,7 +200,9 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   }
 
   function removeSelectedDispatch(dispatch) {
-    _dispatchRemove(dispatch.number, { repo: dispatch.repo })
+    // Pass a no-op ora to avoid interfering with Ink's terminal handling
+    const silentOra = () => ({ start: () => ({ succeed: () => {}, fail: () => {} }) });
+    _dispatchRemove(dispatch.number, { repo: dispatch.repo, _ora: silentOra })
       .then(() => reloadData())
       .catch((err) => {
         console.error(`Failed to remove dispatch: ${err.message}`);
@@ -305,7 +309,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     } else if (input === 'q') {
       exit();
     }
-  }, { isActive: !logViewDispatch && !actionDispatch && !detailViewDispatch && !browseMode && !dispatchStatus });
+  }, { isActive: !!data && !logViewDispatch && !actionDispatch && !detailViewDispatch && !browseMode && !dispatchStatus });
 
   if (error) {
     return (
@@ -474,6 +478,20 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   // Compute effective width inside the bordered box (border: 2 chars, paddingX: 2 chars)
   const terminalWidth = stdout?.columns ?? 80;
   const effectiveWidth = terminalWidth - 4;
+
+  // Guard against null data during reload
+  if (!data) {
+    return (
+      <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={termRows}>
+        <Box flexDirection="column">
+          <Box marginBottom={1}>
+            <Text bold>🚀 Rally Dashboard</Text>
+          </Box>
+          <Text dimColor>Loading...</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={termRows}>

@@ -8,7 +8,7 @@ This document describes how dispatch statuses transition from creation to comple
 |----------------|------|-----------------------|--------------------------------------------------|
 | `implementing` | ⏳   | copilot working       | Copilot is actively working (coding or reviewing)|
 | `reviewing`    | 🟡   | ready for review      | Copilot finished — awaiting human review         |
-| `upstream`     | 🔵   | waiting on upstream   | Marked as waiting on upstream (manual via `p`)   |
+| `upstream`     | 🔵   | waiting on upstream   | Marked as waiting on upstream (manual via `u`)   |
 
 ## Transitions
 

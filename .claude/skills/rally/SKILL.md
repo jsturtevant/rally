@@ -173,7 +173,7 @@ rally                                  # Default command opens dashboard
 | `c` | Connect IDE — opens VS Code + bridges Copilot session |
 | `l` | View Copilot output log |
 | `n` | New dispatch — browse onboarded projects and pick an issue/PR |
-| `p` | Mark selected dispatch as "pushed" |
+| `u` | Mark selected dispatch as "upstream" |
 | `x` | Delete selected dispatch |
 | `r` | Refresh dashboard data |
 | `q` | Quit |

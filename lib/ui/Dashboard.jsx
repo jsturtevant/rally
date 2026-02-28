@@ -294,7 +294,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       setBrowseMode('projects');
     } else if (input === 'x' && count > 0) {
       removeSelectedDispatch(flatDispatches[selectedIndex]);
-    } else if (input === 'p' && count > 0) {
+    } else if (input === 'u' && count > 0) {
       markAsPushed(flatDispatches[selectedIndex]);
     } else if (input === 'q') {
       exit();
@@ -496,7 +496,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
           <Text color="yellow">{toastMessage}</Text>
         ) : null}
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser</Text>
-        <Text dimColor>n new dispatch · a attach · p upstream · x delete · r refresh · q quit</Text>
+        <Text dimColor>n new dispatch · a attach · u upstream · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

@@ -5,7 +5,7 @@ import { formatAge, groupByProject } from '../dashboard-data.js';
 const STATUS_ICONS = {
   implementing: '⏳',
   reviewing: '🟡',
-  waiting: '🟣',
+  waiting: '🔵',
 };
 
 const PR_INDENT = '';

@@ -213,7 +213,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       _updateDispatchStatus(dispatch.id, 'waiting');
       reloadData();
     } catch (err) {
-      console.error(`Failed to mark dispatch as pushed: ${err.message}`);
+      console.error(`Failed to mark dispatch as waiting: ${err.message}`);
     }
   }
 
@@ -496,7 +496,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
           <Text color="yellow">{toastMessage}</Text>
         ) : null}
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser</Text>
-        <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
+        <Text dimColor>n new dispatch · a attach · p waiting · x delete · r refresh · q quit</Text>
       </Box>
     </Box>
   );

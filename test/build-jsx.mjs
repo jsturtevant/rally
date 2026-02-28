@@ -19,6 +19,10 @@ const jsxFiles = [
   'lib/ui/components/DispatchTable.jsx',
   'lib/ui/components/ProjectBrowser.jsx',
   'lib/ui/components/ProjectItemPicker.jsx',
+  'lib/ui/components/OnboardInput.jsx',
+  'lib/ui/components/BranchDispatchInput.jsx',
+  'lib/ui/components/TrustConfirm.jsx',
+  'lib/ui/components/DispatchStatus.jsx',
 ];
 
 for (const rel of jsxFiles) {

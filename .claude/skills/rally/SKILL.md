@@ -35,14 +35,12 @@ npx github:jsturtevant/rally#v0.1.0
 ## First-Time Setup
 
 ```bash
-rally setup              # Creates ~/rally/ with team/, projects/, config.yaml
-rally onboard <target>   # Register a repo (local path, GitHub URL, or owner/repo)
+rally onboard <target>   # Register a repo (auto-creates ~/rally/ on first run)
 ```
 
 ### Setup details
 
-`rally setup` creates the Rally home directory (default `~/rally/`, override with `RALLY_HOME`):
-- `~/rally/team/` — shared team configuration
+Rally automatically creates its home directory on first use (default `~/rally/`, override with `RALLY_HOME`):
 - `~/rally/projects/` — cloned project repos
 - `~/rally/config.yaml` — Rally configuration
 
@@ -173,7 +171,7 @@ rally                                  # Default command opens dashboard
 | `c` | Connect IDE — opens VS Code + bridges Copilot session |
 | `l` | View Copilot output log |
 | `n` | New dispatch — browse onboarded projects and pick an issue/PR |
-| `p` | Mark selected dispatch as "pushed" |
+| `u` | Mark selected dispatch as "upstream" |
 | `x` | Delete selected dispatch |
 | `r` | Refresh dashboard data |
 | `q` | Quit |
@@ -284,8 +282,7 @@ When `--repo` is omitted, Rally resolves the target repo in this order:
 ### Full issue workflow
 
 ```bash
-rally setup                            # One-time setup
-rally onboard owner/repo               # Register the repo
+rally onboard owner/repo               # Register the repo (auto-creates ~/rally/ on first run)
 rally dispatch issue 42                # Dispatch agent to issue
 rally dashboard                        # Monitor progress
 rally dispatch log 42                  # Check agent output

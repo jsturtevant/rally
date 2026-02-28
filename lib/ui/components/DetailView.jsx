@@ -6,12 +6,12 @@ import { formatAge } from '../dashboard-data.js';
  * Detail view — shows full info for a single dispatch.
  * Escape to return to the dashboard.
  */
-export default function DetailView({ dispatch, onBack }) {
+export default function DetailView({ dispatch, onBack, terminalRows }) {
   useInput((input, key) => {
     if (key.escape) {
       onBack();
     }
-  });
+  }, { isActive: true });
 
   const issueRef = dispatch.type === 'pr' ? `PR #${dispatch.number}` : `Issue #${dispatch.number}`;
 
@@ -28,10 +28,14 @@ export default function DetailView({ dispatch, onBack }) {
     { label: 'Log Path', value: dispatch.logPath ?? '—' },
   ];
 
+  // 6 lines reserved: border top/bottom (2) + header with margin (2) + footer with margin (2)
+  const contentLines = terminalRows ? Math.max(5, terminalRows - 6) : 20;
+  const padCount = Math.max(0, contentLines - fields.length);
+
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
       <Box marginBottom={1}>
-        <Text bold>Details for </Text>
+        <Text bold>📋 Details for </Text>
         <Text bold color="cyan">{issueRef}</Text>
         <Text bold> ({dispatch.repo})</Text>
       </Box>
@@ -43,6 +47,9 @@ export default function DetailView({ dispatch, onBack }) {
             </Box>
             <Text>{f.value}</Text>
           </Box>
+        ))}
+        {Array.from({ length: padCount }, (_, i) => (
+          <Text key={`pad-${i}`}>{' '}</Text>
         ))}
       </Box>
       <Box marginTop={1}>

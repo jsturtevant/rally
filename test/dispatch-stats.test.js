@@ -110,7 +110,7 @@ describe('enrichWithStats', () => {
     const logPath = join(TEST_DIR, 'dispatch.log');
     writeFileSync(logPath, 'Total code changes:     +42 -7\n', 'utf8');
     
-    const dispatches = [{ id: 'd1', status: 'done', logPath }];
+    const dispatches = [{ id: 'd1', status: 'upstream', logPath }];
     const result = enrichWithStats(dispatches);
     
     assert.strictEqual(result.length, 1);
@@ -131,7 +131,7 @@ describe('enrichWithStats', () => {
     const logPath = join(TEST_DIR, 'dispatch.log');
     writeFileSync(logPath, 'Total code changes:     +20 -10\n', 'utf8');
     
-    const dispatches = [{ id: 'd1', status: 'cleaned', logPath }];
+    const dispatches = [{ id: 'd1', status: 'upstream', logPath }];
     const result = enrichWithStats(dispatches);
     
     assert.strictEqual(result[0].changes, '+20 -10');
@@ -148,21 +148,21 @@ describe('enrichWithStats', () => {
   });
 
   test('does not enrich when logPath is missing', () => {
-    const dispatches = [{ id: 'd1', status: 'done' }];
+    const dispatches = [{ id: 'd1', status: 'upstream' }];
     const result = enrichWithStats(dispatches);
     
     assert.strictEqual(result[0].changes, undefined);
   });
 
   test('does not enrich when log file does not exist', () => {
-    const dispatches = [{ id: 'd1', status: 'done', logPath: '/nonexistent/log.txt' }];
+    const dispatches = [{ id: 'd1', status: 'upstream', logPath: '/nonexistent/log.txt' }];
     const result = enrichWithStats(dispatches);
     
     assert.strictEqual(result[0].changes, undefined);
   });
 
   test('handles log file read errors gracefully', () => {
-    const dispatches = [{ id: 'd1', status: 'done', logPath: '/nonexistent/log.txt' }];
+    const dispatches = [{ id: 'd1', status: 'upstream', logPath: '/nonexistent/log.txt' }];
     const result = enrichWithStats(dispatches);
     
     assert.strictEqual(result.length, 1);
@@ -173,7 +173,7 @@ describe('enrichWithStats', () => {
     const logPath = join(TEST_DIR, 'dispatch.log');
     writeFileSync(logPath, 'No stats here\n', 'utf8');
     
-    const dispatches = [{ id: 'd1', status: 'done', logPath }];
+    const dispatches = [{ id: 'd1', status: 'upstream', logPath }];
     const result = enrichWithStats(dispatches);
     
     assert.strictEqual(result[0].changes, null);
@@ -183,7 +183,7 @@ describe('enrichWithStats', () => {
     const logPath = join(TEST_DIR, 'injectable.log');
     writeFileSync(logPath, 'placeholder\n', 'utf8');
     const mockReadFile = () => 'Total code changes:     +99 -11\n';
-    const dispatches = [{ id: 'd1', status: 'done', logPath }];
+    const dispatches = [{ id: 'd1', status: 'upstream', logPath }];
     
     const result = enrichWithStats(dispatches, mockReadFile);
     
@@ -199,7 +199,7 @@ describe('enrichWithStats', () => {
         id: 'd1', 
         repo: 'owner/repo', 
         branch: 'main', 
-        status: 'done',
+        status: 'upstream',
         logPath,
         session_id: 'abc123'
       }
@@ -209,7 +209,7 @@ describe('enrichWithStats', () => {
     assert.strictEqual(result[0].id, 'd1');
     assert.strictEqual(result[0].repo, 'owner/repo');
     assert.strictEqual(result[0].branch, 'main');
-    assert.strictEqual(result[0].status, 'done');
+    assert.strictEqual(result[0].status, 'upstream');
     assert.strictEqual(result[0].session_id, 'abc123');
     assert.strictEqual(result[0].changes, '+5 -3');
   });
@@ -221,7 +221,7 @@ describe('enrichWithStats', () => {
     writeFileSync(logPath2, 'Total code changes:     +20 -15\n', 'utf8');
     
     const dispatches = [
-      { id: 'd1', status: 'done', logPath: logPath1 },
+      { id: 'd1', status: 'upstream', logPath: logPath1 },
       { id: 'd2', status: 'implementing', logPath: logPath2 },
       { id: 'd3', status: 'reviewing', logPath: logPath2 },
     ];

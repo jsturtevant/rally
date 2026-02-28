@@ -79,7 +79,8 @@ describe('configureForkRemotes', () => {
   // Skip fetch for tests (no network), uses execFileSync signature
   function makeExecNoFetch(repoPath) {
     return (cmd, args, opts) => {
-      if (args[0] === 'fetch') return '';
+      if (cmd === 'gh') return '';
+      if (args.includes('fetch')) return '';
       return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
   }
@@ -191,7 +192,8 @@ describe('onboard --fork integration', () => {
 
     // Injectable _exec that skips fetch but delegates other commands
     const _exec = (cmd, args, opts) => {
-      if (args[0] === 'fetch') return '';
+      if (cmd === 'gh') return '';
+      if (args.includes('fetch')) return '';
       return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
@@ -207,7 +209,8 @@ describe('onboard --fork integration', () => {
     const repoPath = createRepoWithOrigin('fork-remotes', 'https://github.com/upstream-org/fork-remotes.git');
 
     const _exec = (cmd, args, opts) => {
-      if (args[0] === 'fetch') return '';
+      if (cmd === 'gh') return '';
+      if (args.includes('fetch')) return '';
       return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
@@ -262,7 +265,8 @@ describe('onboard --fork integration', () => {
     execFileSync('git', ['-C', repoPath, 'remote', 'add', 'upstream', 'https://github.com/upstream-org/has-upstream.git'], { stdio: 'ignore' });
 
     const _exec = (cmd, args, opts) => {
-      if (args[0] === 'fetch') return '';
+      if (cmd === 'gh') return '';
+      if (args.includes('fetch')) return '';
       return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
@@ -299,7 +303,8 @@ describe('onboard --fork integration', () => {
       if (cmd === 'gh' && args[0] === 'api' && args[1] === 'user') {
         return 'testuser\n';
       }
-      if (args[0] === 'fetch') return '';
+      if (cmd === 'gh') return '';
+      if (args.includes('fetch')) return '';
       return execFileSync(cmd, args, { ...opts, encoding: 'utf8', stdio: 'pipe' });
     };
 
@@ -348,7 +353,8 @@ describe('onboard --fork integration', () => {
       if (cmd === 'gh' && args[0] === 'api' && args[1] === 'user') {
         return 'jsturtevant\n';
       }
-      if (args[0] === 'fetch') return '';
+      if (cmd === 'gh') return '';
+      if (args.includes('fetch')) return '';
       return execFileSync(cmd, args, { ...opts, encoding: 'utf8', stdio: 'pipe' });
     };
 

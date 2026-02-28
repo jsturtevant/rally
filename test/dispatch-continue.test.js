@@ -18,8 +18,9 @@ function makeRecord(overrides = {}) {
 }
 
 const silentChalk = {
-  cyan: (s) => s,
+  cyan: Object.assign((s) => s, { bold: (s) => s }),
   dim: (s) => s,
+  gray: (s) => s,
 };
 
 // Suppress console.log during tests via t.mock.method — see individual tests
@@ -144,11 +145,11 @@ test('continueDispatch passes message option through to resumeCopilot', async (t
   assert.strictEqual(capturedOpts.message, 'focus on tests');
 });
 
-test('continueDispatch includes dispatch id context in resume message', async (t) => {
+test('continueDispatch includes session info in resume message', async (t) => {
   const mockLog = t.mock.method(console, 'log', () => {});
 
   await dispatchContinue(42, {
-    _getActiveDispatches: () => [makeRecord({ id: 'rally-42' })],
+    _getActiveDispatches: () => [makeRecord({ id: 'rally-42', session_id: 'sess-abc' })],
     _existsSync: () => true,
     _parseSessionIdFromLog: () => null,
     _updateDispatchField: () => {},
@@ -158,7 +159,8 @@ test('continueDispatch includes dispatch id context in resume message', async (t
   });
 
   const msg = mockLog.mock.calls.map((call) => call.arguments.join(' ')).join('\n');
-  assert.ok(msg.includes('rally-42'), `Expected dispatch id in message, got: ${msg}`);
+  assert.ok(msg.includes('Attaching to Session'), `Expected 'Attaching to Session' in message, got: ${msg}`);
+  assert.ok(msg.includes('sess-abc'), `Expected session id in message, got: ${msg}`);
 });
 
 test('dispatchContinue works with --repo filter for disambiguation', async (t) => {

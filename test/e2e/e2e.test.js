@@ -1,6 +1,6 @@
 import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdtempSync, mkdirSync, writeFileSync, readFileSync,
   rmSync, existsSync,
@@ -8,6 +8,19 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+
+/** Check if gh CLI is authenticated */
+function isGhAuthenticated() {
+  try {
+    const result = spawnSync('gh', ['auth', 'status'], {
+      encoding: 'utf8',
+      timeout: 5000,
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
 
 const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -86,7 +99,7 @@ describe('e2e: CLI basics', () => {
 
   test('rally --help lists commands', { timeout: DEFAULT_TIMEOUT }, () => {
     const output = rally(['--help'], { rallyHome: tempDir });
-    for (const cmd of ['setup', 'onboard', 'status', 'dashboard']) {
+    for (const cmd of ['onboard', 'status', 'dashboard']) {
       assert.ok(output.includes(cmd), `help should mention ${cmd}`);
     }
   });
@@ -104,7 +117,6 @@ describe('e2e: CLI basics', () => {
     const output = rally(['dashboard', '--json'], { rallyHome: tempDir, timeout: DISPATCH_TIMEOUT });
     const data = JSON.parse(output);
     assert.ok(Array.isArray(data.dispatches), 'should have dispatches array');
-    assert.ok(typeof data.summary === 'object', 'should have summary object');
   });
 
   test('rally nonexistent exits non-zero', { timeout: DEFAULT_TIMEOUT }, () => {
@@ -164,8 +176,8 @@ describe('e2e: setup & onboard (config seeding)', () => {
 // ─── Group 3: Dispatch (real repo integration) ─────────────────────────────
 
 describe('e2e: dispatch issue 54 (library)', () => {
-  const skipReason = (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN)
-    ? 'Skipping: GH_TOKEN not set (dispatch tests require GitHub API access)'
+  const skipReason = !isGhAuthenticated()
+    ? 'Skipping: gh CLI not authenticated (run `gh auth login`)'
     : undefined;
 
   let tempDir;
@@ -249,7 +261,7 @@ describe('e2e: dispatch issue 54 (library)', () => {
     assert.ok(active.dispatches.length >= 1, 'should have at least one dispatch');
     const dispatch = active.dispatches.find(d => d.number === 54);
     assert.ok(dispatch, 'dispatch for issue 54 should exist');
-    assert.equal(dispatch.status, 'planning');
+    assert.equal(dispatch.status, 'implementing');
     assert.equal(dispatch.type, 'issue');
   });
 
@@ -283,7 +295,7 @@ describe('e2e: dispatch clean', () => {
   });
 
   test('dispatch clean removes done dispatches', { timeout: DISPATCH_TIMEOUT }, async (t) => {
-    // Seed config with a "done" dispatch
+    // Seed config with an "upstream" dispatch (cleanable status)
     seedConfig(tempDir, REPO_ROOT);
     const active = {
       dispatches: [{
@@ -293,7 +305,7 @@ describe('e2e: dispatch clean', () => {
         type: 'issue',
         branch: 'rally/99-fake',
         worktreePath: '/nonexistent/path',
-        status: 'done',
+        status: 'upstream',
         session_id: 'test-session',
         created: new Date().toISOString(),
       }],

@@ -617,3 +617,30 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **rally.js wiring:** After dashboard exit, `pendingDispatch` triggers `dispatchIssue` or `dispatchPr`; `pendingAddProject` prints onboard instructions.
 - **Build system:** New JSX files added to `test/build-jsx.mjs` and `.gitignore` (compiled .js output is gitignored).
 - **Pre-existing test hang:** Some UI tests hang when run together (not from these changes). Dashboard.test.js passes individually.
+
+### 2026-02-27 — Dashboard Column Alignment Fix
+
+- **Problem:** DispatchTable computed column widths based on full terminal width, but Dashboard wraps the table in a `borderStyle="round"` box with `paddingX={1}`, causing columns to overflow by 4 characters and misalign.
+- **Solution:** Added `width` prop to DispatchTable component; Dashboard passes `effectiveWidth = terminalWidth - 4` (2 for border, 2 for horizontal padding).
+- **Pattern:** When rendering Ink components inside bordered/padded containers, always account for the overhead when computing child widths.
+
+### 2026 — PTY Test Harness (test/harness/terminal.js)
+
+- **Created E2E testing infrastructure** for terminal applications using node-pty + @xterm/headless + canvas.
+- **API:** `spawn(cmd, {cols, rows, cwd, env})`, `term.send(text)`, `term.sendKey(name)`, `term.waitFor(pattern, {timeout})`, `term.getFrame()`, `term.screenshot(path)`, `term.close()`.
+- **Key insight:** `@xterm/headless` is a CommonJS module — must use `import pkg; const {Terminal} = pkg` syntax, not named imports.
+- **Zombie process prevention:** Track all active terminals in a Set, clean up on SIGINT/SIGTERM/exit. `cleanupAll()` exported for test teardown.
+- **Key codes:** `KEY_CODES` map for named keys (enter, escape, arrows, tab, backspace). Ctrl+X via `ctrlKey()` computing ASCII control char.
+- **Screenshot rendering:** Monospace font rendering to canvas at 14px with 8.4px char width. ANSI 16-color palette supported.
+- **Dependencies added:** `node-pty`, `@xterm/headless`, `canvas`, `pixelmatch`, `pngjs` (last two for future visual diff tests).
+
+
+### 2026 — Snapshot Engine (test/harness/snapshots.js)
+
+- **Created visual regression infrastructure** using `pixelmatch` + `pngjs` to compare terminal screenshots against baselines.
+- **API:** `SnapshotManager({baselineDir, actualDir, diffDir, threshold})` with `compare(name, buffer)`, `bless(name)`, `blessAll()`, `list()`, `clean()`.
+- **Auto-baseline:** If no baseline exists, `compare()` saves the actual as the new baseline and returns `{match: true, newBaseline: true}`.
+- **Diff images:** On mismatch, generates a red-highlighted diff image showing pixel differences.
+- **--update-snapshots flag:** When present in `process.argv`, auto-blesses failing snapshots (returns `{match: true, updated: true}`).
+- **Threshold:** Default 0.5% (0.005) pixel difference tolerance for minor anti-aliasing variance.
+- **Dimension mismatch handling:** Reports error with full diagnostics when baseline/actual dimensions differ.

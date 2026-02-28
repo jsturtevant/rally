@@ -153,8 +153,21 @@ describe('worktree collision detection', () => {
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
 
+    const wtPath = join(repoPath, '.worktrees', 'rally-10');
     // Create an actual git worktree so worktreeExists() returns true
-    execFileSync('git', ['worktree', 'add', join(repoPath, '.worktrees', 'rally-10'), '-b', 'rally/10-existing'], { cwd: repoPath, stdio: 'ignore' });
+    execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/10-existing'], { cwd: repoPath, stdio: 'ignore' });
+
+    // Register the dispatch so it's not treated as stale
+    addDispatch({
+      id: 'repo-issue-10',
+      repo: 'owner/repo',
+      number: 10,
+      type: 'issue',
+      branch: 'rally/10-existing',
+      worktreePath: wtPath,
+      status: 'implementing',
+      session_id: 'test-session-10',
+    });
 
     const result = await dispatchIssue({
       issueNumber: 10,
@@ -179,6 +192,18 @@ describe('worktree collision detection', () => {
     // Create an actual git worktree so worktreeExists() returns true
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/11-existing'], { cwd: repoPath, stdio: 'ignore' });
     writeFileSync(join(wtPath, 'marker.txt'), 'existing');
+
+    // Register the dispatch so it's not treated as stale
+    addDispatch({
+      id: 'repo-issue-11',
+      repo: 'owner/repo',
+      number: 11,
+      type: 'issue',
+      branch: 'rally/11-existing',
+      worktreePath: wtPath,
+      status: 'implementing',
+      session_id: 'test-session-11',
+    });
 
     const result = await dispatchIssue({
       issueNumber: 11,
@@ -211,7 +236,7 @@ describe('atomic yaml writes', () => {
       type: 'issue',
       branch: 'rally/1-test',
       worktreePath: '/tmp/wt',
-      status: 'planning',
+      status: 'implementing',
       session_id: 'sess-1',
     });
 
@@ -231,7 +256,7 @@ describe('atomic yaml writes', () => {
       type: 'issue',
       branch: 'rally/2-test',
       worktreePath: '/tmp/wt2',
-      status: 'planning',
+      status: 'implementing',
       session_id: 'sess-2',
     });
 

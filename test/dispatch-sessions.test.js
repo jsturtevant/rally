@@ -56,7 +56,7 @@ describe('formatDispatchSessions', () => {
 
   test('shows (no session) for PID-only session IDs', () => {
     const sessions = [
-      { id: 'rally-99', session_id: '12345', status: 'planning' },
+      { id: 'rally-99', session_id: '12345', status: 'implementing' },
     ];
 
     const output = formatDispatchSessions(sessions);

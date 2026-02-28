@@ -19,7 +19,7 @@ const SAMPLE_DISPATCHES = [
     type: 'issue',
     number: 42,
     branch: 'rally/42-fix-bug',
-    status: 'planning',
+    status: 'implementing',
     worktreePath: '/home/user/projects/repo-a',
     session_id: 'abc123',
     title: 'Fix the login bug',
@@ -45,6 +45,7 @@ describe('DispatchTable', () => {
     );
     const output = lastInstance.lastFrame();
     assert.ok(!output.includes('Project'), 'Project is now a group header, not a column');
+    assert.ok(output.includes('Type'), 'should include Type column');
     assert.ok(output.includes('Issue/PR'), 'should include Issue/PR column');
     assert.ok(!output.includes('Branch'), 'should not include Branch column');
     assert.ok(!output.includes('Folder'), 'should not include Folder column');
@@ -59,8 +60,10 @@ describe('DispatchTable', () => {
     const output = lastInstance.lastFrame();
     assert.ok(output.includes('owner/repo-a'), 'should include project group header');
     assert.ok(output.includes('owner/repo-b'), 'should include second project group header');
-    assert.ok(output.includes('Issue #42'), 'should include issue ref');
-    assert.ok(output.includes('PR #7'), 'should include PR ref');
+    assert.ok(output.includes('#42'), 'should include issue ref');
+    assert.ok(output.includes('#7'), 'should include PR ref');
+    assert.ok(output.includes('Issue'), 'should include Issue type');
+    assert.ok(output.includes('PR'), 'should include PR type');
     assert.ok(output.includes('Fix the login bug'), 'should include issue title');
     assert.ok(output.includes('Add unit tests'), 'should include PR title (possibly truncated)');
     assert.ok(!output.includes('rally/42-fix-bug'), 'should not include branch');
@@ -73,23 +76,22 @@ describe('DispatchTable', () => {
       React.createElement(DispatchTable, { dispatches: noTitleDispatches })
     );
     const output = lastInstance.lastFrame();
-    assert.ok(output.includes('Issue #42'), 'should include issue ref without title');
-    assert.ok(output.includes('PR #7'), 'should include PR ref without title');
+    assert.ok(output.includes('#42'), 'should include issue ref without title');
+    assert.ok(output.includes('#7'), 'should include PR ref without title');
   });
 
-  it('indents PR rows with leading spaces', () => {
+  it('shows PR type in type column', () => {
     lastInstance = render(
       React.createElement(DispatchTable, { dispatches: SAMPLE_DISPATCHES })
     );
     const output = lastInstance.lastFrame();
-    // PR rows should have leading indentation
-    const prLine = output.split('\n').find(l => l.includes('PR #7'));
+    const prLine = output.split('\n').find(l => l.includes('#7'));
     assert.ok(prLine, 'should find PR line');
-    assert.ok(prLine.includes('   PR #7'), 'PR should be indented');
+    assert.ok(prLine.includes('PR'), 'PR type should appear in the line');
   });
 
   it('renders status icons for each status', () => {
-    const statuses = ['planning', 'implementing', 'reviewing', 'pushed', 'done', 'cleaned'];
+    const statuses = ['implementing', 'reviewing', 'waiting', 'done', 'cleaned'];
     const dispatches = statuses.map((status, i) => ({
       repo: 'o/r',
       type: 'issue',
@@ -188,35 +190,37 @@ describe('formatAge', () => {
 });
 
 describe('computeColumnWidths', () => {
-  it('gives Issue/PR column extra space from terminal width', () => {
+  it('gives Title column extra space from terminal width', () => {
     const cols = computeColumnWidths(120);
-    const issueRef = cols.find(c => c.key === 'issueRef');
-    // Fixed columns: status(20) + changes(10) + age(6) = 36
-    // selector = 2, remaining = 120 - 2 - 36 = 82
-    assert.equal(issueRef.width, 82, 'Issue/PR should get remaining terminal width');
+    const title = cols.find(c => c.key === 'title');
+    // Fixed columns: type(7) + issueRef(10) + status(24) + changes(10) + age(6) = 57
+    // selector = 2, remaining = 120 - 2 - 57 = 61
+    assert.equal(title.width, 61, 'Title should get remaining terminal width');
   });
 
   it('uses minimum widths for non-flex columns', () => {
     const cols = computeColumnWidths(120);
+    const type = cols.find(c => c.key === 'type');
     const status = cols.find(c => c.key === 'status');
     const changes = cols.find(c => c.key === 'changes');
     const age = cols.find(c => c.key === 'age');
-    assert.equal(status.width, 20);
+    assert.equal(type.width, 7);
+    assert.equal(status.width, 24);
     assert.equal(changes.width, 10);
     assert.equal(age.width, 6);
   });
 
   it('defaults to 80 columns when terminal width is undefined', () => {
     const cols = computeColumnWidths(undefined);
-    const issueRef = cols.find(c => c.key === 'issueRef');
-    // remaining = 80 - 2 - 36 = 42
-    assert.equal(issueRef.width, 42);
+    const title = cols.find(c => c.key === 'title');
+    // remaining = 80 - 2 - 57 = 21
+    assert.equal(title.width, 21);
   });
 
-  it('never shrinks Issue/PR below its minimum width', () => {
+  it('never shrinks Title below its minimum width', () => {
     const cols = computeColumnWidths(40);
-    const issueRef = cols.find(c => c.key === 'issueRef');
-    assert.ok(issueRef.width >= 12, 'Issue/PR should not go below minWidth');
+    const title = cols.find(c => c.key === 'title');
+    assert.ok(title.width >= 20, 'Title should not go below minWidth');
   });
 });
 

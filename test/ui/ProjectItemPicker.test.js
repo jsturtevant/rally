@@ -151,6 +151,7 @@ describe('ProjectItemPicker', () => {
       React.createElement(ProjectItemPicker, {
         project,
         onSelectItem: (item, repo) => { selectedItem = item; selectedRepo = repo; },
+        onNewBranch: () => {},
         onBack: () => {},
         ...mockFetchers(),
       })
@@ -161,6 +162,9 @@ describe('ProjectItemPicker', () => {
       await new Promise(r => setTimeout(r, 50));
       if (lastInstance.lastFrame().includes('❯')) break;
     }
+    // Move down past "+ Dispatch new branch" to first issue
+    lastInstance.stdin.write('\x1B[B');
+    await new Promise(r => setTimeout(r, 50));
     lastInstance.stdin.write('\r');
     await new Promise(r => setTimeout(r, 50));
     assert.ok(selectedItem, 'should have selected an item');

@@ -68,17 +68,15 @@ describe('renderPlainDashboard (non-TTY)', () => {
   it('includes dispatch data', () => {
     const output = renderPlainDashboard();
     assert.ok(output.includes('owner/repo-a'), 'should include repo name');
-    assert.ok(output.includes('Issue #42'), 'should include issue ref');
-    assert.ok(output.includes('PR #7'), 'should include PR ref');
+    assert.ok(output.includes('#42'), 'should include issue ref');
+    assert.ok(output.includes('#7'), 'should include PR ref');
     assert.ok(output.includes('rally/42-fix-bug'), 'should include branch');
     assert.ok(output.includes('worktree-check'), 'should include worktree path (possibly truncated)');
   });
 
-  it('includes summary line with counts', () => {
+  it('includes formatted columns', () => {
     const output = renderPlainDashboard();
-    assert.ok(output.includes('1 active'), 'should show active count');
-    assert.ok(output.includes('1 done'), 'should show done count');
-    assert.ok(output.includes('orphaned'), 'should show orphaned label');
+    assert.ok(output.includes('Issue/PR'), 'should show column headers');
   });
 
   it('filters by project', () => {
@@ -91,6 +89,5 @@ describe('renderPlainDashboard (non-TTY)', () => {
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches: [] }), 'utf8');
     const output = renderPlainDashboard();
     assert.ok(output.includes('No active dispatches'), 'should show empty state');
-    assert.ok(output.includes('0 active'), 'should show zero counts');
   });
 });

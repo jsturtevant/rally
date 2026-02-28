@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { setup } from '../lib/setup.js';
+import { ensureSetup } from '../lib/setup.js';
 import { onboard } from '../lib/onboard.js';
 import { getStatus, formatStatus } from '../lib/status.js';
 import { handleError, RallyError } from '../lib/errors.js';
@@ -28,25 +28,13 @@ program
   .description('Dispatch Squad teams to GitHub issues and PR reviews via git worktrees')
   .version(pkg.version);
 
-program
-  .command('setup')
-  .description('Initialize Squad team state and Rally directories')
-  .option('--dir <path>', 'Where to create external team state')
-  .action(async (options) => {
-    try {
-      await setup(options);
-    } catch (err) {
-      handleError(err);
-    }
-  });
-
 const onboardCmd = program
   .command('onboard')
   .description('Onboard a repo to Rally (local path, GitHub URL, or owner/repo)')
   .argument('[path]', 'Path, GitHub URL, or owner/repo (defaults to current directory)')
   .option('--team <name>', 'Use a named team (skips interactive prompt)')
   .option('--fork <owner/repo>', 'Set origin to your fork and upstream to the main repo')
-  .hook('preAction', () => assertTools())
+  .hook('preAction', () => { ensureSetup(); assertTools(); })
   .action(async (pathArg, opts) => {
     try {
       await onboard({ path: pathArg, team: opts.team, fork: opts.fork });
@@ -73,6 +61,7 @@ program
   .command('status')
   .description('Show Rally configuration and active dispatches for debugging')
   .option('--json', 'Output as JSON')
+  .hook('preAction', () => ensureSetup())
   .action(async (opts) => {
     try {
       const { refreshDispatchStatuses } = await import('../lib/dispatch-refresh.js');
@@ -95,6 +84,7 @@ const dashboard = program
   .description('Show active dispatch dashboard')
   .option('--json', 'Output as JSON instead of interactive UI')
   .option('--project <name>', 'Filter by project (repo name)')
+  .hook('preAction', () => ensureSetup())
   .action(async (opts) => {
     try {
       if (opts.json) {
@@ -108,62 +98,80 @@ const dashboard = program
         const React = await import('react');
         const { render } = await import('ink');
         const { default: Dashboard } = await import('../lib/ui/Dashboard.js');
-        let attachDispatch = null;
-        let pendingDispatch = null;
-        let pendingAddProject = false;
-        const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
-        const onDispatchItem = (item) => { pendingDispatch = item; };
-        const onAddProject = () => { pendingAddProject = true; };
-        const app = render(
-          React.createElement(Dashboard, { project: opts.project, onAttachSession, onDispatchItem, onAddProject }),
-          { fullScreen: true }
-        );
-        await app.waitUntilExit();
-        if (pendingDispatch) {
-          const { resolveRepo } = await import('../lib/dispatch.js');
-          const { getSettings, getConfigDir } = await import('../lib/config.js');
-          const settings = getSettings();
+        const { getTrustWarnings: _getTrustWarnings } = await import('../lib/dispatch-trust.js');
+        const { resolveRepo } = await import('../lib/dispatch.js');
+        const { getSettings, getConfigDir } = await import('../lib/config.js');
+        const settings = getSettings();
+
+        const onAddProject = (repoPath, team) => onboard({ path: repoPath, team });
+
+        const onDispatch = async (item) => {
           const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
-          const trust = settings.require_trust === 'never' ? true : undefined;
-          const resolved = resolveRepo({ repo: pendingDispatch.repo });
-          if (pendingDispatch.type === 'issue') {
+          const resolved = resolveRepo({ repo: item.repo });
+          if (item.type === 'issue') {
             const { dispatchIssue } = await import('../lib/dispatch-issue.js');
-            const result = await dispatchIssue({
-              issueNumber: pendingDispatch.number,
-              repo: resolved.fullName,
-              repoPath: resolved.project.path,
-              sandbox,
-              trust,
-              denyToolsCopilot: settings.deny_tools_copilot,
-              denyToolsSandbox: settings.deny_tools_sandbox,
+            return dispatchIssue({
+              issueNumber: item.number, repo: resolved.fullName, repoPath: resolved.project.path,
+              sandbox, trust: true,
+              denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
               disallowTempDir: settings.disallow_temp_dir,
             });
-            if (!result.aborted) {
-              console.log(`Dispatched issue #${pendingDispatch.number}: ${result.issue.title} → ${result.worktreePath}`);
-            }
-          } else {
-            const { dispatchPr } = await import('../lib/dispatch-pr.js');
-            const promptFile = settings.review_template ? join(getConfigDir(), settings.review_template) : undefined;
-            const result = await dispatchPr({
-              prNumber: pendingDispatch.number,
-              repo: resolved.fullName,
-              repoPath: resolved.project.path,
-              sandbox,
-              trust,
-              promptFile,
-              denyToolsCopilot: settings.deny_tools_copilot,
-              denyToolsSandbox: settings.deny_tools_sandbox,
-              disallowTempDir: settings.disallow_temp_dir,
-            });
-            if (!result.aborted) {
-              console.log(`Dispatched PR #${pendingDispatch.number}: ${result.pr.title} → ${result.worktreePath}`);
-            }
           }
-        } else if (pendingAddProject) {
-          console.log('To add a project, run: rally onboard <path-or-url>');
-        } else if (attachDispatch) {
-          const { dispatchContinue } = await import('../lib/dispatch-continue.js');
-          await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });
+          const { dispatchPr } = await import('../lib/dispatch-pr.js');
+          const promptFile = settings.review_template ? join(getConfigDir(), settings.review_template) : undefined;
+          return dispatchPr({
+            prNumber: item.number, repo: resolved.fullName, repoPath: resolved.project.path,
+            sandbox, trust: true, promptFile,
+            denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
+            disallowTempDir: settings.disallow_temp_dir,
+          });
+        };
+
+        const trustFn = settings.require_trust === 'never' ? null : (item) => _getTrustWarnings({ type: item.type, number: item.number, repo: item.repo });
+
+        const onDispatchBranch = async (task, repo) => {
+          const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
+          const resolved = resolveRepo({ repo });
+          const { dispatchBranch } = await import('../lib/dispatch-branch.js');
+          return dispatchBranch({
+            task, repo: resolved.fullName, repoPath: resolved.project.path,
+            sandbox,
+            denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
+            disallowTempDir: settings.disallow_temp_dir,
+          });
+        };
+
+        // Dashboard loop — returns after attach/continue operations
+        let keepRunning = true;
+        while (keepRunning) {
+          let attachDispatch = null;
+          const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
+
+          const app = render(
+            React.createElement(Dashboard, {
+              project: opts.project, onAttachSession, onAddProject,
+              onDispatch, onDispatchBranch, getTrustWarnings: trustFn,
+            }),
+            { fullScreen: true }
+          );
+          await app.waitUntilExit();
+
+          if (attachDispatch) {
+            // Clear screen before launching copilot picker
+            process.stdout.write('\x1B[2J\x1B[H');
+            const { dispatchContinue } = await import('../lib/dispatch-continue.js');
+            try {
+              await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });
+            } catch (err) {
+              // Show error briefly then return to dashboard
+              console.error(`\n${err.message}\n`);
+              await new Promise(r => setTimeout(r, 2000));
+            }
+            // Loop continues — dashboard will re-render
+          } else {
+            // User quit normally (q key) — exit the loop
+            keepRunning = false;
+          }
         }
       }
     } catch (err) {
@@ -174,7 +182,7 @@ const dashboard = program
 const dispatch = program
   .command('dispatch')
   .description('Dispatch Squad to a GitHub issue or PR')
-  .hook('preAction', () => assertTools())
+  .hook('preAction', () => { ensureSetup(); assertTools(); })
   .action(() => {
     console.log('Usage: rally dispatch <issue|pr|remove|continue|log|sessions> <number> [options]\n');
     console.log('Examples:');

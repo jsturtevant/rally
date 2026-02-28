@@ -6,7 +6,7 @@ import { listOnboardedRepos } from '../../picker.js';
  * Project browser — lists onboarded projects with an option to add a new one.
  * ↑/↓ to navigate, Enter to select, Esc to go back.
  */
-export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, _listOnboardedRepos }) {
+export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, terminalRows, _listOnboardedRepos }) {
   const listRepos = _listOnboardedRepos || listOnboardedRepos;
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -45,9 +45,11 @@ export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, 
 
   if (error) {
     return (
-      <Box flexDirection="column">
-        <Text color="red">✗ {error}</Text>
-        <Box marginTop={1}>
+      <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={terminalRows}>
+        <Box flexDirection="column">
+          <Text color="red">✗ {error}</Text>
+        </Box>
+        <Box justifyContent="center">
           <Text dimColor>Esc back</Text>
         </Box>
       </Box>
@@ -55,19 +57,21 @@ export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, 
   }
 
   return (
-    <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text bold>Select a Project</Text>
-      </Box>
-      {items.map((item, i) => (
-        <Box key={item.label}>
-          <Text color="cyan">{i === selectedIndex ? '❯ ' : '  '}</Text>
-          <Text bold={i === selectedIndex} color={item.type === 'add' ? 'green' : undefined}>
-            {item.label}
-          </Text>
+    <Box flexDirection="column" justifyContent="space-between" borderStyle="round" borderColor="gray" paddingX={1} height={terminalRows}>
+      <Box flexDirection="column">
+        <Box marginBottom={1}>
+          <Text bold>Select a Project</Text>
         </Box>
-      ))}
-      <Box marginTop={1}>
+        {items.map((item, i) => (
+          <Box key={item.label}>
+            <Text color="cyan">{i === selectedIndex ? '❯ ' : '  '}</Text>
+            <Text bold={i === selectedIndex} color={item.type === 'add' ? 'green' : undefined}>
+              {item.label}
+            </Text>
+          </Box>
+        ))}
+      </Box>
+      <Box justifyContent="center">
         <Text dimColor>↑/↓ navigate · Enter select · Esc back</Text>
       </Box>
     </Box>

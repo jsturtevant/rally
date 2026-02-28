@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
-import { setup } from '../lib/setup.js';
+import { ensureSetup } from '../lib/setup.js';
 import { DEFAULT_DENY_TOOLS } from '../lib/copilot.js';
 import { withTempRallyHome } from './helpers/temp-env.js';
 
-describe('setup', () => {
+describe('ensureSetup', () => {
   let tempDir;
 
   beforeEach((t) => {
@@ -16,176 +16,60 @@ describe('setup', () => {
 
   // --- Acceptance Criteria: Creates Rally directories ---
 
-  test('creates team directory', async () => {
-    const teamDir = join(tempDir, 'team');
-    // Pre-create .squad so we skip npx
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    await setup();
-
-    assert.ok(existsSync(teamDir), 'team directory should exist');
-  });
-
-  test('creates projects directory', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    await setup();
+  test('creates projects directory when missing', () => {
+    ensureSetup();
 
     const projectsDir = join(tempDir, 'projects');
     assert.ok(existsSync(projectsDir), 'projects directory should exist');
   });
 
-  // --- Acceptance Criteria: Runs Squad init in team dir ---
-
-  test('runs Squad init when .squad/ does not exist', async () => {
-    let execCalled = false;
-    let execArgs = null;
-    const fakeExec = (cmd, args, opts) => {
-      execCalled = true;
-      execArgs = { cmd, args, cwd: opts.cwd };
-      // Simulate npx creating .squad/
-      mkdirSync(join(opts.cwd, '.squad'), { recursive: true });
-    };
-
-    await setup({ _exec: fakeExec });
-
-    assert.ok(execCalled, 'exec should have been called');
-    assert.strictEqual(execArgs.cmd, 'npx');
-    assert.deepStrictEqual(execArgs.args, ['github:bradygaster/squad#v0.5.2']);
-    assert.strictEqual(execArgs.cwd, join(tempDir, 'team'));
-  });
-
-  test('skips Squad init when .squad/ already exists', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    let execCalled = false;
-    const fakeExec = () => { execCalled = true; };
-
-    await setup({ _exec: fakeExec });
-
-    assert.ok(!execCalled, 'exec should NOT have been called when .squad/ exists');
-  });
-
-  // --- Acceptance Criteria: Writes config.yaml ---
-
-  test('writes config.yaml with correct structure', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    await setup();
+  test('writes config.yaml with correct structure', () => {
+    ensureSetup();
 
     const configPath = join(tempDir, 'config.yaml');
     assert.ok(existsSync(configPath), 'config.yaml should exist');
 
     const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
-    assert.strictEqual(config.teamDir, teamDir);
     assert.strictEqual(config.projectsDir, join(tempDir, 'projects'));
     assert.strictEqual(config.version, '0.1.0');
   });
 
-  test('writes config.yaml with custom --dir', async () => {
-    const customDir = join(tempDir, 'custom-team');
-    mkdirSync(customDir, { recursive: true });
-    mkdirSync(join(customDir, '.squad'), { recursive: true });
+  // --- Acceptance Criteria: Returns true if setup was needed ---
 
-    await setup({ dir: customDir });
+  test('returns true when setup was needed', () => {
+    const result = ensureSetup();
+    assert.strictEqual(result, true, 'should return true when setup was performed');
+  });
 
-    const configPath = join(tempDir, 'config.yaml');
-    const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
-    assert.strictEqual(config.teamDir, customDir);
+  test('returns false when already set up', () => {
+    // First setup
+    ensureSetup();
+
+    // Second call should return false
+    const result = ensureSetup();
+    assert.strictEqual(result, false, 'should return false when already set up');
   });
 
   // --- Acceptance Criteria: Idempotent on re-run ---
 
-  test('setup skips existing directories and squad on re-run', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
+  test('skips setup when projectsDir exists in config', () => {
     // First run
-    await setup();
+    ensureSetup();
 
     const configPath = join(tempDir, 'config.yaml');
     const firstConfig = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
 
-    // Second run — should not throw
-    await setup();
+    // Second run — should not modify config
+    ensureSetup();
     const secondConfig = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
 
     assert.deepStrictEqual(firstConfig, secondConfig);
-    assert.ok(existsSync(teamDir));
-    assert.ok(existsSync(join(tempDir, 'projects')));
-  });
-
-  test('setup completes without error on full re-run', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    await setup();
-    await assert.doesNotReject(() => setup());
-  });
-
-  // --- Error Cases ---
-
-  test('setup continues on squad init failure (npx ENOENT)', async () => {
-    const fakeExec = () => {
-      const err = new Error('spawn npx ENOENT');
-      err.code = 'ENOENT';
-      throw err;
-    };
-
-    // Should NOT reject — squad failure is a warning, not an error
-    await assert.doesNotReject(() => setup({ _exec: fakeExec }));
-
-    // Config should still be written
-    const configPath = join(tempDir, 'config.yaml');
-    assert.ok(existsSync(configPath), 'config.yaml should still be written when squad init fails');
-  });
-
-  test('setup continues on squad init failure (exit code 128)', async () => {
-    const fakeExec = () => {
-      throw new Error('Command failed with exit code 128');
-    };
-
-    // Should NOT reject — squad failure is a warning, not an error
-    await assert.doesNotReject(() => setup({ _exec: fakeExec }));
-
-    // Config should still be written
-    const configPath = join(tempDir, 'config.yaml');
-    assert.ok(existsSync(configPath), 'config.yaml should still be written when squad init fails');
-  });
-
-  test('error: permission denied on directory creation', async () => {
-    const fakeExec = () => {};
-    // Use a file as a "directory" parent — mkdir inside a file always fails
-    const blocker = join(tempDir, 'blocker');
-    writeFileSync(blocker, 'not-a-dir');
-    const impossibleDir = join(blocker, 'subdir');
-
-    await assert.rejects(
-      () => setup({ dir: impossibleDir, _exec: fakeExec }),
-      (err) => {
-        assert.ok(err.message.length > 0, 'Should have an error message');
-        return true;
-      }
-    );
   });
 
   // --- Acceptance Criteria: Writes deny_tools defaults to config.yaml ---
 
-  test('writes deny_tools defaults to config.yaml', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    await setup();
+  test('writes deny_tools defaults to config.yaml', () => {
+    ensureSetup();
 
     const configPath = join(tempDir, 'config.yaml');
     const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
@@ -193,47 +77,40 @@ describe('setup', () => {
     assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
   });
 
-  test('preserves existing deny_tools on re-run', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
+  test('preserves existing deny_tools when already configured', () => {
     // Write config with custom deny_tools
     const configPath = join(tempDir, 'config.yaml');
+    const projectsDir = join(tempDir, 'projects');
+    mkdirSync(projectsDir, { recursive: true });
     const customTools = ['shell(rm)'];
     writeFileSync(configPath, yaml.dump({
-      teamDir,
-      projectsDir: join(tempDir, 'projects'),
+      projectsDir,
       version: '0.1.0',
-      settings: { deny_tools_copilot: customTools },
+      settings: { deny_tools_copilot: customTools, deny_tools_sandbox: customTools },
     }), 'utf8');
 
-    await setup();
+    // ensureSetup should skip (already set up)
+    const result = ensureSetup();
+    assert.strictEqual(result, false, 'should skip when already configured');
 
     const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.deepEqual(config.settings.deny_tools_copilot, customTools);
-    // deny_tools_sandbox was missing, so it gets the default
-    assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
+    assert.deepEqual(config.settings.deny_tools_sandbox, customTools);
   });
 
-  test('setup replaces empty deny_tools arrays with defaults on re-run', async () => {
-    const teamDir = join(tempDir, 'team');
-    mkdirSync(teamDir, { recursive: true });
-    mkdirSync(join(teamDir, '.squad'), { recursive: true });
-
-    // Write config with empty deny_tools arrays
+  test('replaces empty deny_tools arrays with defaults when config is incomplete', () => {
+    // Write partial config without projectsDir
     const configPath = join(tempDir, 'config.yaml');
+    mkdirSync(tempDir, { recursive: true });
     writeFileSync(configPath, yaml.dump({
-      teamDir,
-      projectsDir: join(tempDir, 'projects'),
       version: '0.1.0',
       settings: { deny_tools_copilot: [], deny_tools_sandbox: [] },
     }), 'utf8');
 
-    await setup();
+    ensureSetup();
 
     const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
-    // Empty arrays should be replaced with defaults, not preserved
+    // Empty arrays should be replaced with defaults
     assert.deepEqual(config.settings.deny_tools_copilot, DEFAULT_DENY_TOOLS);
     assert.deepEqual(config.settings.deny_tools_sandbox, DEFAULT_DENY_TOOLS);
   });

@@ -629,3 +629,31 @@ Created 7 real subprocess tests invoking `bin/rally.js` via `execFileSync`. All 
    - 20 tests, all passing
 
 **Key observation:** Kaylee's implementation uses regex-based extraction. Time fields (`apiTime`, `sessionTime`) don't validate format — they return raw captured text. Numeric fields (`premiumRequests`, `codeChanges`) are guarded by strict regex patterns and return null on non-match. This is a reasonable design: the parser trusts the copilot output format.
+
+### Dispatch Issue Journey Test — PTY Harness E2E
+
+**Created:** `test/e2e/journeys/dispatch/issue.test.js`
+
+Complete user journey test for dispatching to a GitHub issue through the dashboard UI. Uses the PTY harness (`test/harness/terminal.js`) to spawn the CLI, control terminal dimensions, and capture screenshots.
+
+**Test structure:**
+- **Error paths first** (the skeptic's way):
+  - Dashboard exits gracefully with 'q' key
+  - Escape from project browser returns to dashboard
+  - Shows empty state when no dispatches exist
+- **Happy path** (requires `GH_TOKEN`):
+  - Full 9-step journey: start dashboard → 'n' for new dispatch → select project → select issue → wait for dispatch → verify in dashboard → check filesystem (worktree, branch, context file) → exit
+  - Screenshots at each step to `test/baselines/dispatch-issue/`
+- **Edge cases:**
+  - Rapid key presses don't crash
+  - Navigation with empty dispatch list doesn't crash
+  - Missing config handled gracefully
+
+**Learnings:**
+1. Terminal harness `sendKey()` only handles special keys (enter, escape, up, down, etc.). For letters like 'q', use `send('q')` directly.
+2. Dashboard UI flow: 'n' opens `ProjectBrowser`, select project opens `ProjectItemPicker`, first item is "+ Dispatch new branch", then issues, then PRs.
+3. GitHub API tests require `GH_TOKEN` — skip gracefully when not present.
+4. Screenshots are useful for visual regression but need baseline directory created.
+5. Worktree cleanup must happen via git before temp dir cleanup (same as in e2e.test.js).
+
+**6 tests passing**, 1 skipped (happy path needs GH_TOKEN).

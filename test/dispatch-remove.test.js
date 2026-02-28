@@ -45,7 +45,6 @@ test('dispatchRemove removes dispatch by number', async () => {
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
     _exec: (_cmd, args) => { if (args[0] === 'branch') branchDeleted = args[2]; },
-    _ora: silentOra,
     _chalk: silentChalk,
   });
 
@@ -59,7 +58,6 @@ test('dispatchRemove throws on unknown number', async () => {
 
   await assert.rejects(
     () => dispatchRemove(999, {
-      _ora: silentOra,
       _chalk: silentChalk,
     }),
     { message: 'No active dispatch found for #999' }
@@ -76,7 +74,6 @@ test('dispatchRemove disambiguates with --repo when multiple matches', async () 
     _removeDispatch: (id) => { removedId = id; },
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [{ name: 'repo-b', path: '/tmp/repo-b' }] }),
-    _ora: silentOra,
     _chalk: silentChalk,
   });
 
@@ -90,7 +87,6 @@ test('dispatchRemove throws on ambiguous number without --repo', async () => {
 
   await assert.rejects(
     () => dispatchRemove(42, {
-      _ora: silentOra,
       _chalk: silentChalk,
     }),
     { message: /Multiple dispatches found for #42.*Use --repo to disambiguate/ }
@@ -107,7 +103,6 @@ test('dispatchRemove handles missing worktree gracefully', async () => {
     _removeWorktree: () => { throw new Error('worktree gone'); },
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
     _exec: (_cmd, args) => { if (args[0] === 'branch') branchDeleted = args[2]; },
-    _ora: silentOra,
     _chalk: silentChalk,
   });
 
@@ -127,7 +122,6 @@ test('dispatchRemove handles missing project path gracefully', async () => {
     _removeWorktree: () => { worktreeRemoveCalled = true; },
     _readProjects: () => ({ projects: [] }),
     _exec: () => { execCalled = true; },
-    _ora: silentOra,
     _chalk: silentChalk,
   });
 
@@ -146,7 +140,6 @@ test('dispatchRemove handles branch deletion failure gracefully', async () => {
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
     _exec: () => { throw new Error('branch not found'); },
-    _ora: silentOra,
     _chalk: silentChalk,
   });
 
@@ -163,7 +156,6 @@ test('dispatchRemove terminates tracked PID before cleanup', async () => {
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
     _exec: () => {},
-    _ora: silentOra,
     _chalk: silentChalk,
   });
   
@@ -180,7 +172,6 @@ test('dispatchRemove skips PID termination when PID is null', async () => {
     _removeWorktree: () => {},
     _readProjects: () => ({ projects: [{ name: 'rally', path: '/tmp/repo' }] }),
     _exec: () => {},
-    _ora: silentOra,
     _chalk: silentChalk,
   });
   

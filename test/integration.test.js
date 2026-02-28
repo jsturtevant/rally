@@ -12,7 +12,7 @@ import yaml from 'js-yaml';
 import { dispatchIssue } from '../lib/dispatch-issue.js';
 import { dispatchPr } from '../lib/dispatch-pr.js';
 import { getActiveDispatches, removeDispatch } from '../lib/active.js';
-import { getDashboardData, computeSummary, renderPlainDashboard } from '../lib/ui/dashboard-data.js';
+import { getDashboardData, renderPlainDashboard } from '../lib/ui/dashboard-data.js';
 import { withTempRallyHome } from './helpers/temp-env.js';
 
 // =====================================================
@@ -112,11 +112,14 @@ function createExecWithPr(prData) {
     if (cmd === 'gh' && args[0] === 'copilot') {
       return '';
     }
-    // Simulate refs/pull/N/head fetch — in tests, fetch the PR branch directly
-    if (cmd === 'git' && args.includes('fetch') && args.some(a => a.startsWith('refs/pull/'))) {
-      const cFlag = args.indexOf('-C');
-      const cwd = cFlag >= 0 ? args[cFlag + 1] : opts?.cwd;
-      return execFileSync('git', ['-C', cwd, 'fetch', 'origin', prData?.headRefName || 'main'], opts);
+    // Simulate gh pr checkout --detach — in tests, just fetch the PR branch
+    if (cmd === 'gh' && args[0] === 'pr' && args[1] === 'checkout') {
+      const cwd = opts?.cwd;
+      if (cwd) {
+        execFileSync('git', ['-C', cwd, 'fetch', 'origin', prData?.headRefName || 'main'], opts);
+        execFileSync('git', ['-C', cwd, 'checkout', 'FETCH_HEAD', '--detach'], opts);
+      }
+      return '';
     }
     return execFileSync(cmd, args, opts);
   };
@@ -168,22 +171,19 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
     const dispatches = getActiveDispatches();
     assert.strictEqual(dispatches.length, 1);
     assert.strictEqual(dispatches[0].id, 'repo-issue-42');
-    assert.strictEqual(dispatches[0].status, 'planning');
+    assert.strictEqual(dispatches[0].status, 'implementing');
 
     // 2. Verify dashboard sees the dispatch
     const dashData = getDashboardData();
     assert.strictEqual(dashData.dispatches.length, 1);
     assert.strictEqual(dashData.dispatches[0].id, 'repo-issue-42');
     assert.strictEqual(dashData.dispatches[0].healthy, true);
-    assert.strictEqual(dashData.summary.active, 1);
-    assert.strictEqual(dashData.summary.done, 0);
 
     // 3. Verify plain dashboard output
     const plain = renderPlainDashboard();
     assert.ok(plain.includes('Rally Dashboard'));
     assert.ok(plain.includes('owner/repo'));
-    assert.ok(plain.includes('Issue #42'));
-    assert.ok(plain.includes('1 active'));
+    assert.ok(plain.includes('#42'));
 
     // 4. Clean: remove dispatch
     const removed = removeDispatch('repo-issue-42');
@@ -192,7 +192,6 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
     // Verify dashboard is now empty
     const afterClean = getDashboardData();
     assert.strictEqual(afterClean.dispatches.length, 0);
-    assert.strictEqual(afterClean.summary.active, 0);
   });
 });
 
@@ -303,13 +302,18 @@ describe('Integration: error cases', () => {
   });
 
   test('dispatchIssue returns idempotently when worktree already exists', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const issue = makeIssue();
     const exec = createExecWithIssue(issue);
 
     // Create an actual git worktree so worktreeExists() returns true
     const wtPath = join(repoPath, '.worktrees', 'rally-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/42-test-issue'], { cwd: repoPath, stdio: 'ignore' });
+
+    // Register a matching dispatch so the code treats it as legitimately active
+    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+      dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-test-issue', worktreePath: wtPath, status: 'implementing' }],
+    }), 'utf8');
 
     const result = await dispatchIssue({
       issueNumber: 42,
@@ -347,12 +351,17 @@ describe('Integration: error cases', () => {
   });
 
   test('dispatchPr returns idempotently when worktree already exists', async () => {
-    setupRallyHome();
+    const rallyHome = setupRallyHome();
     const exec = createExecWithPr(makePr());
 
     // Create an actual git worktree so worktreeExists() returns true
     const wtPath = join(repoPath, '.worktrees', 'rally-pr-42');
     execFileSync('git', ['worktree', 'add', wtPath, '-b', 'rally/pr-42-test-pr'], { cwd: repoPath, stdio: 'ignore' });
+
+    // Register a matching dispatch so the code treats it as legitimately active
+    writeFileSync(join(rallyHome, 'active.yaml'), yaml.dump({
+      dispatches: [{ id: 'repo-pr-42', repo: 'owner/repo', number: 42, type: 'pr', branch: 'rally/pr-42-test-pr', worktreePath: wtPath, status: 'implementing' }],
+    }), 'utf8');
 
     const result = await dispatchPr({
       prNumber: 42,
@@ -431,24 +440,6 @@ describe('Integration: dashboard data and rendering', () => {
     assert.strictEqual(data.dispatches[1].healthy, false);
     assert.strictEqual(data.dispatches[2].healthy, false);
 
-    // Summary: d1 = active (healthy+implementing), d2 = done (reviewing), d3 = done
-    assert.strictEqual(data.summary.active, 1);
-    assert.strictEqual(data.summary.orphaned, 0);
-    assert.strictEqual(data.summary.done, 2);
-  });
-
-  test('computeSummary counts statuses correctly', () => {
-    const dispatches = [
-      { status: 'planning', healthy: true },
-      { status: 'implementing', healthy: true },
-      { status: 'done', healthy: true },
-      { status: 'cleaned', healthy: false },
-      { status: 'reviewing', healthy: false },
-    ];
-    const summary = computeSummary(dispatches);
-    assert.strictEqual(summary.active, 2);
-    assert.strictEqual(summary.done, 3);
-    assert.strictEqual(summary.orphaned, 0);
   });
 
   test('renderPlainDashboard outputs formatted text', () => {
@@ -465,7 +456,7 @@ describe('Integration: dashboard data and rendering', () => {
           type: 'issue',
           branch: 'rally/5-feature',
           worktreePath: worktreeDir,
-          status: 'planning',
+          status: 'implementing',
           session_id: 's5',
           created: new Date().toISOString(),
         },
@@ -479,10 +470,9 @@ describe('Integration: dashboard data and rendering', () => {
     assert.ok(output.includes('owner/repo'), 'should include project as group header');
     assert.ok(output.includes('Issue/PR'), 'should include headers');
     assert.ok(output.includes('owner/repo'), 'should include repo');
-    assert.ok(output.includes('Issue #5'), 'should include issue ref');
+    assert.ok(output.includes('#5'), 'should include issue ref');
     assert.ok(output.includes('rally/5-feature'), 'should include branch');
-    assert.ok(output.includes('planning'), 'should include status');
-    assert.ok(output.includes('1 active'), 'should include summary');
+    assert.ok(output.includes('implementing') || output.includes('copilot working'), 'should include status');
 
     // No ANSI codes
     assert.ok(!output.includes('\x1B['), 'should not contain ANSI codes');
@@ -499,7 +489,7 @@ describe('Integration: dashboard data and rendering', () => {
           type: 'issue',
           branch: 'rally/1-a',
           worktreePath: '/nope',
-          status: 'planning',
+          status: 'implementing',
           session_id: 's1',
           created: new Date().toISOString(),
         },
@@ -510,7 +500,7 @@ describe('Integration: dashboard data and rendering', () => {
           type: 'issue',
           branch: 'rally/2-b',
           worktreePath: '/nope2',
-          status: 'planning',
+          status: 'implementing',
           session_id: 's2',
           created: new Date().toISOString(),
         },
@@ -525,7 +515,6 @@ describe('Integration: dashboard data and rendering', () => {
   test('getDashboardData returns empty when no dispatches', () => {
     const data = getDashboardData();
     assert.strictEqual(data.dispatches.length, 0);
-    assert.deepStrictEqual(data.summary, { active: 0, done: 0, orphaned: 0 });
   });
 });
 
@@ -567,11 +556,10 @@ describe('Integration: multiple dispatches', () => {
 
     const data = getDashboardData();
     assert.strictEqual(data.dispatches.length, 2);
-    assert.strictEqual(data.summary.active, 2);
 
     const plain = renderPlainDashboard();
-    assert.ok(plain.includes('Issue #1'));
-    assert.ok(plain.includes('Issue #2'));
+    assert.ok(plain.includes('#1'));
+    assert.ok(plain.includes('#2'));
 
     // Remove first, verify second remains
     removeDispatch('repo-issue-1');

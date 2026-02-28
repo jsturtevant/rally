@@ -3,15 +3,18 @@ import { Box, Text, useStdout } from 'ink';
 import { formatAge, groupByProject } from '../dashboard-data.js';
 
 const STATUS_ICONS = {
-  planning: '🔵',
   implementing: '⏳',
   reviewing: '🟡',
-  pushed: '🟣',
+  upstream: '🔵',
+  // Legacy statuses (for existing dispatches)
+  planning: '⏳',
+  pushed: '🔵',
+  waiting: '🔵',
   done: '✅',
   cleaned: '⚪',
 };
 
-const PR_INDENT = '   ';
+const PR_INDENT = '';
 
 function truncate(str, maxLen) {
   if (!str || str.length <= maxLen) return str || '';
@@ -19,9 +22,11 @@ function truncate(str, maxLen) {
 }
 
 function formatIssueRef(dispatch, maxWidth) {
-  const prefix = dispatch.type === 'pr' ? 'PR' : 'Issue';
-  const indent = dispatch.type === 'pr' ? PR_INDENT : '';
-  const ref = `${indent}${prefix} #${dispatch.number}`;
+  if (dispatch.type === 'branch') {
+    if (!dispatch.title) return '';
+    return truncate(dispatch.title, maxWidth);
+  }
+  const ref = `#${dispatch.number}`;
   if (!dispatch.title) return ref;
   const titleSpace = maxWidth - ref.length - 2; // 2 for "  " separator
   if (titleSpace <= 3) return ref;
@@ -31,7 +36,13 @@ function formatIssueRef(dispatch, maxWidth) {
 const STATUS_LABELS = {
   implementing: 'copilot working',
   reviewing: 'ready for review',
+  upstream: 'waiting on upstream',
+  // Legacy statuses (for existing dispatches)
+  planning: 'planning',
   pushed: 'pushed',
+  waiting: 'waiting',
+  done: 'done',
+  cleaned: 'cleaned',
 };
 
 function formatStatus(status) {
@@ -40,10 +51,12 @@ function formatStatus(status) {
   return `${icon} ${label}`;
 }
 
-// Minimum widths per column; issueRef is flexible and gets remaining space
+// Minimum widths per column; title is flexible and gets remaining space
 const COLUMN_DEFS = [
-  { key: 'issueRef', label: 'Issue/PR', minWidth: 12, flex: true },
-  { key: 'status', label: 'Status', minWidth: 20 },
+  { key: 'type', label: 'Type', minWidth: 7 },
+  { key: 'issueRef', label: 'Issue/PR', minWidth: 10 },
+  { key: 'title', label: 'Title', minWidth: 20, flex: true },
+  { key: 'status', label: 'Status', minWidth: 24 },
   { key: 'changes', label: 'Changes', minWidth: 10 },
   { key: 'age', label: 'Age', minWidth: 6 },
 ];
@@ -75,7 +88,7 @@ function TableRow({ cells, columns, selected }) {
       </Box>
       {columns.map((col) => (
         <Box key={col.key} width={col.width} paddingRight={1}>
-          <Text bold={selected}>
+          <Text bold={selected} wrap="truncate">
             {cells[col.key] ?? ''}
           </Text>
         </Box>
@@ -93,12 +106,13 @@ function ProjectHeader({ project }) {
   );
 }
 
-export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
+export default function DispatchTable({ dispatches = [], selectedIndex = -1, onboardedProjects, width }) {
   const { stdout } = useStdout();
-  const terminalWidth = stdout?.columns ?? DEFAULT_WIDTH;
+  // Use explicit width prop if provided, otherwise fall back to terminal columns
+  const terminalWidth = width ?? stdout?.columns ?? DEFAULT_WIDTH;
   const columns = computeColumnWidths(terminalWidth);
 
-  const groups = groupByProject(dispatches);
+  const groups = groupByProject(dispatches, onboardedProjects);
 
   return (
     <Box flexDirection="column" width={terminalWidth}>
@@ -113,7 +127,7 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
       </Box>
 
       {/* Data rows grouped by project */}
-      {dispatches.length === 0 ? (
+      {groups.length === 0 ? (
         <Box>
           <Text dimColor>No active dispatches</Text>
         </Box>
@@ -123,11 +137,23 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1 }) {
           return groups.map((group) => (
             <Box key={group.project} flexDirection="column">
               <ProjectHeader project={group.project} />
-              {group.dispatches.map((d) => {
+              {group.dispatches.length === 0 ? (
+                <Box>
+                  <Box width={SELECTOR_WIDTH}><Text> </Text></Box>
+                  <Text dimColor>No active dispatches</Text>
+                </Box>
+              ) : group.dispatches.map((d) => {
                 const idx = flatIndex++;
-                const issueRefCol = columns.find(c => c.key === 'issueRef');
+                const titleCol = columns.find(c => c.key === 'title');
+                const titleWidth = titleCol?.width ?? 40;
+                let title = d.title ?? '';
+                if (title.length > titleWidth) {
+                  title = title.slice(0, titleWidth - 1) + '…';
+                }
                 const row = {
-                  issueRef: formatIssueRef(d, issueRefCol?.width ?? 40),
+                  type: d.type === 'pr' ? 'PR' : d.type === 'branch' ? 'Branch' : 'Issue',
+                  issueRef: d.type === 'branch' ? '' : `#${d.number}`,
+                  title,
                   status: formatStatus(d.status),
                   changes: d.changes ?? '',
                   age: formatAge(d.created ?? d.created_at),

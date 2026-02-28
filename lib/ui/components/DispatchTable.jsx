@@ -6,6 +6,11 @@ const STATUS_ICONS = {
   implementing: '⏳',
   reviewing: '🟡',
   waiting: '🔵',
+  // Legacy statuses (for existing dispatches)
+  planning: '⏳',
+  pushed: '🔵',
+  done: '✅',
+  cleaned: '⚪',
 };
 
 const PR_INDENT = '';
@@ -31,6 +36,11 @@ const STATUS_LABELS = {
   implementing: 'copilot working',
   reviewing: 'ready for review',
   waiting: 'waiting',
+  // Legacy statuses (for existing dispatches)
+  planning: 'planning',
+  pushed: 'pushed',
+  done: 'done',
+  cleaned: 'cleaned',
 };
 
 function formatStatus(status) {

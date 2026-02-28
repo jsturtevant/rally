@@ -57,19 +57,18 @@ owner/otherapp
 
 3 active · 1 done · 0 orphaned
 
-↑/↓ navigate · Enter actions · d details · v open · o browser · a attach
-c connect IDE · l logs · n new dispatch · u upstream · x delete · r refresh · q quit
+↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser
+n new dispatch · a attach · u upstream · x delete · r refresh · q quit
 ```
 
 Common keyboard shortcuts from the dashboard:
 
 - **`n`** — dispatch a new issue or PR
 - **`o`** — open in the browser
+- **`v`** — open in VS Code
 - **`a`** — attach to a running Copilot session
 - **`l`** — view logs
-- **`d`** — dispatch details
-
-See the [Dashboard](#dashboard) section for the full keyboard shortcut reference.
+- **`d`** — view details
 
 ### Onboarding a project
 

@@ -38,3 +38,17 @@
 - ✓ Implementation phase unblocked
 
 **Next Phase:** Kaylee/Wash parallelize Phase 1 utilities. Jayne writes test infrastructure. Full documentation in decisions.md. All 29 GitHub issues (#1–#29) on jsturtevant/rally ready for assignment.
+
+
+### 2026-02-28 — Squad Upgrade Plan Merged to Decisions
+
+**Work completed (2026-02-28T08:58:00Z):**
+
+1. **Created orchestration log:** `.squad/orchestration-log/2026-02-28T08-58-00Z-mal.md` — Mal's squad upgrade work
+2. **Created session log:** `.squad/log/2026-02-28T08-58-00Z-squad-upgrade-plan.md` — Brief summary
+3. **Merged inbox decision:** Mal's squad upgrade plan (.squad/decisions/inbox/mal-squad-upgrade-plan.md) → decisions.md
+4. **Deleted inbox file:** Cleaned up merged decision
+5. **Updated Mal's history:** Added squad upgrade work summary and acceptance status
+6. **Git commit:** Staged .squad/ changes
+
+**Outcome:** Decision is now canonical in decisions.md, all agents read-accessible. Phase 1 ready for implementation.

@@ -122,14 +122,42 @@ rally dispatch clean                   # Clean up when done
 
 ⚠️ Use your best judgement. Rally makes an effort to enforce multiple layers of protection, but no system is foolproof. When working with untrusted content, always review agent output before merging, and use the Docker sandbox for maximum isolation.
 
-Rally enforces multiple layers of protection:
+> **⚠️ Use your best judgement.** Rally makes an effort to enforce multiple layers of protection, but no system is foolproof. Always review agent output before merging, and use the Docker sandbox for maximum isolation when working with untrusted content.
 
-- **Read-only dispatch policy** — Agents can read code and make local edits, but cannot `git push`, run `gh` commands, or use network tools (`curl`, `wget`, etc.)
-- **Trust checks** — Warns about prompt injection risk when dispatching to issues/PRs from untrusted authors
-- **Worktree isolation** — Each dispatch gets its own git worktree with path permissions
-- **Docker sandbox** — Optional container isolation via `--sandbox` flag
+### Read-only dispatch policy
 
-📖 **[Security documentation →](https://jsturtevant.github.io/rally/security/overview/)**
+Every dispatched Copilot session runs under a **read-only policy** that is prepended to the prompt. The agent can read code, make local edits, and run tests — but cannot publish anything. Specific tool denials enforced via `--deny-tool` flags:
+
+| Blocked tool | Why |
+|---|---|
+| `git push` | Prevents agents from pushing commits |
+| `gh` (all subcommands) | Blocks PR creation, issue comments, and other GitHub mutations |
+| `curl`, `wget`, `nc`, `ssh`, `scp` | Prevents network exfiltration of repo data |
+
+Agents can still use MCP read-only tools (`github-mcp-server-issue_read`, `pull_request_read`, etc.) for safe remote data access.
+
+### Trust checks
+
+Before dispatching, Rally checks whether the issue/PR was authored by someone other than the current user. If there's a mismatch, it warns about **prompt injection risk** — untrusted issue/PR content could contain instructions that trick the agent. Rally also checks org membership for org-owned repos.
+
+- **Interactive mode:** Shows warnings and prompts for confirmation
+- **Non-interactive mode:** Auto-rejects author mismatches (pass `--trust` to override)
+- **Config:** Set `require_trust: never` in `config.yaml` to skip checks entirely
+
+### Worktree isolation
+
+Each dispatch gets its own **git worktree** — an independent working directory with its own branch. This prevents cross-contamination between concurrent dispatches and keeps your main working tree untouched.
+
+### Docker sandbox
+
+For maximum isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM. The agent executes in a lightweight container with no access to the host filesystem beyond the worktree.
+
+```bash
+rally dispatch issue 42 --sandbox
+rally dispatch pr 10 --sandbox
+```
+
+Or set `docker_sandbox: always` in `config.yaml` to enable it for all dispatches.
 
 ## License
 

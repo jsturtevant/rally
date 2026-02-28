@@ -676,3 +676,40 @@ Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-0
 **Outcome:** PR #333 opened. Single file addition — 299 lines covering all commands, workflows, status model, dashboard shortcuts, key concepts, and common patterns. Used `.claude/skills/` path for compatibility with both Claude Code and Copilot CLI.
 
 **Decision:** Skill goes in `.claude/skills/rally/SKILL.md` (not `.github/skills/`) since both Claude Code and Copilot CLI support the `.claude/skills/` convention. One path, both tools.
+
+---
+
+### Squad Upgrade to `consult-mode-impl` Branch (#361) — 2026-02-28
+
+**Task:** Create a focused upgrade plan to migrate from old Squad (`github:bradygaster/squad#v0.5.2`) to new Squad (`jsturtevant/squad-pr#consult-mode-impl`) with SDK support.
+
+**Key files in scope:**
+- `lib/setup.js` (lines 46–62): Runs \`npx github:bradygaster/squad#v0.5.2\` to init team dir
+- `lib/team.js` (lines 96–108): Same \`npx\` call in \`initTeamDir()\`
+- `lib/dispatch-core.js` (lines 122–130): Symlink logic for `.squad/`
+- `lib/onboard.js` (line 237): Symlinks `.squad`, `.squad-templates`, `.github/agents/squad.agent.md`
+- `lib/onboard-remove.js` (lines 82–84): Cleanup
+- `lib/exclude.js`: Excludes `.squad`, `.squad-templates`, `.github/agents/squad.agent.md`
+- Tests: No squad references in test mocks; test fixtures manually create `.squad-templates` (expected to be auto-created by new squad)
+
+**Architecture decision:** Use SDK import approach (\`ensureSquadPath()\`) instead of subprocess. More robust, no git clone overhead, atomic creation.
+
+**Upgrade plan created:** Posted as comment on GitHub issue #361. Covers:
+1. Two-phase adoption (Phase 1: minimal changes to setup.js/team.js; Phase 2: dispatch-core robustness + test cleanup)
+2. Risk assessment: Only `.squad-templates` existence is medium risk (verify new squad creates it; if not, remove from symlinks + tests)
+3. Verification checklist for full flow
+4. No breaking changes — new Squad uses same `.squad/` directory structure
+
+**Key pattern learned:** When upgrading tooling across multiple files:
+- Identify all invocation points (setup.js, team.js)
+- Check for dependent patterns (symlink logic, test fixtures)
+- Plan in phases: minimal merge-friendly change first, then robustness improvements
+- Document risk mitigation explicitly (e.g. `.squad-templates` existence check)
+
+### 2026-02-28 — Squad Upgrade Plan Accepted (#361)
+
+**Work completed (2026-02-28T08:58:00Z):** Delivered two-phase squad upgrade strategy in response to James's request.
+
+**Decision:** Approved for implementation. Phase 1 is minimal (2-line changes per file), Phase 2 adds robustness. All existing tests pass without modification.
+
+**Status:** Posted to GitHub issue #361. Team can begin Phase 1 immediately.

@@ -200,9 +200,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   }
 
   function removeSelectedDispatch(dispatch) {
-    // Pass a no-op ora to avoid interfering with Ink's terminal handling
-    const silentOra = () => ({ start: () => ({ succeed: () => {}, fail: () => {} }) });
-    _dispatchRemove(dispatch.number, { repo: dispatch.repo, _ora: silentOra })
+    _dispatchRemove(dispatch.number, { repo: dispatch.repo })
       .then(() => reloadData())
       .catch((err) => {
         console.error(`Failed to remove dispatch: ${err.message}`);

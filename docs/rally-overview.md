@@ -12,7 +12,7 @@ Rally enables development teams to grow from individual AI-assisted workflows to
 
 **What it is:** Rally is a CLI tool that dispatches AI agent teams for GitHub issues and pull request reviews via Git worktrees. Individual developers use it to request AI assistance from Squad on code without requiring AI tools to be included in the project. It keeps everything separated and easy to manage. It allows the developer the ability to review everything before submitting to the repository, ensuring they add a Human touch to the workflow and reduce AI slop.
 
-**How it works:** A developer runs `rally dispatch issue` or `rally dispatch pr` to assign an AI agent to several issues and PRs. The agent automatically creates an isolated Git worktrees locally, completes the work, and notifies the developer when it is ready. The developer reviews locally and pushes the PR when ready.
+**How it works:** A developer runs `rally dispatch issue` or `rally dispatch pr` to assign an AI agent to several issues and PRs. The agent automatically creates isolated Git worktrees locally, completes the work, and notifies the developer when it is ready. The developer reviews locally and pushes the PR when ready.
 
 **Simple workflow:**
 ```
@@ -24,9 +24,9 @@ Developer gets coffee, goes to team meetings
     ↓
 Git Worktree (isolated branch)
     ↓
-AI Agents works while developer does other things
+AI agents work while the developer does other things
     ↓
-Developer finished meeting and reviews,edits, adjusts the completed work
+Developer finished meeting and reviews, edits, adjusts the completed work
     ↓
 User pushes and opens Pull Request when satisfied
 ```
@@ -37,7 +37,7 @@ Rally leverages Squad to keep a "memory" but it lives outside of the repository.
 
 ## Part 2: Rally Party
 
-**What it is:** Party is a Kubernetes-native (other platform support could be added) orchestration system for running multiple AI agents in parallel at scale using github as the Source of truth. Teams and organizations use it for autonomous, continuous AI-driven development across their entire repository bringing in Humans to help clarify, and monitor changes to sensitive files with full traceability through Github.
+**What it is:** Party is a Kubernetes-native (other platform support could be added) orchestration system for running multiple AI agents in parallel at scale using GitHub as the source of truth. Teams and organizations use it for autonomous, continuous AI-driven development across their entire repository bringing in Humans to help clarify, and monitor changes to sensitive files with full traceability through GitHub.
 
 **How it works:** AI Coordinators continuously monitor GitHub, triage incoming work, clarify requirements, and assign issues to ephemeral worker Jobs. Multiple levels of reviewer approval gates ensure quality before merging. Workers complete their assignments, open PRs, and upon merge send learnings back to coordinators via Squad Consult Mode - enabling the coordination team to accumulate knowledge across all completed tasks.
 
@@ -74,9 +74,9 @@ Consult Learnings (fed back to coordinators)
 │                                                                      │
 │  👤 Developer                                                        │
 │   │                                                                  │
-│   ├── rally dispatch issue #42                                       │
-│   ├── rally dispatch issue #43                                       │
-│   └── rally dispatch pr #12                                          │
+│   ├── rally dispatch issue 42                                        │
+│   ├── rally dispatch issue 43                                        │
+│   └── rally dispatch pr 12                                           │
 │         │                                                            │
 │         ▼                                                            │
 │  ┌─────────────────────────────────────────────────────────────┐     │

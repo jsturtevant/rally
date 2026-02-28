@@ -123,7 +123,7 @@ rally dispatch clean                   # Clean up when done
 
 Rally enforces multiple layers of protection:
 
-- **Read-only dispatch policy** — Agents can read code and make local edits, but cannot `git push`, run `gh` commands, or use network tools (`curl`, `wget`, etc.)
+- **Read-only dispatch policy** — By default, agents can read code and make local edits, but are blocked from `git push`, `gh` commands, and network tools (`curl`, `wget`, etc.); these denials are controlled via `settings.deny_tools_*` in `config.yaml`.
 - **Trust checks** — Warns about prompt injection risk when dispatching to issues/PRs from untrusted authors
 - **Worktree isolation** — Each dispatch gets its own git worktree with path permissions
 - **Docker sandbox** — Optional container isolation via `--sandbox` flag

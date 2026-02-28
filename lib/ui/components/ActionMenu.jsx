@@ -19,27 +19,19 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
   const isBranch = dispatch.type === 'branch';
 
   const actions = [
-    { id: ACTIONS.OPEN_VSCODE, label: 'v VSCode' },
+    { id: ACTIONS.OPEN_VSCODE, label: 'Open in VSCode' },
     ...(!isBranch
-      ? [{ id: ACTIONS.OPEN_BROWSER, label: 'o browser' }]
+      ? [{ id: ACTIONS.OPEN_BROWSER, label: 'Open in browser' }]
       : []),
     ...(hasWorktree
-      ? [{ id: ACTIONS.ATTACH_SESSION, label: 'a attach' }]
+      ? [{ id: ACTIONS.ATTACH_SESSION, label: 'Attach to session' }]
       : []),
-    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: 'l logs' }] : []),
-    { id: ACTIONS.BACK, label: 'Esc back' },
+    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: 'View logs' }] : []),
+    { id: ACTIONS.BACK, label: 'Back' },
   ];
 
   useInput((input, key) => {
-    if (input === 'v') {
-      onSelect(ACTIONS.OPEN_VSCODE);
-    } else if (input === 'o' && !isBranch) {
-      onSelect(ACTIONS.OPEN_BROWSER);
-    } else if (input === 'a' && hasWorktree) {
-      onSelect(ACTIONS.ATTACH_SESSION);
-    } else if (input === 'l' && hasLog) {
-      onSelect(ACTIONS.VIEW_LOGS);
-    } else if (key.upArrow) {
+    if (key.upArrow) {
       onSelect('up');
     } else if (key.downArrow) {
       onSelect('down');
@@ -67,7 +59,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter confirm · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter select · Esc back</Text>
       </Box>
     </Box>
   );

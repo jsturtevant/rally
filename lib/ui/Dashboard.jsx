@@ -230,14 +230,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       setActionIndex(i => (i > 0 ? i - 1 : 0));
     } else if (direction === 'down') {
       setActionIndex(i => (i < actionCount - 1 ? i + 1 : i));
-    } else if (direction === ACTIONS.OPEN_VSCODE) {
-      openInVSCode(actionDispatch);
-    } else if (direction === ACTIONS.OPEN_BROWSER) {
-      openInBrowser(actionDispatch);
-    } else if (direction === ACTIONS.ATTACH_SESSION) {
-      attachToSession(actionDispatch);
-    } else if (direction === ACTIONS.VIEW_LOGS) {
-      viewLogs(actionDispatch);
     } else if (direction === 'confirm') {
       const selectedAction = actions[actionIndex];
       if (selectedAction === ACTIONS.OPEN_VSCODE) {

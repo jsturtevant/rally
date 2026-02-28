@@ -38,8 +38,7 @@ npx github:jsturtevant/rally#v0.1.0
 ## Quick Start
 
 ```bash
-rally setup                    # One-time setup (creates ~/rally/)
-rally onboard owner/repo       # Register a project
+rally onboard owner/repo       # Register a project (auto-creates ~/rally/ on first run)
 
 rally dashboard                 # Launch the dashboard ← this is the main entry point
 ```
@@ -98,7 +97,7 @@ rally onboard remove myrepo --yes      # Skip confirmation
 
 The dashboard is the primary way to use Rally day-to-day:
 
-1. **Setup:** `rally setup` → `rally onboard owner/repo`
+1. **Start:** `rally onboard owner/repo` (creates `~/rally/` automatically on first run)
 2. **Launch:** `rally dashboard` to open the dashboard
 3. **Dispatch:** Press `n` to pick an issue or PR from your onboarded projects
 4. **Monitor:** Watch progress in real time (auto-refreshes every 5 seconds)
@@ -172,20 +171,6 @@ The dashboard auto-refreshes every 5 seconds.
 ## Commands
 
 > **For scripts and agents.** The CLI commands below are the programmatic interface to Rally. If you're a human, use the [Dashboard](#dashboard) instead — it's faster and easier.
-
-### `rally setup`
-
-Initialize Squad team state and Rally directories.
-
-```
-$ rally setup [options]
-
-Initialize Squad team state and Rally directories
-
-Options:
-  --dir <path>  Where to create external team state
-  -h, --help    display help for command
-```
 
 ### `rally onboard`
 
@@ -357,7 +342,7 @@ Options:
 
 ## Configuration
 
-Rally reads user settings from `config.yaml` in the config directory (`~/rally/` by default, override with `RALLY_HOME`). Run `rally setup` to create the file with defaults.
+Rally reads user settings from `config.yaml` in the config directory (`~/rally/` by default, override with `RALLY_HOME`). This file is created automatically on first run.
 
 Settings live under the `settings` key in `config.yaml`:
 

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { setup } from '../lib/setup.js';
+import { ensureSetup } from '../lib/setup.js';
 import { onboard } from '../lib/onboard.js';
 import { getStatus, formatStatus } from '../lib/status.js';
 import { handleError, RallyError } from '../lib/errors.js';
@@ -28,25 +28,13 @@ program
   .description('Dispatch Squad teams to GitHub issues and PR reviews via git worktrees')
   .version(pkg.version);
 
-program
-  .command('setup')
-  .description('Initialize Squad team state and Rally directories')
-  .option('--dir <path>', 'Where to create external team state')
-  .action(async (options) => {
-    try {
-      await setup(options);
-    } catch (err) {
-      handleError(err);
-    }
-  });
-
 const onboardCmd = program
   .command('onboard')
   .description('Onboard a repo to Rally (local path, GitHub URL, or owner/repo)')
   .argument('[path]', 'Path, GitHub URL, or owner/repo (defaults to current directory)')
   .option('--team <name>', 'Use a named team (skips interactive prompt)')
   .option('--fork <owner/repo>', 'Set origin to your fork and upstream to the main repo')
-  .hook('preAction', () => assertTools())
+  .hook('preAction', () => { ensureSetup(); assertTools(); })
   .action(async (pathArg, opts) => {
     try {
       await onboard({ path: pathArg, team: opts.team, fork: opts.fork });
@@ -73,6 +61,7 @@ program
   .command('status')
   .description('Show Rally configuration and active dispatches for debugging')
   .option('--json', 'Output as JSON')
+  .hook('preAction', () => ensureSetup())
   .action(async (opts) => {
     try {
       const { refreshDispatchStatuses } = await import('../lib/dispatch-refresh.js');
@@ -95,6 +84,7 @@ const dashboard = program
   .description('Show active dispatch dashboard')
   .option('--json', 'Output as JSON instead of interactive UI')
   .option('--project <name>', 'Filter by project (repo name)')
+  .hook('preAction', () => ensureSetup())
   .action(async (opts) => {
     try {
       if (opts.json) {
@@ -192,7 +182,7 @@ const dashboard = program
 const dispatch = program
   .command('dispatch')
   .description('Dispatch Squad to a GitHub issue or PR')
-  .hook('preAction', () => assertTools())
+  .hook('preAction', () => { ensureSetup(); assertTools(); })
   .action(() => {
     console.log('Usage: rally dispatch <issue|pr|remove|continue|log|sessions> <number> [options]\n');
     console.log('Examples:');

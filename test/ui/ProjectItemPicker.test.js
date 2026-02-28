@@ -12,7 +12,7 @@ afterEach(() => {
   }
 });
 
-const delay = () => new Promise(r => setImmediate(r));
+const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
 const SAMPLE_ISSUES = [
   { number: 1, title: 'Fix bug', labels: [{ name: 'bug' }], state: 'OPEN' },

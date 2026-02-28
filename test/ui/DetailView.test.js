@@ -25,7 +25,7 @@ const SAMPLE_DISPATCH = {
   logPath: '/tmp/test.log',
 };
 
-const delay = () => new Promise(r => setImmediate(r));
+const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
 describe('DetailView', () => {
   it('renders detail header with issue ref', () => {

@@ -12,7 +12,7 @@ afterEach(() => {
   }
 });
 
-const delay = () => new Promise(r => setImmediate(r));
+const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
 const SAMPLE_PROJECTS = [
   { repo: 'owner/repo-a', name: 'repo-a', path: '/home/user/repo-a' },

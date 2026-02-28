@@ -26,7 +26,6 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: docs/package-lock.json
 
       - name: Setup Pages
         id: pages
@@ -34,16 +33,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: docs
 
       - name: Build with Astro
         run: npm run build
-        working-directory: docs
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/dist
+          path: dist
 
   deploy:
     environment:

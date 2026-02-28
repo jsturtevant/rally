@@ -1,41 +1,17 @@
 {
-  "name": "squad-rally",
-  "version": "0.1.0",
-  "description": "CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees",
+  "name": "docs",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/jsturtevant/rally.git"
-  },
-  "bin": {
-    "rally": "./bin/rally.js"
-  },
+  "version": "0.0.1",
   "scripts": {
-    "test": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test ./test/*.test.js && node --test --test-force-exit ./test/ui/*.test.js",
-    "test:e2e": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test ./test/e2e/*.test.js",
-    "test:all": "npm test && npm run test:e2e",
-    "docs:generate": "node scripts/generate-docs.js"
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.3.0",
-    "chalk": "^5.0.0",
-    "commander": "^14.0.3",
-    "ink": "^6.8.0",
-    "ink-table": "^3.1.0",
-    "js-yaml": "^4.0.0",
-    "ora": "^9.3.0",
-    "react": "^19.2.4"
-  },
-  "devDependencies": {
-    "@xterm/headless": "^6.0.0",
-    "canvas": "^3.2.1",
-    "esbuild": "^0.27.3",
-    "ink-testing-library": "^4.0.0",
-    "node-pty": "^1.1.0",
-    "pixelmatch": "^7.1.0",
-    "pngjs": "^7.0.0"
-  },
-  "engines": {
-    "node": ">=20.0.0"
+    "@astrojs/starlight": "^0.37.6",
+    "astro": "^5.6.1",
+    "sharp": "^0.34.2"
   }
 }

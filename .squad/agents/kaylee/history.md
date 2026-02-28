@@ -617,3 +617,9 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **rally.js wiring:** After dashboard exit, `pendingDispatch` triggers `dispatchIssue` or `dispatchPr`; `pendingAddProject` prints onboard instructions.
 - **Build system:** New JSX files added to `test/build-jsx.mjs` and `.gitignore` (compiled .js output is gitignored).
 - **Pre-existing test hang:** Some UI tests hang when run together (not from these changes). Dashboard.test.js passes individually.
+
+### 2026-02-27 — Dashboard Column Alignment Fix
+
+- **Problem:** DispatchTable computed column widths based on full terminal width, but Dashboard wraps the table in a `borderStyle="round"` box with `paddingX={1}`, causing columns to overflow by 4 characters and misalign.
+- **Solution:** Added `width` prop to DispatchTable component; Dashboard passes `effectiveWidth = terminalWidth - 4` (2 for border, 2 for horizontal padding).
+- **Pattern:** When rendering Ink components inside bordered/padded containers, always account for the overhead when computing child widths.

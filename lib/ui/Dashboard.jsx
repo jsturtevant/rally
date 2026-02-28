@@ -94,10 +94,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
 
   const count = flatDispatches.length;
 
-  // A session ID is connectable if it looks like a UUID (not a PID or 'pending')
-  const hasConnectableSession = actionDispatch?.session_id &&
-    UUID_RE.test(actionDispatch.session_id);
-
   // Track terminal resize
   useEffect(() => {
     if (!stdout) return;
@@ -113,7 +109,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     ? [
         ACTIONS.OPEN_VSCODE,
         ...(!isBranch ? [ACTIONS.OPEN_BROWSER] : []),
-        ...(hasConnectableSession ? [ACTIONS.CONNECT_IDE] : []),
         ...(actionDispatch.worktreePath ? [ACTIONS.ATTACH_SESSION] : []),
         ...(actionDispatch.logPath ? [ACTIONS.VIEW_LOGS] : []),
         ACTIONS.BACK,
@@ -151,11 +146,36 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     const worktreePath = dispatch.worktreePath ?? '';
     if (onSelect) {
       onSelect(worktreePath);
-    } else if (worktreePath) {
-      const child = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
-      child.unref();
-      child.on('error', (err) => {
-        console.error(`Failed to launch VS Code: ${err.message}`);
+      return;
+    }
+    if (!worktreePath) return;
+
+    // Open VS Code at the worktree path
+    const codeChild = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
+    codeChild.unref();
+    codeChild.on('error', (err) => {
+      console.error(`Failed to launch VS Code: ${err.message}`);
+    });
+
+    // If there's a session, also bridge it to VS Code
+    let sessionId = dispatch.session_id;
+    if (!sessionId || sessionId === 'pending' || /^\d+$/.test(sessionId)) {
+      const parsed = _parseSessionIdFromLog(dispatch.logPath);
+      if (parsed) sessionId = parsed;
+    }
+    if (sessionId && sessionId !== 'pending' && UUID_RE.test(sessionId)) {
+      const copilotChild = _spawn('gh', [
+        'copilot', '--resume', sessionId,
+        '-p', '/ide',
+        '--allow-all',
+      ], {
+        cwd: worktreePath,
+        detached: true,
+        stdio: 'ignore',
+      });
+      copilotChild.unref();
+      copilotChild.on('error', (err) => {
+        console.error(`Failed to launch copilot session bridge: ${err.message}`);
       });
     }
   }
@@ -166,41 +186,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     child.unref();
     child.on('error', (err) => {
       console.error(`Failed to open in browser: ${err.message}`);
-    });
-  }
-
-  function connectIDE(dispatch) {
-    const worktreePath = dispatch.worktreePath ?? '';
-    if (!worktreePath) return;
-
-    // Resolve session ID — parse from log if stored value is a PID
-    let sessionId = dispatch.session_id;
-    if (!sessionId || sessionId === 'pending' || /^\d+$/.test(sessionId)) {
-      const parsed = _parseSessionIdFromLog(dispatch.logPath);
-      if (parsed) sessionId = parsed;
-    }
-    if (!sessionId || sessionId === 'pending') return;
-
-    // Open VS Code at the worktree path
-    const codeChild = _spawn('code', [worktreePath], { detached: true, stdio: 'ignore' });
-    codeChild.unref();
-    codeChild.on('error', (err) => {
-      console.error(`Failed to launch VS Code: ${err.message}`);
-    });
-
-    // Bridge the session to VS Code via gh copilot --resume + /ide
-    const copilotChild = _spawn('gh', [
-      'copilot', '--resume', sessionId,
-      '-p', '/ide',
-      '--allow-all',
-    ], {
-      cwd: worktreePath,
-      detached: true,
-      stdio: 'ignore',
-    });
-    copilotChild.unref();
-    copilotChild.on('error', (err) => {
-      console.error(`Failed to launch copilot session bridge: ${err.message}`);
     });
   }
 
@@ -247,8 +232,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       openInVSCode(actionDispatch);
     } else if (direction === ACTIONS.OPEN_BROWSER) {
       openInBrowser(actionDispatch);
-    } else if (direction === ACTIONS.CONNECT_IDE) {
-      connectIDE(actionDispatch);
     } else if (direction === ACTIONS.ATTACH_SESSION) {
       attachToSession(actionDispatch);
     } else if (direction === ACTIONS.VIEW_LOGS) {
@@ -259,8 +242,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         openInVSCode(actionDispatch);
       } else if (selectedAction === ACTIONS.OPEN_BROWSER) {
         openInBrowser(actionDispatch);
-      } else if (selectedAction === ACTIONS.CONNECT_IDE) {
-        connectIDE(actionDispatch);
       } else if (selectedAction === ACTIONS.ATTACH_SESSION) {
         attachToSession(actionDispatch);
       } else if (selectedAction === ACTIONS.VIEW_LOGS) {
@@ -303,13 +284,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         showToast('Branches have no GitHub page to open');
       } else {
         openInBrowser(selected);
-      }
-    } else if (input === 'c' && count > 0) {
-      const selected = flatDispatches[selectedIndex];
-      if (selected.session_id && UUID_RE.test(selected.session_id)) {
-        connectIDE(selected);
-      } else {
-        showToast('No active Copilot session to connect');
       }
     } else if (input === 'a' && count > 0) {
       const selected = flatDispatches[selectedIndex];
@@ -513,7 +487,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         {toastMessage ? (
           <Text color="yellow">{toastMessage}</Text>
         ) : null}
-        <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser · c connect IDE</Text>
+        <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser</Text>
         <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
       </Box>
     </Box>

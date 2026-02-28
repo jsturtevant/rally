@@ -1,0 +1,10 @@
+import { render } from 'ink-testing-library';
+import React from 'react';
+import Dashboard from './lib/ui/Dashboard.js';
+const inst = render(React.createElement(Dashboard, { refreshInterval: 0 }));
+const f = inst.lastFrame();
+const lines = f.split('\n');
+console.log(`Lines: ${lines.length}`);
+lines.slice(0, 4).forEach((l,i) => console.log(`  ${i+1}: ${l}`));
+console.log(`  ...`);
+lines.slice(-4).forEach((l,i) => console.log(`  ${lines.length-3+i}: ${l}`));

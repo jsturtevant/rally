@@ -1,11 +1,9 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
-import { UUID_RE } from '../../copilot.js';
 
 const ACTIONS = {
   OPEN_VSCODE: 'open-vscode',
   OPEN_BROWSER: 'open-browser',
-  CONNECT_IDE: 'connect-ide',
   ATTACH_SESSION: 'attach-session',
   VIEW_LOGS: 'view-logs',
   BACK: 'back',
@@ -18,29 +16,25 @@ const ACTIONS = {
 export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack }) {
   const hasLog = Boolean(dispatch.logPath);
   const hasWorktree = Boolean(dispatch.worktreePath);
-  const hasConnectableSession = dispatch.session_id &&
-    UUID_RE.test(dispatch.session_id);
+  const isBranch = dispatch.type === 'branch';
 
   const actions = [
-    { id: ACTIONS.OPEN_VSCODE, label: '(v) Open in VS Code' },
-    { id: ACTIONS.OPEN_BROWSER, label: '(o) Open in browser' },
-    ...(hasConnectableSession
-      ? [{ id: ACTIONS.CONNECT_IDE, label: '(c) Connect IDE session' }]
+    { id: ACTIONS.OPEN_VSCODE, label: 'v VSCode' },
+    ...(!isBranch
+      ? [{ id: ACTIONS.OPEN_BROWSER, label: 'o browser' }]
       : []),
     ...(hasWorktree
-      ? [{ id: ACTIONS.ATTACH_SESSION, label: '(a) Attach to session' }]
+      ? [{ id: ACTIONS.ATTACH_SESSION, label: 'a attach' }]
       : []),
-    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: '(l) View dispatch logs' }] : []),
-    { id: ACTIONS.BACK, label: 'Back' },
+    ...(hasLog ? [{ id: ACTIONS.VIEW_LOGS, label: 'l logs' }] : []),
+    { id: ACTIONS.BACK, label: 'Esc back' },
   ];
 
   useInput((input, key) => {
     if (input === 'v') {
       onSelect(ACTIONS.OPEN_VSCODE);
-    } else if (input === 'o') {
+    } else if (input === 'o' && !isBranch) {
       onSelect(ACTIONS.OPEN_BROWSER);
-    } else if (input === 'c' && hasConnectableSession) {
-      onSelect(ACTIONS.CONNECT_IDE);
     } else if (input === 'a' && hasWorktree) {
       onSelect(ACTIONS.ATTACH_SESSION);
     } else if (input === 'l' && hasLog) {
@@ -56,13 +50,14 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
     }
   }, { isActive: true });
 
-  const issueRef = dispatch.type === 'pr' ? `PR #${dispatch.number}` : `Issue #${dispatch.number}`;
+  const typeLabel = dispatch.type === 'pr' ? 'PR' : dispatch.type === 'branch' ? 'Branch' : 'Issue';
+  const refLabel = dispatch.type === 'branch' ? dispatch.branch : `#${dispatch.number}`;
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} paddingY={0}>
       <Box marginBottom={1}>
         <Text bold>Actions for </Text>
-        <Text bold color="cyan">{issueRef}</Text>
+        <Text bold color="cyan">{typeLabel} {refLabel}</Text>
         <Text bold> ({dispatch.repo})</Text>
       </Box>
       {actions.map((action, i) => (
@@ -72,7 +67,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter confirm · v/o/a/l shortcut · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter confirm · Esc back</Text>
       </Box>
     </Box>
   );

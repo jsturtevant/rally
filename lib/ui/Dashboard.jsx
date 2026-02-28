@@ -11,7 +11,7 @@ import OnboardInput from './components/OnboardInput.jsx';
 import BranchDispatchInput from './components/BranchDispatchInput.jsx';
 import TrustConfirm from './components/TrustConfirm.jsx';
 import DispatchStatus from './components/DispatchStatus.jsx';
-import { getDashboardData, renderPlainDashboard } from './dashboard-data.js';
+import { getDashboardData, renderPlainDashboard, groupByProject } from './dashboard-data.js';
 import { dispatchRemove as defaultDispatchRemove } from '../dispatch-remove.js';
 import { updateDispatchStatus as defaultUpdateDispatchStatus } from '../active.js';
 import { parseSessionIdFromLog as defaultParseSessionId, UUID_RE } from '../copilot.js';
@@ -77,7 +77,15 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     }
   }
 
-  const count = data ? data.dispatches.length : 0;
+  // Compute flattened dispatches in visual order (grouped by project)
+  // This ensures selectedIndex matches what the user sees on screen
+  const flatDispatches = React.useMemo(() => {
+    if (!data) return [];
+    const groups = groupByProject(data.dispatches, data.onboardedProjects);
+    return groups.flatMap(g => g.dispatches);
+  }, [data]);
+
+  const count = flatDispatches.length;
 
   // A session ID is connectable if it looks like a UUID (not a PID or 'pending')
   const hasConnectableSession = actionDispatch?.session_id &&
@@ -275,38 +283,38 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     } else if (key.downArrow) {
       setSelectedIndex(i => (i < count - 1 ? i + 1 : i));
     } else if (key.return && count > 0) {
-      const selected = data.dispatches[selectedIndex];
+      const selected = flatDispatches[selectedIndex];
       setActionDispatch(selected);
       setActionIndex(0);
     } else if (input === 'd' && count > 0) {
-      setDetailViewDispatch(data.dispatches[selectedIndex]);
+      setDetailViewDispatch(flatDispatches[selectedIndex]);
     } else if (input === 'v' && count > 0) {
-      openInVSCode(data.dispatches[selectedIndex]);
+      openInVSCode(flatDispatches[selectedIndex]);
     } else if (input === 'o' && count > 0) {
-      const selected = data.dispatches[selectedIndex];
+      const selected = flatDispatches[selectedIndex];
       if (selected.type !== 'branch') {
         openInBrowser(selected);
       }
     } else if (input === 'c' && count > 0) {
-      const selected = data.dispatches[selectedIndex];
+      const selected = flatDispatches[selectedIndex];
       if (selected.session_id && UUID_RE.test(selected.session_id)) {
         connectIDE(selected);
       }
     } else if (input === 'a' && count > 0) {
-      const selected = data.dispatches[selectedIndex];
+      const selected = flatDispatches[selectedIndex];
       if (selected.worktreePath) {
         attachToSession(selected);
       }
     } else if (input === 'l' && count > 0) {
-      viewLogs(data.dispatches[selectedIndex]);
+      viewLogs(flatDispatches[selectedIndex]);
     } else if (input === 'r') {
       reloadData();
     } else if (input === 'n') {
       setBrowseMode('projects');
     } else if (input === 'x' && count > 0) {
-      removeSelectedDispatch(data.dispatches[selectedIndex]);
+      removeSelectedDispatch(flatDispatches[selectedIndex]);
     } else if (input === 'p' && count > 0) {
-      markAsPushed(data.dispatches[selectedIndex]);
+      markAsPushed(flatDispatches[selectedIndex]);
     } else if (input === 'q') {
       exit();
     }

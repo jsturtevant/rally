@@ -113,8 +113,6 @@ const dashboard = program
         const { getSettings, getConfigDir } = await import('../lib/config.js');
         const settings = getSettings();
 
-        let attachDispatch = null;
-        const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
         const onAddProject = (repoPath, team) => onboard({ path: repoPath, team });
 
         const onDispatch = async (item) => {
@@ -153,17 +151,37 @@ const dashboard = program
           });
         };
 
-        const app = render(
-          React.createElement(Dashboard, {
-            project: opts.project, onAttachSession, onAddProject,
-            onDispatch, onDispatchBranch, getTrustWarnings: trustFn,
-          }),
-          { fullScreen: true }
-        );
-        await app.waitUntilExit();
-        if (attachDispatch) {
-          const { dispatchContinue } = await import('../lib/dispatch-continue.js');
-          await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });
+        // Dashboard loop — returns after attach/continue operations
+        let keepRunning = true;
+        while (keepRunning) {
+          let attachDispatch = null;
+          const onAttachSession = (dispatch) => { attachDispatch = dispatch; };
+
+          const app = render(
+            React.createElement(Dashboard, {
+              project: opts.project, onAttachSession, onAddProject,
+              onDispatch, onDispatchBranch, getTrustWarnings: trustFn,
+            }),
+            { fullScreen: true }
+          );
+          await app.waitUntilExit();
+
+          if (attachDispatch) {
+            // Clear screen before launching copilot picker
+            process.stdout.write('\x1B[2J\x1B[H');
+            const { dispatchContinue } = await import('../lib/dispatch-continue.js');
+            try {
+              await dispatchContinue(attachDispatch.number, { repo: attachDispatch.repo });
+            } catch (err) {
+              // Show error briefly then return to dashboard
+              console.error(`\n${err.message}\n`);
+              await new Promise(r => setTimeout(r, 2000));
+            }
+            // Loop continues — dashboard will re-render
+          } else {
+            // User quit normally (q key) — exit the loop
+            keepRunning = false;
+          }
         }
       }
     } catch (err) {

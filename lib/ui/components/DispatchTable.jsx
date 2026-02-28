@@ -42,10 +42,11 @@ function formatStatus(status) {
   return `${icon} ${label}`;
 }
 
-// Minimum widths per column; issueRef is flexible and gets remaining space
+// Minimum widths per column; title is flexible and gets remaining space
 const COLUMN_DEFS = [
   { key: 'type', label: 'Type', minWidth: 7 },
-  { key: 'issueRef', label: 'Issue/PR', minWidth: 12, flex: true },
+  { key: 'issueRef', label: 'Issue/PR', minWidth: 10 },
+  { key: 'title', label: 'Title', minWidth: 20, flex: true },
   { key: 'status', label: 'Status', minWidth: 20 },
   { key: 'changes', label: 'Changes', minWidth: 10 },
   { key: 'age', label: 'Age', minWidth: 6 },
@@ -134,10 +135,16 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1, onb
                 </Box>
               ) : group.dispatches.map((d) => {
                 const idx = flatIndex++;
-                const issueRefCol = columns.find(c => c.key === 'issueRef');
+                const titleCol = columns.find(c => c.key === 'title');
+                const titleWidth = titleCol?.width ?? 40;
+                let title = d.title ?? '';
+                if (title.length > titleWidth) {
+                  title = title.slice(0, titleWidth - 1) + '…';
+                }
                 const row = {
                   type: d.type === 'pr' ? 'PR' : d.type === 'branch' ? 'Branch' : 'Issue',
-                  issueRef: formatIssueRef(d, issueRefCol?.width ?? 40),
+                  issueRef: d.type === 'branch' ? '' : `#${d.number}`,
+                  title,
                   status: formatStatus(d.status),
                   changes: d.changes ?? '',
                   age: formatAge(d.created ?? d.created_at),

@@ -190,12 +190,12 @@ describe('formatAge', () => {
 });
 
 describe('computeColumnWidths', () => {
-  it('gives Issue/PR column extra space from terminal width', () => {
+  it('gives Title column extra space from terminal width', () => {
     const cols = computeColumnWidths(120);
-    const issueRef = cols.find(c => c.key === 'issueRef');
-    // Fixed columns: type(7) + status(20) + changes(10) + age(6) = 43
-    // selector = 2, remaining = 120 - 2 - 43 = 75
-    assert.equal(issueRef.width, 75, 'Issue/PR should get remaining terminal width');
+    const title = cols.find(c => c.key === 'title');
+    // Fixed columns: type(7) + issueRef(10) + status(24) + changes(10) + age(6) = 57
+    // selector = 2, remaining = 120 - 2 - 57 = 61
+    assert.equal(title.width, 61, 'Title should get remaining terminal width');
   });
 
   it('uses minimum widths for non-flex columns', () => {
@@ -205,22 +205,22 @@ describe('computeColumnWidths', () => {
     const changes = cols.find(c => c.key === 'changes');
     const age = cols.find(c => c.key === 'age');
     assert.equal(type.width, 7);
-    assert.equal(status.width, 20);
+    assert.equal(status.width, 24);
     assert.equal(changes.width, 10);
     assert.equal(age.width, 6);
   });
 
   it('defaults to 80 columns when terminal width is undefined', () => {
     const cols = computeColumnWidths(undefined);
-    const issueRef = cols.find(c => c.key === 'issueRef');
-    // remaining = 80 - 2 - 43 = 35
-    assert.equal(issueRef.width, 35);
+    const title = cols.find(c => c.key === 'title');
+    // remaining = 80 - 2 - 57 = 21
+    assert.equal(title.width, 21);
   });
 
-  it('never shrinks Issue/PR below its minimum width', () => {
+  it('never shrinks Title below its minimum width', () => {
     const cols = computeColumnWidths(40);
-    const issueRef = cols.find(c => c.key === 'issueRef');
-    assert.ok(issueRef.width >= 12, 'Issue/PR should not go below minWidth');
+    const title = cols.find(c => c.key === 'title');
+    assert.ok(title.width >= 20, 'Title should not go below minWidth');
   });
 });
 

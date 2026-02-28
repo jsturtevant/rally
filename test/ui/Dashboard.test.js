@@ -163,7 +163,7 @@ describe('Dashboard component', () => {
     const output = instance.lastFrame();
     assert.ok(output.includes('Enter actions'), 'should show Enter actions hint');
     assert.ok(output.includes('d details'), 'should show d shortcut hint');
-    assert.ok(output.includes('v open'), 'should show v shortcut hint');
+    assert.ok(output.includes('v VSCode'), 'should show v shortcut hint');
     assert.ok(output.includes('l logs'), 'should show l shortcut hint');
     assert.ok(output.includes('owner/repo-a'), 'should render dispatches');
   });
@@ -178,7 +178,7 @@ describe('Dashboard component', () => {
     const output = instance.lastFrame();
     assert.ok(output.includes('Actions for'), 'should show action menu title');
     assert.ok(output.includes('#42'), 'should show dispatch issue ref');
-    assert.ok(output.includes('(v) Open in VS Code'), 'should show VS Code option with shortcut hint');
+    assert.ok(output.includes('Open in VSCode'), 'should show VS Code option');
     assert.ok(output.includes('Back'), 'should show Back option');
   });
 
@@ -195,7 +195,7 @@ describe('Dashboard component', () => {
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
-    assert.ok(output.includes('(l) View dispatch logs'), 'should show View logs option with shortcut hint when logPath exists');
+    assert.ok(output.includes('View logs'), 'should show View logs option when logPath exists');
   });
 
   it('action menu hides View dispatch logs when no logPath', async () => {
@@ -206,7 +206,7 @@ describe('Dashboard component', () => {
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
-    assert.ok(!output.includes('(l) View dispatch logs'), 'should not show View logs when no logPath');
+    assert.ok(!output.includes('View logs'), 'should not show View logs when no logPath');
   });
 
   it('action menu Back returns to dispatch list', async () => {
@@ -237,7 +237,7 @@ describe('Dashboard component', () => {
     await delay();
     instance.stdin.write('\r');
     await delay();
-    assert.ok(instance.lastFrame().includes('(v) Open in VS Code'), 'should show VS Code option');
+    assert.ok(instance.lastFrame().includes('Open in VSCode'), 'should show VS Code option');
     instance.stdin.write('\r');
     await delay();
     assert.ok(spawnCalled, 'should have called spawn');
@@ -448,7 +448,7 @@ describe('Dashboard component', () => {
     assert.ok(output.includes('Rally Dashboard'), 'dashboard should still be visible after x');
   });
 
-  it('c shortcut spawns both code and gh copilot when session is a UUID', async () => {
+  it('v shortcut spawns both code and gh copilot when session is a UUID', async () => {
     const dispatches = makeSampleDispatches();
     dispatches[0].session_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
@@ -463,7 +463,7 @@ describe('Dashboard component', () => {
       React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
     );
     await delay();
-    instance.stdin.write('c');
+    instance.stdin.write('v');
     await delay();
     assert.equal(spawnedCmds.length, 2, 'should spawn two processes');
     assert.equal(spawnedCmds[0].cmd, 'code', 'first spawn should be VS Code');
@@ -473,14 +473,14 @@ describe('Dashboard component', () => {
     assert.ok(spawnedCmds[1].args.includes('a1b2c3d4-e5f6-7890-abcd-ef1234567890'), 'should include session ID');
   });
 
-  it('c shortcut does nothing when session is not a UUID', async () => {
+  it('v shortcut only spawns VS Code when session is not a UUID', async () => {
     const dispatches = makeSampleDispatches();
     dispatches[0].session_id = '12345'; // PID, not UUID
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
 
-    let spawnCalled = false;
-    const spawnMock = () => {
-      spawnCalled = true;
+    const spawnedCmds = [];
+    const spawnMock = (cmd, args, opts) => {
+      spawnedCmds.push({ cmd, args });
       return { unref: () => {}, on: () => {} };
     };
 
@@ -488,42 +488,13 @@ describe('Dashboard component', () => {
       React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
     );
     await delay();
-    instance.stdin.write('c');
+    instance.stdin.write('v');
     await delay();
-    assert.ok(!spawnCalled, 'should not spawn when session is a PID');
+    assert.equal(spawnedCmds.length, 1, 'should spawn only VS Code');
+    assert.equal(spawnedCmds[0].cmd, 'code', 'spawn should be VS Code');
   });
 
-  it('action menu shows Connect IDE only when session is a UUID', async () => {
-    const dispatches = makeSampleDispatches();
-    dispatches[0].session_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
-    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
-
-    instance = render(
-      React.createElement(Dashboard, { refreshInterval: 0 })
-    );
-    await delay();
-    instance.stdin.write('\r');
-    await delay();
-    const output = instance.lastFrame();
-    assert.ok(output.includes('Connect IDE session'), 'should show Connect IDE for UUID session');
-  });
-
-  it('action menu hides Connect IDE when session is not a UUID', async () => {
-    const dispatches = makeSampleDispatches();
-    dispatches[0].session_id = 'not-a-uuid';
-    writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
-
-    instance = render(
-      React.createElement(Dashboard, { refreshInterval: 0 })
-    );
-    await delay();
-    instance.stdin.write('\r');
-    await delay();
-    const output = instance.lastFrame();
-    assert.ok(!output.includes('Connect IDE session'), 'should not show Connect IDE for non-UUID session');
-  });
-
-  it('p shortcut marks reviewing dispatch as pushed', async () => {
+  it('u shortcut marks reviewing dispatch as upstream', async () => {
     const dispatches = makeSampleDispatches();
     dispatches[0].status = 'reviewing';
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
@@ -543,13 +514,13 @@ describe('Dashboard component', () => {
       })
     );
     await delay();
-    instance.stdin.write('p');
+    instance.stdin.write('u');
     await delay();
     assert.equal(updatedId, 'd1', 'should update the selected dispatch');
-    assert.equal(updatedStatus, 'waiting', 'should set status to pushed');
+    assert.equal(updatedStatus, 'upstream', 'should set status to upstream');
   });
 
-  it('p shortcut does nothing when dispatch is not reviewing', async () => {
+  it('u shortcut does nothing when dispatch is not reviewing', async () => {
     let updateCalled = false;
     const mockUpdateStatus = () => { updateCalled = true; return {}; };
 
@@ -560,15 +531,15 @@ describe('Dashboard component', () => {
       })
     );
     await delay();
-    instance.stdin.write('p');
+    instance.stdin.write('u');
     await delay();
-    assert.ok(!updateCalled, 'p shortcut should not update non-reviewing dispatch');
+    assert.ok(!updateCalled, 'u shortcut should not update non-reviewing dispatch');
   });
 
-  it('help text includes p pushed shortcut', () => {
+  it('help text includes u upstream shortcut', () => {
     instance = render(React.createElement(Dashboard, { refreshInterval: 0 }));
     const output = instance.lastFrame();
-    assert.ok(output.includes('p pushed'), 'should show p pushed shortcut hint');
+    assert.ok(output.includes('u upstream'), 'should show u upstream shortcut hint');
   });
 
   it('help text includes a attach shortcut', () => {
@@ -585,7 +556,7 @@ describe('Dashboard component', () => {
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
-    assert.ok(output.includes('(a) Attach to session'), 'should show Attach option when worktreePath exists');
+    assert.ok(output.includes('Attach to session'), 'should show Attach option when worktreePath exists');
   });
 
   it('action menu hides Attach to session when no worktreePath', async () => {
@@ -600,7 +571,7 @@ describe('Dashboard component', () => {
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
-    assert.ok(!output.includes('(a) Attach to session'), 'should not show Attach when no worktreePath');
+    assert.ok(!output.includes('Attach to session'), 'should not show Attach when no worktreePath');
   });
 
   it('a shortcut calls onAttachSession with selected dispatch', async () => {
@@ -641,7 +612,7 @@ describe('Dashboard component', () => {
     assert.ok(!attachCalled, 'a shortcut should not trigger when no worktreePath');
   });
 
-  it('action menu Attach to session calls onAttachSession via shortcut', async () => {
+  it('action menu navigating to Attach to session and pressing Enter calls onAttachSession', async () => {
     let attachedDispatch = null;
     const onAttachSession = (dispatch) => { attachedDispatch = dispatch; };
 
@@ -652,11 +623,16 @@ describe('Dashboard component', () => {
       })
     );
     await delay();
-    instance.stdin.write('\r');
+    instance.stdin.write('\r'); // open action menu
     await delay();
-    instance.stdin.write('a');
+    // Action menu order: Open in VSCode, Open in browser, Attach to session, Back
+    instance.stdin.write('\x1B[B'); // down to Open in browser
     await delay();
-    assert.ok(attachedDispatch, 'action menu a shortcut should call onAttachSession');
+    instance.stdin.write('\x1B[B'); // down to Attach to session
+    await delay();
+    instance.stdin.write('\r'); // confirm
+    await delay();
+    assert.ok(attachedDispatch, 'selecting Attach to session should call onAttachSession');
     assert.equal(attachedDispatch.number, 42, 'should pass dispatch number');
   });
 
@@ -708,7 +684,10 @@ describe('Dashboard component', () => {
       React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
     );
     await delay();
-    // Navigate down to the PR dispatch (index 1)
+    // Navigate down twice to reach the PR dispatch (index 2 after groupByProject)
+    // groupByProject orders: repo-a [#42, #10], repo-b [#7]
+    instance.stdin.write('\x1B[B');
+    await delay();
     instance.stdin.write('\x1B[B');
     await delay();
     instance.stdin.write('o');
@@ -741,10 +720,10 @@ describe('Dashboard component', () => {
     instance.stdin.write('\r');
     await delay();
     const output = instance.lastFrame();
-    assert.ok(output.includes('(o) Open in browser'), 'should show Open in browser option');
+    assert.ok(output.includes('Open in browser'), 'should show Open in browser option');
   });
 
-  it('action menu o shortcut opens in browser', async () => {
+  it('action menu navigating to Open in browser and pressing Enter opens in browser', async () => {
     let spawnArgs;
     const spawnMock = (cmd, args, opts) => {
       spawnArgs = { cmd, args };
@@ -755,11 +734,14 @@ describe('Dashboard component', () => {
       React.createElement(Dashboard, { refreshInterval: 0, _spawn: spawnMock })
     );
     await delay();
-    instance.stdin.write('\r');
+    instance.stdin.write('\r'); // open action menu
     await delay();
-    instance.stdin.write('o');
+    // Action menu order: Open in VSCode, Open in browser, ...
+    instance.stdin.write('\x1B[B'); // down to Open in browser
     await delay();
-    assert.ok(spawnArgs, 'action menu o shortcut should spawn gh');
+    instance.stdin.write('\r'); // confirm
+    await delay();
+    assert.ok(spawnArgs, 'selecting Open in browser should spawn gh');
     assert.equal(spawnArgs.cmd, 'gh');
     assert.deepEqual(spawnArgs.args, ['issue', 'view', '42', '--repo', 'owner/repo-a', '--web']);
   });

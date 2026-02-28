@@ -92,6 +92,11 @@ function noopSpawn() {
   };
 }
 
+/** No-op mock for setupConsultMode */
+function noopSetupConsultMode() {
+  // No-op for tests
+}
+
 // =====================================================
 // slugify
 // =====================================================
@@ -204,7 +209,8 @@ describe('dispatchIssue error paths', () => {
       dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-existing', worktreePath: wtPath, status: 'implementing' }],
     }), 'utf8');
 
-    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-42'));
   });
@@ -230,7 +236,8 @@ describe('dispatchIssue error paths', () => {
       return execFileSync(cmd, args, opts);
     };
 
-    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-42'));
     assert.strictEqual(result.sessionId, null);
@@ -298,7 +305,9 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     // Verify return value
@@ -345,7 +354,9 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     assert.strictEqual(result.branch, 'rally/7-fix-broken-navbar-component');
@@ -370,7 +381,9 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     const expected = join(repoPath, '.worktrees', 'rally-99');
@@ -395,7 +408,9 @@ describe('dispatchIssue happy path', () => {
       teamDir,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     // Verify .squad exists in worktree (either as symlink or directory)
@@ -417,6 +432,7 @@ describe('dispatchIssue happy path', () => {
       _exec: exec,
       _spawn: () => ({ pid: 98765, unref() {} }),
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     assert.strictEqual(result.sessionId, '98765');
@@ -441,6 +457,7 @@ describe('dispatchIssue happy path', () => {
       _exec: exec,
       _spawn: () => { throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }); },
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     // Should complete without throwing, sessionId null
@@ -478,6 +495,7 @@ describe('dispatchIssue happy path', () => {
       _exec: exec,
       _spawn: () => { spawnCalled = true; return { pid: 1, unref() {} }; },
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     assert.strictEqual(result.sessionId, null);
@@ -515,7 +533,9 @@ describe('dispatchIssue happy path', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
         trust: true,
+      _setupConsultMode: noopSetupConsultMode,
       }),
     );
 

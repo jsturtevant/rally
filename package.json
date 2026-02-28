@@ -17,6 +17,7 @@
     "docs:generate": "node scripts/generate-docs.js"
   },
   "dependencies": {
+    "@bradygaster/squad": "github:jsturtevant/squad-pr#consult-mode-impl",
     "@inquirer/prompts": "^8.3.0",
     "chalk": "^5.0.0",
     "commander": "^14.0.3",

@@ -84,6 +84,7 @@ function baseOpts(overrides = {}) {
     preSymlinkFn: null,
     postSymlinkFn: null,
     _spawn: noopSpawn,
+    _setupConsultMode: () => {}, // No-op mock for consult mode
     ...overrides,
   };
 }

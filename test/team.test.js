@@ -48,14 +48,12 @@ describe('team selection', () => {
     return repoPath;
   }
 
-  // Fake exec that simulates npx squad init by creating .squad/
-  function fakeExec(cmd, args, opts) {
-    if (cmd === 'npx') {
-      mkdirSync(join(opts.cwd, '.squad'), { recursive: true });
-      mkdirSync(join(opts.cwd, '.squad-templates'), { recursive: true });
-      mkdirSync(join(opts.cwd, '.github', 'agents'), { recursive: true });
-      writeFileSync(join(opts.cwd, '.github', 'agents', 'squad.agent.md'), '# Agent');
-    }
+  // Fake initSquad that simulates SDK init by creating .squad/
+  async function fakeInitSquad({ teamRoot }) {
+    mkdirSync(join(teamRoot, '.squad'), { recursive: true });
+    mkdirSync(join(teamRoot, '.squad-templates'), { recursive: true });
+    mkdirSync(join(teamRoot, '.github', 'agents'), { recursive: true });
+    writeFileSync(join(teamRoot, '.github', 'agents', 'squad.agent.md'), '# Agent');
   }
 
   // --- selectTeam unit tests ---
@@ -66,7 +64,7 @@ describe('team selection', () => {
 
       const result = await selectTeam({
         team: 'my-project',
-        _exec: fakeExec,
+        _initSquad: fakeInitSquad,
       });
 
       const expectedDir = join(process.env.RALLY_HOME, 'teams', 'my-project');
@@ -81,15 +79,15 @@ describe('team selection', () => {
       const teamDir = join(rallyHome, 'teams', 'existing-team');
       mkdirSync(join(teamDir, '.squad'), { recursive: true });
 
-      let execCalled = false;
+      let initSquadCalled = false;
       const result = await selectTeam({
         team: 'existing-team',
-        _exec: () => { execCalled = true; },
+        _initSquad: async () => { initSquadCalled = true; },
       });
 
       assert.strictEqual(result.teamDir, teamDir);
       assert.strictEqual(result.teamType, 'project');
-      assert.ok(!execCalled, 'should not run exec for existing team');
+      assert.ok(!initSquadCalled, 'should not run initSquad for existing team');
     });
 
     test('error on invalid team name', async () => {
@@ -134,7 +132,7 @@ describe('team selection', () => {
       const result = await selectTeam({
         _select: async () => 'project',
         _input: async () => 'new-team',
-        _exec: fakeExec,
+        _initSquad: fakeInitSquad,
       });
 
       const expectedDir = join(process.env.RALLY_HOME, 'teams', 'new-team');
@@ -154,7 +152,7 @@ describe('team selection', () => {
       await onboard({
         path: repoPath,
         team: 'my-team',
-        _exec: fakeExec,
+        _initSquad: fakeInitSquad,
       });
 
       // Verify projects.yaml records team type
@@ -172,7 +170,7 @@ describe('team selection', () => {
       await onboard({
         path: repoPath,
         team: 'link-team',
-        _exec: fakeExec,
+        _initSquad: fakeInitSquad,
       });
 
       const expectedTeamDir = join(process.env.RALLY_HOME, 'teams', 'link-team');
@@ -226,16 +224,16 @@ describe('team selection', () => {
       mkdirSync(partialDir, { recursive: true });
       // Dir exists but no .squad inside
 
-      let execCalled = false;
+      let initSquadCalled = false;
       const result = await selectTeam({
         team: 'broken-team',
-        _exec: (cmd, args, opts) => {
-          execCalled = true;
-          fakeExec(cmd, args, opts);
+        _initSquad: async ({ teamRoot }) => {
+          initSquadCalled = true;
+          await fakeInitSquad({ teamRoot });
         },
       });
 
-      assert.ok(execCalled, 'should re-run init for partial team dir');
+      assert.ok(initSquadCalled, 'should re-run init for partial team dir');
       assert.strictEqual(result.teamDir, partialDir);
       assert.ok(existsSync(join(partialDir, '.squad')), '.squad should now exist');
     });
@@ -246,17 +244,17 @@ describe('team selection', () => {
       const partialDir = join(teamsDir, 'half-done');
       mkdirSync(partialDir, { recursive: true });
 
-      let execCalled = false;
+      let initSquadCalled = false;
       const result = await selectTeam({
         _select: async () => 'project',
         _input: async () => 'half-done',
-        _exec: (cmd, args, opts) => {
-          execCalled = true;
-          fakeExec(cmd, args, opts);
+        _initSquad: async ({ teamRoot }) => {
+          initSquadCalled = true;
+          await fakeInitSquad({ teamRoot });
         },
       });
 
-      assert.ok(execCalled, 'should re-run init for partial team dir');
+      assert.ok(initSquadCalled, 'should re-run init for partial team dir');
       assert.strictEqual(result.teamDir, partialDir);
       assert.ok(existsSync(join(partialDir, '.squad')), '.squad should now exist');
     });
@@ -264,10 +262,10 @@ describe('team selection', () => {
     test('setupTeam keeps team directory on squad init failure', async () => {
       setupRallyHome();
 
-      const failingExec = () => { throw new Error('squad init exploded'); };
+      const failingInitSquad = async () => { throw new Error('squad init exploded'); };
 
       // Should NOT reject — squad failure is a warning, not an error
-      const result = await selectTeam({ team: 'doomed-team', _exec: failingExec });
+      const result = await selectTeam({ team: 'doomed-team', _initSquad: failingInitSquad });
 
       const teamDir = join(process.env.RALLY_HOME, 'teams', 'doomed-team');
       assert.ok(existsSync(teamDir), 'team dir should still exist after squad init warning');

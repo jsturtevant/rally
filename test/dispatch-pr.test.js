@@ -112,6 +112,11 @@ function noopSpawn() {
   };
 }
 
+/** No-op mock for setupConsultMode */
+function noopSetupConsultMode() {
+  // No-op for tests
+}
+
 // =====================================================
 // fetchPrOrFail
 // =====================================================
@@ -269,7 +274,8 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr({ state: 'MERGED' }));
     await assert.rejects(
-      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true }),
       (err) => {
         assert.ok(err.message.includes('already merged'));
         return true;
@@ -281,7 +287,8 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr({ state: 'CLOSED' }));
     await assert.rejects(
-      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true }),
       (err) => {
         assert.ok(err.message.includes('closed'));
         return true;
@@ -304,7 +311,8 @@ describe('dispatchPr error paths', () => {
     mkdirSync(join(repoPath, '.squad'), { recursive: true });
 
     await assert.rejects(
-      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true }),
       (err) => {
         assert.ok(err.message.includes('Failed to checkout PR #42 head'), 'should mention checkout failure and PR number');
         assert.ok(err.message.includes(checkoutError.message), 'should preserve original error message');
@@ -334,7 +342,8 @@ describe('dispatchPr error paths', () => {
     mkdirSync(join(repoPath, '.squad'), { recursive: true });
 
     await assert.rejects(
-      () => dispatchPr({ prNumber: 7, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true }),
+      () => dispatchPr({ prNumber: 7, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true }),
       (err) => {
         // The wrapper should include both the context (PR number) and the original error
         assert.ok(err.message.startsWith('Failed to checkout PR #7 head:'), 'should start with contextual prefix');
@@ -358,7 +367,8 @@ describe('dispatchPr error paths', () => {
       dispatches: [{ id: 'repo-pr-42', repo: 'owner/repo', number: 42, type: 'pr', branch: 'rally/pr-42-existing', worktreePath: wtPath, status: 'implementing' }],
     }), 'utf8');
 
-    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true });
     assert.strictEqual(result.existing, true);
   });
 
@@ -383,7 +393,8 @@ describe('dispatchPr error paths', () => {
       return execFileSync(cmd, args, opts);
     };
 
-    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-pr-42'));
     assert.strictEqual(result.sessionId, null);
@@ -409,7 +420,9 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     // Verify return value
@@ -462,7 +475,9 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     assert.strictEqual(result.branch, 'rally/pr-7-add-dark-mode-support');
@@ -487,7 +502,9 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     const expected = join(repoPath, '.worktrees', 'rally-pr-99');
@@ -511,7 +528,9 @@ describe('dispatchPr happy path', () => {
       teamDir,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     const squadInWorktree = join(result.worktreePath, '.squad');
@@ -532,6 +551,7 @@ describe('dispatchPr happy path', () => {
       _exec: exec,
       _spawn: () => ({ pid: 98765, unref() {} }),
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     assert.strictEqual(result.sessionId, '98765');
@@ -555,6 +575,7 @@ describe('dispatchPr happy path', () => {
       _exec: exec,
       _spawn: () => { throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }); },
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     assert.strictEqual(result.sessionId, null);
@@ -583,7 +604,9 @@ describe('dispatchPr happy path', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
         trust: true,
+      _setupConsultMode: noopSetupConsultMode,
       }),
     );
 
@@ -779,6 +802,7 @@ describe('dispatchPr with custom prompt file', () => {
       _exec: exec,
       _spawn: capturingSpawn,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode,
     });
 
     assert.ok(result.worktreePath, 'should return worktree path');
@@ -803,6 +827,7 @@ describe('dispatchPr with custom prompt file', () => {
         promptFile: '/nonexistent/prompt.md',
         _exec: exec,
         _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode,
       }),
       (err) => {
         assert.ok(err.message.includes('prompt file') || err.code === 'ENOENT');

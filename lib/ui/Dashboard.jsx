@@ -210,7 +210,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   function markAsPushed(dispatch) {
     if (dispatch.status !== 'reviewing') return;
     try {
-      _updateDispatchStatus(dispatch.id, 'pushed');
+      _updateDispatchStatus(dispatch.id, 'waiting');
       reloadData();
     } catch (err) {
       console.error(`Failed to mark dispatch as pushed: ${err.message}`);

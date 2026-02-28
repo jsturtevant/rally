@@ -215,8 +215,8 @@ describe('refreshDispatchStatuses', () => {
 
   test('skips dispatches with done/cleaned status', () => {
     const dispatches = [
-      { id: 'd1', status: 'done', session_id: '111', type: 'issue' },
-      { id: 'd3', status: 'cleaned', session_id: '333', type: 'issue' },
+      { id: 'd1', status: 'waiting', session_id: '111', type: 'issue' },
+      { id: 'd3', status: 'waiting', session_id: '333', type: 'issue' },
     ];
     const updates = [];
 
@@ -260,7 +260,7 @@ describe('refreshDispatchStatuses', () => {
     const dispatches = [
       { id: 'a', status: 'implementing', session_id: '100', type: 'issue' },
       { id: 'b', status: 'implementing', session_id: '200', type: 'issue' },
-      { id: 'c', status: 'done', session_id: '300', type: 'pr' },
+      { id: 'c', status: 'waiting', session_id: '300', type: 'pr' },
       { id: 'd', status: 'implementing', session_id: 'pending', type: 'issue' },
       { id: 'e', status: 'implementing', session_id: '400', type: 'issue' },
     ];

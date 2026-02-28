@@ -5,9 +5,7 @@ import { formatAge, groupByProject } from '../dashboard-data.js';
 const STATUS_ICONS = {
   implementing: '⏳',
   reviewing: '🟡',
-  pushed: '🟣',
-  done: '✅',
-  cleaned: '⚪',
+  waiting: '🟣',
 };
 
 const PR_INDENT = '';
@@ -32,7 +30,7 @@ function formatIssueRef(dispatch, maxWidth) {
 const STATUS_LABELS = {
   implementing: 'copilot working',
   reviewing: 'ready for review',
-  pushed: 'pushed',
+  waiting: 'waiting',
 };
 
 function formatStatus(status) {

@@ -10,7 +10,7 @@ function makeDispatch(overrides = {}) {
     type: 'issue',
     branch: 'rally/42-fix-bug',
     worktreePath: '/tmp/worktrees/repo-42',
-    status: 'done',
+    status: 'waiting',
     pid: 12345,
     created: new Date().toISOString(),
     ...overrides,
@@ -234,7 +234,7 @@ describe('all operations fail gracefully', () => {
 
 describe('minimal dispatch (no optional fields)', () => {
   test('handles dispatch with only required fields', () => {
-    const minimal = { id: 'min-1', status: 'done' };
+    const minimal = { id: 'min-1', status: 'waiting' };
     assert.doesNotThrow(() => {
       cleanupDispatch(minimal, '/repo', makeOpts());
     });

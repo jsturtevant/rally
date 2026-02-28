@@ -140,7 +140,7 @@ test('updateDispatchStatus transitions through all statuses', () => {
 
 test('updateDispatchStatus throws on unknown id', () => {
   assert.throws(() => {
-    updateDispatchStatus('nonexistent', 'done');
+    updateDispatchStatus('nonexistent', 'waiting');
   }, /not found/);
 });
 
@@ -180,7 +180,7 @@ test('removeDispatch removes only the target record', () => {
 });
 
 test('VALID_STATUSES contains expected values', () => {
-  assert.deepEqual(VALID_STATUSES, ['implementing', 'reviewing', 'pushed', 'done', 'cleaned']);
+  assert.deepEqual(VALID_STATUSES, ['implementing', 'reviewing', 'waiting']);
 });
 
 test('lock is released even when wrapped function throws', () => {

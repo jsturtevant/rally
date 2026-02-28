@@ -546,7 +546,7 @@ describe('Dashboard component', () => {
     instance.stdin.write('p');
     await delay();
     assert.equal(updatedId, 'd1', 'should update the selected dispatch');
-    assert.equal(updatedStatus, 'pushed', 'should set status to pushed');
+    assert.equal(updatedStatus, 'waiting', 'should set status to pushed');
   });
 
   it('p shortcut does nothing when dispatch is not reviewing', async () => {

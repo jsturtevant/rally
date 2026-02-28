@@ -39,6 +39,13 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   const [trustWarnings, setTrustWarnings] = useState(null);
   const [dispatchStatus, setDispatchStatus] = useState(null); // null|'confirming'|'dispatching'|'done'|'error'
   const [dispatchMessage, setDispatchMessage] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
+
+  // Show a toast message that auto-clears after 2 seconds
+  function showToast(msg) {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 2000);
+  }
 
   const [data, setData] = useState(() => {
     try { return getDashboardData({ project }); } catch { return null; }
@@ -292,18 +299,24 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       openInVSCode(flatDispatches[selectedIndex]);
     } else if (input === 'o' && count > 0) {
       const selected = flatDispatches[selectedIndex];
-      if (selected.type !== 'branch') {
+      if (selected.type === 'branch') {
+        showToast('Branches have no GitHub page to open');
+      } else {
         openInBrowser(selected);
       }
     } else if (input === 'c' && count > 0) {
       const selected = flatDispatches[selectedIndex];
       if (selected.session_id && UUID_RE.test(selected.session_id)) {
         connectIDE(selected);
+      } else {
+        showToast('No active Copilot session to connect');
       }
     } else if (input === 'a' && count > 0) {
       const selected = flatDispatches[selectedIndex];
       if (selected.worktreePath) {
         attachToSession(selected);
+      } else {
+        showToast('No worktree to attach');
       }
     } else if (input === 'l' && count > 0) {
       viewLogs(flatDispatches[selectedIndex]);
@@ -497,6 +510,9 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         <DispatchTable dispatches={data.dispatches} selectedIndex={selectedIndex} onboardedProjects={data.onboardedProjects} width={effectiveWidth} />
       </Box>
       <Box flexDirection="column" alignItems="center">
+        {toastMessage ? (
+          <Text color="yellow">{toastMessage}</Text>
+        ) : null}
         <Text dimColor>↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser · c connect IDE</Text>
         <Text dimColor>n new dispatch · a attach · p pushed · x delete · r refresh · q quit</Text>
       </Box>

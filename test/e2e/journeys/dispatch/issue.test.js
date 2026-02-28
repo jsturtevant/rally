@@ -15,7 +15,8 @@ import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import { 
   createIsolatedConfig, 
-  getSkipReason, 
+  getSkipReason,
+  isGhAuthenticated,
   RALLY_BIN_PATH, 
   REPO_ROOT_PATH,
   E2E_ISSUE,
@@ -164,9 +165,9 @@ describe('dispatch issue journey — error paths', () => {
 // ─── HAPPY PATH — FULL JOURNEY ──────────────────────────────────────────────
 
 describe('dispatch issue journey — happy path', () => {
-  // Skip if no GitHub token — dispatch tests require API access
-  const skipReason = (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN)
-    ? 'Skipping: GH_TOKEN not set (dispatch tests require GitHub API access)'
+  // Skip if gh CLI not authenticated — dispatch tests require API access
+  const skipReason = !isGhAuthenticated()
+    ? 'Skipping: gh CLI not authenticated (run `gh auth login`)'
     : undefined;
 
   let term;

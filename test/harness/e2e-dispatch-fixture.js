@@ -47,18 +47,26 @@ const DISPATCH_TIMEOUT = 90_000;
 let fixture = null;
 
 /**
- * Check if GitHub token is available
+ * Check if GitHub CLI is authenticated
  */
-export function hasGitHubToken() {
-  return !!(process.env.GH_TOKEN || process.env.GITHUB_TOKEN);
+export function isGhAuthenticated() {
+  try {
+    const result = spawnSync('gh', ['auth', 'status'], {
+      encoding: 'utf8',
+      timeout: 5000,
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Get skip reason if token is not available
+ * Get skip reason if gh CLI is not authenticated
  */
 export function getSkipReason() {
-  if (!hasGitHubToken()) {
-    return 'Skipping: GH_TOKEN not set (E2E tests require GitHub API access)';
+  if (!isGhAuthenticated()) {
+    return 'Skipping: gh CLI not authenticated (run `gh auth login`)';
   }
   return undefined;
 }
@@ -120,43 +128,35 @@ function cleanupWorktree(repoPath, worktreePath, branchName) {
 }
 
 /**
- * Dispatch to issue #54 using the CLI command (faster than UI interaction)
+ * Dispatch to issue #54 using the library function (skips Copilot launch)
  */
 async function dispatchToIssue(rallyHome) {
-  const result = spawnSync('node', [
-    RALLY_BIN,
-    'dispatch',
-    'issue',
-    `${E2E_REPO}#${E2E_ISSUE_NUMBER}`,
-    '--no-launch',  // Don't launch copilot
-  ], {
-    env: { ...process.env, RALLY_HOME: rallyHome, NO_COLOR: '1' },
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    timeout: DISPATCH_TIMEOUT,
-  });
+  // Set RALLY_HOME so the library writes to the right place
+  const origRallyHome = process.env.RALLY_HOME;
+  process.env.RALLY_HOME = rallyHome;
 
-  if (result.status !== 0) {
-    throw new Error(`Dispatch failed: ${result.stderr || result.stdout}`);
+  try {
+    const { dispatchIssue } = await import('../../lib/dispatch-issue.js');
+    
+    const result = await dispatchIssue({
+      issueNumber: E2E_ISSUE_NUMBER,
+      repo: E2E_REPO,
+      repoPath: REPO_ROOT,
+      teamDir: path.join(rallyHome, 'team'),
+    });
+
+    return {
+      ...result,
+      issue: E2E_ISSUE_NUMBER,
+    };
+  } finally {
+    // Restore original RALLY_HOME
+    if (origRallyHome !== undefined) {
+      process.env.RALLY_HOME = origRallyHome;
+    } else {
+      delete process.env.RALLY_HOME;
+    }
   }
-
-  // Read active.yaml to get dispatch details
-  const activeYaml = yaml.load(
-    readFileSync(path.join(rallyHome, 'active.yaml'), 'utf8'),
-    { schema: yaml.CORE_SCHEMA }
-  );
-
-  if (!activeYaml.dispatches || activeYaml.dispatches.length === 0) {
-    throw new Error('Dispatch succeeded but no dispatch found in active.yaml');
-  }
-
-  // Find the dispatch for issue 54
-  const dispatch = activeYaml.dispatches.find(d => d.issue === E2E_ISSUE_NUMBER);
-  if (!dispatch) {
-    throw new Error(`Dispatch for issue #${E2E_ISSUE_NUMBER} not found in active.yaml`);
-  }
-
-  return dispatch;
 }
 
 /**
@@ -166,14 +166,9 @@ async function dispatchToIssue(rallyHome) {
  * @param {object} testContext - Mocha/node:test context (for timeout extension)
  * @returns {Promise<void>}
  */
-export async function setupDispatchFixture(testContext) {
-  if (!hasGitHubToken()) {
-    return; // Skip setup if no token
-  }
-
-  // Extend test timeout for setup
-  if (testContext && testContext.timeout) {
-    testContext.timeout(DISPATCH_TIMEOUT + 30_000);
+export async function setupDispatchFixture(options = {}) {
+  if (!isGhAuthenticated()) {
+    return; // Skip setup if not authenticated
   }
 
   const randomId = crypto.randomBytes(4).toString('hex');

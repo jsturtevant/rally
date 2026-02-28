@@ -9,6 +9,7 @@
 import { describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
+import { isGhAuthenticated } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
@@ -111,8 +112,8 @@ describe('lifecycle — cancel dispatch flow', () => {
   });
 
   it('escape from item picker returns to dashboard', { timeout: 45_000 }, async () => {
-    const skipReason = (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN)
-      ? 'Skipping: GH_TOKEN not set'
+    const skipReason = !isGhAuthenticated()
+      ? 'Skipping: gh CLI not authenticated (run `gh auth login`)'
       : undefined;
 
     if (skipReason) {

@@ -10,6 +10,7 @@ Each guide shows step-by-step screenshots of Rally's terminal UI.
 - [Clean](./actions-clean.md)
 - [Continue](./actions-continue.md)
 - [Open Browser](./actions-open-browser.md)
+- [Real Dispatch](./actions-real-dispatch.md)
 - [Remove](./actions-remove.md)
 - [Upstream](./actions-upstream.md)
 - [View Log](./actions-view-log.md)
@@ -25,6 +26,11 @@ Each guide shows step-by-step screenshots of Rally's terminal UI.
 - [Multi Project](./display-multi-project.md)
 - [Status Icons](./display-status-icons.md)
 - [Truncation](./display-truncation.md)
+
+### Lifecycle
+
+- [Cancel](./lifecycle-cancel.md)
+- [Complete](./lifecycle-complete.md)
 
 ### Navigation
 

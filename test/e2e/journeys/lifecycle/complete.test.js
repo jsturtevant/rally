@@ -9,6 +9,7 @@
 import { describe, it, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
+import { isGhAuthenticated } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -108,8 +109,8 @@ function cleanupWorktree(repoPath, worktreePath, branchName) {
 // ─── LIFECYCLE STATE TRANSITIONS ─────────────────────────────────────────────
 
 describe('lifecycle — complete dispatch journey', () => {
-  const skipReason = (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN)
-    ? 'Skipping: GH_TOKEN not set (dispatch tests require GitHub API access)'
+  const skipReason = !isGhAuthenticated()
+    ? 'Skipping: gh CLI not authenticated (run `gh auth login`)'
     : undefined;
 
   let term;

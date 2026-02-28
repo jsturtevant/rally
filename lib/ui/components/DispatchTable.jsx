@@ -5,10 +5,11 @@ import { formatAge, groupByProject } from '../dashboard-data.js';
 const STATUS_ICONS = {
   implementing: '⏳',
   reviewing: '🟡',
-  waiting: '🔵',
+  upstream: '🔵',
   // Legacy statuses (for existing dispatches)
   planning: '⏳',
   pushed: '🔵',
+  waiting: '🔵',
   done: '✅',
   cleaned: '⚪',
 };
@@ -35,10 +36,11 @@ function formatIssueRef(dispatch, maxWidth) {
 const STATUS_LABELS = {
   implementing: 'copilot working',
   reviewing: 'ready for review',
-  waiting: 'waiting',
+  upstream: 'waiting on upstream',
   // Legacy statuses (for existing dispatches)
   planning: 'planning',
   pushed: 'pushed',
+  waiting: 'waiting',
   done: 'done',
   cleaned: 'cleaned',
 };

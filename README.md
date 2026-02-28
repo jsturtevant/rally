@@ -59,7 +59,7 @@ owner/otherapp
 3 active · 1 done · 0 orphaned
 
 ↑/↓ navigate · Enter actions · d details · v open · o browser · a attach
-c connect IDE · l logs · n new dispatch · p waiting · x delete · r refresh · q quit
+c connect IDE · l logs · n new dispatch · p upstream · x delete · r refresh · q quit
 ```
 
 Common keyboard shortcuts from the dashboard:
@@ -162,7 +162,7 @@ Options:
 | `c` | Connect IDE — opens VS Code + bridges Copilot session |
 | `l` | View Copilot output log |
 | `n` | New dispatch — browse onboarded projects and pick an issue/PR |
-| `p` | Mark selected dispatch as "waiting" |
+| `p` | Mark selected dispatch as "upstream" |
 | `x` | Delete selected dispatch |
 | `r` | Refresh dashboard data |
 | `q` | Quit |
@@ -414,14 +414,14 @@ The `deny_tools_copilot` and `deny_tools_sandbox` values must be arrays of strin
 Each dispatch progresses through these statuses:
 
 ```
-implementing → reviewing → waiting
+implementing → reviewing → upstream
 ```
 
 | Status | Meaning |
 |--------|---------|
 | `implementing` | Copilot is actively working |
 | `reviewing` | Copilot finished — ready for human review |
-| `waiting` | Marked as waiting (manual status via dashboard `p` key) |
+| `upstream` | Marked as waiting on upstream (manual status via dashboard `p` key) |
 
 Use `rally clean` to remove dispatches and their worktrees.
 

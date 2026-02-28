@@ -17,7 +17,7 @@ function makeRecord(overrides = {}) {
     type: 'issue',
     branch: 'rally/1-test',
     worktreePath: '/tmp/fake-worktree',
-    status: 'waiting',
+    status: 'upstream',
     session_id: 'sess-abc',
     ...overrides,
   };
@@ -51,7 +51,7 @@ test('dispatchClean with no dispatches returns empty result', async () => {
 });
 
 test('dispatchClean cleans done dispatches', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
 
   let removedWorktrees = [];
@@ -73,7 +73,7 @@ test('dispatchClean cleans done dispatches', async () => {
 });
 
 test('dispatchClean also cleans dispatches with status "cleaned"', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
 
   const result = await dispatchClean({
@@ -106,7 +106,7 @@ test('dispatchClean skips non-done dispatches without --all', async () => {
 });
 
 test('dispatchClean --all cleans all dispatches with --yes', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
   addDispatch(makeRecord({ id: 'd3', status: 'implementing' }));
 
@@ -126,7 +126,7 @@ test('dispatchClean --all cleans all dispatches with --yes', async () => {
 });
 
 test('dispatchClean --all prompts for confirmation', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
 
   let confirmCalled = false;
   const result = await dispatchClean({
@@ -147,7 +147,7 @@ test('dispatchClean --all prompts for confirmation', async () => {
 });
 
 test('dispatchClean --all with confirmation accepted cleans all', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
   addDispatch(makeRecord({ id: 'd2', status: 'implementing' }));
 
   const result = await dispatchClean({
@@ -164,7 +164,7 @@ test('dispatchClean --all with confirmation accepted cleans all', async () => {
 });
 
 test('dispatchClean removes worktree via project path lookup', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting', worktreePath: '/tmp/wt-1' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream', worktreePath: '/tmp/wt-1' }));
 
   let removedArgs = null;
   const result = await dispatchClean({
@@ -180,7 +180,7 @@ test('dispatchClean removes worktree via project path lookup', async () => {
 });
 
 test('dispatchClean continues when worktree removal fails', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
 
   const result = await dispatchClean({
     _removeWorktree: () => { throw new Error('worktree gone'); },
@@ -212,7 +212,7 @@ test('dispatchClean deletes branches', async () => {
 
   addDispatch(makeRecord({
     id: 'branch-test-1',
-    status: 'waiting',
+    status: 'upstream',
     worktreePath: wtPath,
     branch: 'rally/99-test-branch',
   }));
@@ -231,7 +231,7 @@ test('dispatchClean deletes branches', async () => {
 });
 
 test('dispatchClean continues when branch deletion fails', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting', branch: 'rally/nonexistent' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream', branch: 'rally/nonexistent' }));
 
   let execCalls = [];
   const result = await dispatchClean({
@@ -247,7 +247,7 @@ test('dispatchClean continues when branch deletion fails', async () => {
 });
 
 test('dispatchClean handles missing project gracefully', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
 
   let worktreeRemoveCalled = false;
   const result = await dispatchClean({
@@ -264,7 +264,7 @@ test('dispatchClean handles missing project gracefully', async () => {
 });
 
 test('dispatchClean terminates tracked PIDs before cleanup', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting', pid: 12345 }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream', pid: 12345 }));
   
   let terminatedPids = [];
   const result = await dispatchClean({
@@ -281,7 +281,7 @@ test('dispatchClean terminates tracked PIDs before cleanup', async () => {
 });
 
 test('dispatchClean skips PID termination when PID is null', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting', pid: null }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream', pid: null }));
   
   let terminateCalled = false;
   const result = await dispatchClean({
@@ -298,7 +298,7 @@ test('dispatchClean skips PID termination when PID is null', async () => {
 });
 
 test('dispatchClean continues when PID termination fails', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting', pid: 99999 }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream', pid: 99999 }));
   
   const result = await dispatchClean({
     _terminatePid: () => { throw new Error('Process termination failed'); },
@@ -314,7 +314,7 @@ test('dispatchClean continues when PID termination fails', async () => {
 });
 
 test('dispatchClean includes pushed status in default filter', async () => {
-  addDispatch(makeRecord({ id: 'd1', status: 'waiting' }));
+  addDispatch(makeRecord({ id: 'd1', status: 'upstream' }));
 
   const result = await dispatchClean({
     _removeWorktree: () => {},

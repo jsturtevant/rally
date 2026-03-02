@@ -7,10 +7,10 @@ description: How to install Rally
 
 ### Run directly with npx
 
-The easiest way to use Rally is to run it directly from GitHub:
+The easiest way to use Rally is to run it directly:
 
 ```bash
-npx github:jsturtevant/rally
+npx github:jsturtevant/rally#v0.1.0
 ```
 
 ### Install globally
@@ -18,16 +18,8 @@ npx github:jsturtevant/rally
 For regular use, install globally:
 
 ```bash
-npm install -g github:jsturtevant/rally
+npm install -g github:jsturtevant/rally#v0.1.0
 rally
-```
-
-### Pin to a specific version
-
-For reproducible builds, pin to a tag:
-
-```bash
-npx github:jsturtevant/rally#v0.1.0
 ```
 
 ## Verify Installation

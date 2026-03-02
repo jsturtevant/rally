@@ -1,0 +1,38 @@
+---
+title: Rally Documentation
+description: CLI tool for dispatching AI coding agents to GitHub issues via git worktrees.
+template: splash
+hero:
+  tagline: CLI tool for dispatching AI coding agents (Squad teams) to GitHub issues via git worktrees.
+  image:
+    file: ../../assets/rally-logo.png
+  actions:
+    - text: Get Started
+      link: /rally/guides/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/jsturtevant/rally
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why Rally?
+
+Rally is for individual developers using [Squad](https://bradygaster.github.io/squad/) on shared repos — solo devs, open source maintainers, or anyone on a codebase where committing `.squad/` files isn't appropriate. It automates the full Squad workflow — from GitHub issues to pull requests — without polluting your repository.
+
+<CardGrid stagger>
+	<Card title="Automated Workflows" icon="rocket">
+		Eliminates ~15 manual steps: creating branches, setting up worktrees, symlinking Squad state, and managing multiple parallel dispatches.
+	</Card>
+	<Card title="Dashboard UI" icon="laptop">
+		Interactive terminal dashboard to dispatch agents, monitor progress, view logs, and manage all your work.
+	</Card>
+	<Card title="Multi-Project Support" icon="document">
+		Work across multiple repositories simultaneously with isolated worktrees and shared team configuration.
+	</Card>
+	<Card title="Security First" icon="approve-check">
+		Read-only dispatch policy, Docker sandbox support, trust checks, and worktree isolation.
+	</Card>
+</CardGrid>

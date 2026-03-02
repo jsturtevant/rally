@@ -1,3 +1,8 @@
+---
+title: Rally Overview
+description: What Rally does and where it's headed
+---
+
 # Rally: AI-Powered Development at Any Scale
 
 ## The Vision
@@ -169,7 +174,3 @@ Consult Learnings (fed back to coordinators)
 ```
 
 **Human touchpoints:** AI Lead escalates to humans when issue requirements are unclear during triage. Reviewers flag security, dependency, and architecture changes for human approval. All activity is traceable through GitHub issues, PRs, and labels. Can enable autonomous changes for small PR or full Human Review before merging.
-
----
-
-

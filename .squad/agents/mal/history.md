@@ -15,6 +15,21 @@ This history has been summarized. Earlier entries have been condensed into key l
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
 
+### 2026-03-02 — Documentation Gaps After Recent Feature Releases
+
+Analyzed recent PRs (#388, #387, #386, #384, #383, #345) against current docs site (`docs-site/src/content/docs/`) to identify documentation gaps.
+
+**Key findings:**
+1. **Squad SDK upgrade (#388)** — Major architectural change (consult mode, learning extraction) not documented. README updated but docs site has zero mention of SDK, consult mode, or how Squad integration works internally.
+2. **Rally overview document (#387)** — Comprehensive vision/architecture doc added to `docs/rally-overview.md` but NOT published to docs site. Contains Rally Party vision (future orchestration system) that users should know about.
+3. **`--disallow-temp-dir` flag (#345)** — New security feature (path isolation) documented in README but not in docs site security pages. Configuration setting `disallow_temp_dir` not in configuration reference.
+4. **Dashboard keyboard shortcuts** — Inconsistency between README (correct shortcuts) and docs site quickstart/dashboard pages (outdated, mentions non-existent `c` shortcut).
+5. **Dependencies upgraded (#383)** — Ink 6.x/React 19.x upgrade; no user-facing doc impact but good to note for troubleshooting.
+
+**Documentation structure:** Docs site uses Astro/Starlight at `docs-site/src/content/docs/` with guides/, workflows/, security/, reference/ subdirectories. Non-site docs in `docs/` (PRD, rally-overview, testing) are internal/design docs.
+
+**Priority order for docs updates:** (1) Rally overview/vision, (2) Security features (disallow-temp-dir), (3) Squad integration explanation, (4) Keyboard shortcuts sync, (5) Configuration reference additions.
+
 ### 2026-02-22 — Team Reviewer PR Review Process Finalized
 
 **Directive received (2026-02-22T171200Z):** Mal (Lead) must conduct mandatory code review on every PR in addition to Copilot's automated review. Both reviews must complete, all comments must be addressed (fix or explain), out-of-scope feedback opens GitHub issues with optional @copilot assignment.

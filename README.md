@@ -65,7 +65,7 @@ Common keyboard shortcuts from the dashboard:
 
 - **`n`** — dispatch a new issue or PR
 - **`o`** — open in the browser
-- **`v`** — open in VS Code
+- **`v`** — open in VSCode
 - **`a`** — attach to a running Copilot session
 - **`l`** — view logs
 - **`d`** — view details
@@ -117,63 +117,19 @@ rally dispatch clean                   # Clean up when done
 
 📖 **[Full documentation →](https://jsturtevant.github.io/rally/)**
 
-## Security & Safety
+## AI Safety
 
-> **⚠️ Use your best judgement.** Rally makes an effort to enforce multiple layers of protection, but no system is foolproof. Always review agent output before merging, and use the Docker sandbox for maximum isolation when working with untrusted content.
+> **⚠️ Use your best judgement.** Rally makes an effort to enforce multiple layers of protection, but no system is foolproof. When working with untrusted content, always review agent output before merging, and use the Docker sandbox for maximum isolation.
 
-### Read-only dispatch policy
+Rally enforces multiple layers of protection:
 
-Every dispatched Copilot session runs under a **read-only policy** that is prepended to the prompt. The agent can read code, make local edits, and run tests — but cannot publish anything. Specific tool denials enforced via `--deny-tool` flags:
+- **Read-only dispatch policy** — By default, agents can read code and make local edits, but are blocked from `git push`, `gh` commands, and network tools (`curl`, `wget`, etc.); these denials are controlled via `settings.deny_tools_*` in `config.yaml`.
+- **Trust checks** — Warns about prompt injection risk when dispatching to issues/PRs from untrusted authors
+- **Worktree isolation** — Each dispatch gets its own git worktree with path permissions
+- **Docker sandbox** — Optional container isolation via `--sandbox` flag
 
-| Blocked tool | Why |
-|---|---|
-| `git push` | Prevents agents from pushing commits |
-| `gh` (all subcommands) | Blocks PR creation, issue comments, and other GitHub mutations |
-| `curl`, `wget`, `nc`, `ssh`, `scp` | Prevents network exfiltration of repo data |
+📖 **[Security documentation →](https://jsturtevant.github.io/rally/security/overview/)**
 
-Agents can still use MCP read-only tools (`github-mcp-server-issue_read`, `pull_request_read`, etc.) for safe remote data access.
-
-### Trust checks
-
-Before dispatching, Rally checks whether the issue/PR was authored by someone other than the current user. If there's a mismatch, it warns about **prompt injection risk** — untrusted issue/PR content could contain instructions that trick the agent. Rally also checks org membership for org-owned repos.
-
-- **Interactive mode:** Shows warnings and prompts for confirmation
-- **Non-interactive mode:** Auto-rejects author mismatches (pass `--trust` to override)
-- **Config:** Set `require_trust: never` in `config.yaml` to skip checks entirely
-
-### Worktree isolation
-
-Each dispatch gets its own **git worktree** — an independent working directory with its own branch. This prevents cross-contamination between concurrent dispatches and keeps your main working tree untouched.
-
-Copilot CLI's built-in [path permissions](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/configure-copilot-cli#setting-path-permissions) restrict agents to the worktree directory by default (since Rally sets `cwd` to the worktree path). Rally also passes `--disallow-temp-dir` to further tighten isolation by removing temp directory access.
-
-You can disable this in `config.yaml` if agents need temp directory access:
-
-```yaml
-settings:
-  disallow_temp_dir: false
-```
-
-> **Note:** For maximum filesystem isolation, use the Docker sandbox which provides a full container boundary.
-
-### Docker sandbox
-
-For maximum isolation, Rally can run Copilot inside a [Docker sandbox](https://docs.docker.com/ai/sandboxes/agents/copilot/) microVM. The agent executes in a lightweight container with no access to the host filesystem beyond the worktree.
-
-Requires [Docker Desktop 4.58+](https://www.docker.com/products/docker-desktop/) with sandbox support and `GH_TOKEN` or `GITHUB_TOKEN` set globally. Learn to create one for [Github Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli#authenticating-with-environment-variables).
-
-```bash
-rally dispatch issue 42 --sandbox
-rally dispatch pr 10 --sandbox
-```
-
-Or set `docker_sandbox: always` in `config.yaml` to enable it for all dispatches.
-
-### Input sanitization
-
-- **Git ref names** are stripped to `[a-zA-Z0-9/_.-]` before interpolation into prompts
-- **Worktree paths** must be absolute with no `..` traversal segments
-- **GitHub usernames/orgs** are validated against `[A-Za-z0-9_.-]` before API calls
 
 ### Config file safety
 

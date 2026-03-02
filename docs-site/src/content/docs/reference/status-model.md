@@ -36,9 +36,9 @@ The simplified status flow for issue and PR dispatches:
 
 | Status         | Icon | Dashboard Label       | Description                                      |
 |----------------|------|-----------------------|--------------------------------------------------|
-| `implementing` | ⏳   | copilot working       | Copilot is actively working (coding or reviewing)|
+| `implementing` | 🔵   | implementing          | Copilot is actively working (coding or reviewing)|
 | `reviewing`    | 🟡   | ready for review      | Copilot finished — awaiting human review         |
-| `upstream`     | 🔵   | waiting on upstream   | Marked as waiting on upstream (manual via `u`)   |
+| `upstream`     | ⏸️   | waiting on upstream   | Marked as waiting on upstream (manual via `u`)   |
 
 ### Simplified Flow
 

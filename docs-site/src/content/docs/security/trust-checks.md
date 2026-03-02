@@ -9,13 +9,17 @@ Trust checks are confirmation prompts that appear before Rally grants Copilot wr
 
 ## Configuration
 
+Configure trust behavior in `~/rally/config.yaml`:
+
 ```yaml
-# ~/rally/config.yaml
 settings:
-  require_trust: always    # Always ask before each dispatch
-  require_trust: ask       # Ask once per project (default)
-  require_trust: never     # Never ask (use with caution)
+  require_trust: ask    # Options: always, ask (default), never
 ```
+
+**Valid values:**
+- `always` — Always ask before each dispatch
+- `ask` — Ask once per project (default)
+- `never` — Never ask (use with caution)
 
 ## The Trust Prompt
 

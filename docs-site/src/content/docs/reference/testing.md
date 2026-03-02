@@ -70,7 +70,7 @@ Tests are organized to mirror the module structure:
 lib/setup.js        → test/setup.test.js
 lib/onboard.js      → test/onboard.test.js
 lib/dispatch.js     → test/dispatch.test.js
-lib/config.js       → test/config.js
+lib/config.js       → test/config.test.js
 lib/worktree.js     → test/worktree.test.js
 lib/ui/components/StatusMessage.jsx → test/ui/StatusMessage.test.js
 ```
@@ -121,15 +121,15 @@ describe('setup', () => {
 
 ### Mocking Child Processes
 
-Rally shells out to `git`, `gh`, and `npx`. Tests mock `execFileSync` and `execSync`:
+Rally shells out to `git`, `gh`, and `npx`. The project uses dependency injection for testability—functions accept optional `_execFileSync` parameters:
 
 ```javascript
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 
 test('dispatch: fetch issue metadata', (t) => {
-  mock.method(execFileSync, 'default', (cmd, args) => {
+  // Create a mock for execFileSync
+  const mockExecFileSync = mock.fn((cmd, args) => {
     if (cmd === 'gh' && args[0] === 'issue') {
       return JSON.stringify({
         number: 42,
@@ -140,7 +140,10 @@ test('dispatch: fetch issue metadata', (t) => {
     throw new Error(`Unexpected command: ${cmd}`);
   });
 
-  // Test code that calls gh
+  // Pass mock via dependency injection
+  const result = dispatch(options, { _execFileSync: mockExecFileSync });
+  
+  assert.equal(mockExecFileSync.mock.callCount(), 1);
 });
 ```
 
@@ -173,6 +176,7 @@ import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 test('worktree: create and remove', (t) => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rally-test-'));

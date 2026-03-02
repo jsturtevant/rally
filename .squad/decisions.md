@@ -2311,3 +2311,68 @@ Upgrade Rally to use Squad from `jsturtevant/squad-pr#consult-mode-impl` branch 
 ### Impact
 
 Team can begin Phase 1 implementation immediately. All existing tests pass without modification. Phase 2 will improve maintainability and error handling.
+# Security Scan Findings — Rally CLI
+
+**Date:** 2025-01-15  
+**Reviewer:** Zoe (Security Engineer)  
+**Scope:** Command injection, path traversal, YAML parsing, dependencies, secrets, config permissions, input validation
+
+---
+
+## Summary
+
+**Overall Status: ✅ GOOD**
+
+The Rally CLI demonstrates strong security practices. No critical or high severity issues were found. The codebase shows evidence of defense-in-depth with multiple layers of protection.
+
+---
+
+## Findings
+
+### ✅ No Issues Found
+
+| Category | Status | Notes |
+|----------|--------|-------|
+| Command Injection | ✅ Secure | Uses `execFileSync` with array args throughout; no shell string interpolation |
+| Path Traversal | ✅ Secure | Multiple validation layers in copilot.js, config.js, github-url.js, onboard.js |
+| YAML Parsing | ✅ Secure | Uses `yaml.CORE_SCHEMA` (no code execution) |
+| Dependencies | ✅ Clean | npm audit shows 0 vulnerabilities |
+| Hardcoded Secrets | ✅ None | No secrets in code; tokens handled via `gh` CLI auth |
+| Config Permissions | ✅ Secure | 0o700 for dirs, 0o600 for files, atomic writes |
+
+### 📝 Info (Best Practices Observed)
+
+| Finding | Severity | Location | Notes |
+|---------|----------|----------|-------|
+| Session ID validation | Info | `lib/copilot.js:273` | UUIDs and safe alphanumeric patterns validated before CLI use |
+| PID verification | Info | `lib/active.js:26-30` | Verifies `/proc/{pid}/cmdline` matches `gh copilot` before signaling |
+| Untrusted content fencing | Info | `lib/dispatch-context.js:16` | XML-style tags + escape of closing tags prevents fence breakout |
+| Branch name sanitization | Info | `lib/dispatch-pr.js:18-20` | `sanitizeRef()` strips shell metacharacters before prompt interpolation |
+| Tool deny list | Info | `lib/copilot.js:12-26` | Blocks `gh`, `curl`, `wget`, `nc`, `ssh`, `scp`, `git push` for dispatched agents |
+| Trust system | Info | `lib/dispatch-trust.js` | Author/org checks with user confirmation for untrusted content |
+
+---
+
+## Recommendations
+
+### Low Priority Enhancements (Optional)
+
+1. **Consider rate limiting** on trust check API calls if users dispatch many items rapidly (currently no rate limiting on `gh api` calls).
+
+2. **Add security documentation** — the security measures are well-implemented but not documented for contributors. A `SECURITY.md` could help maintainers understand the threat model.
+
+3. **Lock file age check** — `LOCK_STALE_MS` is 5 minutes which is reasonable, but could be configurable via environment variable for CI environments with slow I/O.
+
+---
+
+## Conclusion
+
+The Rally CLI codebase demonstrates mature security practices:
+
+- **Defense in depth** with validation at multiple layers
+- **Safe-by-default** patterns (execFileSync vs exec, CORE_SCHEMA vs default)
+- **Explicit trust model** for external content
+- **Clean dependency tree** with no known vulnerabilities
+- **Appropriate file permissions** for sensitive data
+
+No action required. The codebase is ready for production use from a security standpoint.

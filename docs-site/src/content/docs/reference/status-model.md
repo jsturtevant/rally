@@ -1,6 +1,6 @@
 ---
 title: Status Model
-description: Understanding dispatch status and lifecycle
+description: Rally dispatch status lifecycle
 ---
 
 ## Dispatch Lifecycle
@@ -28,6 +28,24 @@ A dispatch moves through these statuses:
 │                      (cleaned)                                  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+```
+
+## Core Statuses
+
+The simplified status flow for issue and PR dispatches:
+
+| Status         | Icon | Dashboard Label       | Description                                      |
+|----------------|------|-----------------------|--------------------------------------------------|
+| `implementing` | ⏳   | copilot working       | Copilot is actively working (coding or reviewing)|
+| `reviewing`    | 🟡   | ready for review      | Copilot finished — awaiting human review         |
+| `upstream`     | 🔵   | waiting on upstream   | Marked as waiting on upstream (manual via `u`)   |
+
+### Simplified Flow
+
+```
+┌──────────────┐     ┌───────────┐     ┌──────────┐
+│ implementing │────▶│ reviewing │────▶│ upstream │
+└──────────────┘     └───────────┘     └──────────┘
 ```
 
 ## Status Definitions
@@ -88,6 +106,33 @@ A worktree exists but has no tracking file. This can happen if:
 - A bug in Rally
 
 **Resolution:** Clean orphaned worktrees with `rally clean --orphaned`
+
+## Issue Dispatches
+
+1. **implementing** — Created when `rally dispatch issue` is run. Copilot agent is launched.
+2. **reviewing** — Automatic transition when the copilot process exits and the log file is no longer being written to. The work is ready for human review.
+3. **upstream** — Manual status set via dashboard `u` key after human review (e.g., PR opened, waiting for CI/review).
+
+## PR Dispatches
+
+1. **implementing** — Created when `rally dispatch pr` is run. Copilot agent is launched to perform a multi-model code review.
+2. **reviewing** — Automatic transition when the copilot process exits and the log file is no longer active. The review output (REVIEW.md) is ready for human consumption.
+3. **upstream** — Manual status set via dashboard `u` key.
+
+## Automatic Status Detection
+
+The `refreshDispatchStatuses()` function runs on every dashboard refresh and checks dispatches in `implementing` status:
+
+1. **PID check** — Is the copilot process (tracked by PID) still running?
+2. **Log activity check** — Has the `.copilot-output.log` file been modified in the last 30 seconds?
+
+If both checks indicate the process is no longer active, the status automatically transitions to `reviewing`.
+
+Dispatches already in `reviewing` or `upstream` are not affected by the automatic refresh.
+
+## Cleanup
+
+Use `rally clean` to remove dispatches and their worktrees. This permanently deletes dispatch records — there is no intermediate `done` or `cleaned` status.
 
 ## Checking Status
 

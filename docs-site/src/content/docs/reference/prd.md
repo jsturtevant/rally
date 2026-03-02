@@ -1,3 +1,8 @@
+---
+title: Product Requirements Document
+description: Rally PRD and specifications
+---
+
 # Rally — Product Requirements Document
 
 **Version:** 0.1.0 (Draft)

@@ -81,6 +81,14 @@ function noopSpawn() {
   return { pid: 12345, unref() {}, on() {} };
 }
 
+async function noopEnsurePersonalSquad() {
+  return true;
+}
+
+function noopSetupConsultMode() {
+  // Mock consult mode setup
+}
+
 // =====================================================
 // Uncommitted changes warning
 // =====================================================
@@ -103,6 +111,8 @@ describe('uncommitted changes warning', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
+        _ensurePersonalSquad: noopEnsurePersonalSquad,
+        _setupConsultMode: noopSetupConsultMode,
       });
 
       assert.ok(
@@ -131,6 +141,8 @@ describe('uncommitted changes warning', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
+        _ensurePersonalSquad: noopEnsurePersonalSquad,
+        _setupConsultMode: noopSetupConsultMode,
       });
 
       assert.ok(
@@ -175,6 +187,7 @@ describe('worktree collision detection', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
     });
 
@@ -211,6 +224,7 @@ describe('worktree collision detection', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
     });
 

@@ -135,6 +135,11 @@ function noopSetupConsultMode() {
   // No-op for tests
 }
 
+/** Mock for ensurePersonalSquad that always returns true */
+async function noopEnsurePersonalSquad() {
+  return true;
+}
+
 // =====================================================
 // Integration: Issue dispatch workflow
 // =====================================================
@@ -157,9 +162,9 @@ describe('Integration: issue dispatch → dashboard → clean', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     // Verify dispatch result
@@ -231,9 +236,9 @@ describe('Integration: PR dispatch workflow', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.branch, 'rally/pr-10-fix-login-validation');
@@ -284,7 +289,7 @@ describe('Integration: error cases', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       }),
       (err) => {
         assert.ok(err.message.includes('not onboarded'));
@@ -303,7 +308,7 @@ describe('Integration: error cases', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       }),
       (err) => {
         assert.ok(err.message.includes('not found') || err.message.includes('999'));
@@ -332,9 +337,9 @@ describe('Integration: error cases', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.existing, true);
@@ -355,7 +360,7 @@ describe('Integration: error cases', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       }),
       (err) => {
         assert.ok(err.message.includes('not onboarded'));
@@ -383,9 +388,9 @@ describe('Integration: error cases', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.existing, true);
@@ -555,9 +560,9 @@ describe('Integration: multiple dispatches', () => {
       repoPath,
       _exec: exec1,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     await dispatchIssue({
@@ -566,9 +571,9 @@ describe('Integration: multiple dispatches', () => {
       repoPath,
       _exec: exec2,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     const dispatches = getActiveDispatches();

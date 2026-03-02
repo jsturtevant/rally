@@ -18,12 +18,14 @@ function makeDispatch(overrides = {}) {
 }
 
 function noop() {}
+async function asyncNoop() {}
 
 function makeOpts(overrides = {}) {
   return {
     _terminatePid: overrides._terminatePid || noop,
     _removeWorktree: overrides._removeWorktree || noop,
     _exec: overrides._exec || noop,
+    _extractLearnings: overrides._extractLearnings || asyncNoop,
     ...overrides,
   };
 }
@@ -35,11 +37,11 @@ describe('STALE_PID_MS', () => {
 });
 
 describe('cleanupDispatch happy path', () => {
-  test('terminates PID, removes worktree, and deletes branch', () => {
+  test('terminates PID, removes worktree, and deletes branch', async () => {
     const calls = [];
     const dispatch = makeDispatch();
 
-    cleanupDispatch(dispatch, '/repo', makeOpts({
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
       _terminatePid: (pid) => calls.push({ op: 'terminate', pid }),
       _removeWorktree: (repo, wt) => calls.push({ op: 'removeWt', repo, wt }),
       _exec: (cmd, args, opts) => calls.push({ op: 'exec', cmd, args, cwd: opts.cwd }),
@@ -57,65 +59,105 @@ describe('cleanupDispatch happy path', () => {
   });
 });
 
+describe('learning extraction', () => {
+  test('calls extractLearnings before cleanup', async () => {
+    const calls = [];
+    const dispatch = makeDispatch();
+
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
+      _extractLearnings: async (opts) => { calls.push({ op: 'extract', projectRoot: opts.projectRoot, clean: opts.clean }); },
+      _terminatePid: () => calls.push('terminate'),
+    }));
+
+    // Extract should be called first
+    assert.strictEqual(calls[0].op, 'extract');
+    assert.strictEqual(calls[0].projectRoot, '/tmp/worktrees/repo-42');
+    assert.strictEqual(calls[0].clean, true);
+  });
+
+  test('continues cleanup when extraction fails', async () => {
+    const calls = [];
+    const dispatch = makeDispatch();
+
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
+      _extractLearnings: async () => { throw new Error('extraction failed'); },
+      _terminatePid: () => calls.push('terminate'),
+      _removeWorktree: () => calls.push('removeWt'),
+      _exec: () => calls.push('exec'),
+    }));
+
+    // Should still have all 3 cleanup calls
+    assert.deepEqual(calls, ['terminate', 'removeWt', 'exec']);
+  });
+
+  test('skips extraction when worktreePath is null', async () => {
+    let extracted = false;
+    await cleanupDispatch(makeDispatch({ worktreePath: null }), '/repo', makeOpts({
+      _extractLearnings: async () => { extracted = true; },
+    }));
+    assert.strictEqual(extracted, false);
+  });
+});
+
 describe('PID termination', () => {
-  test('skips termination when dispatch has no PID', () => {
+  test('skips termination when dispatch has no PID', async () => {
     let terminated = false;
-    cleanupDispatch(makeDispatch({ pid: null }), '/repo', makeOpts({
+    await cleanupDispatch(makeDispatch({ pid: null }), '/repo', makeOpts({
       _terminatePid: () => { terminated = true; },
     }));
     assert.strictEqual(terminated, false);
   });
 
-  test('skips termination when PID is undefined', () => {
+  test('skips termination when PID is undefined', async () => {
     let terminated = false;
     const dispatch = makeDispatch();
     delete dispatch.pid;
-    cleanupDispatch(dispatch, '/repo', makeOpts({
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
       _terminatePid: () => { terminated = true; },
     }));
     assert.strictEqual(terminated, false);
   });
 
-  test('skips termination when PID is zero (falsy)', () => {
+  test('skips termination when PID is zero (falsy)', async () => {
     let terminated = false;
-    cleanupDispatch(makeDispatch({ pid: 0 }), '/repo', makeOpts({
+    await cleanupDispatch(makeDispatch({ pid: 0 }), '/repo', makeOpts({
       _terminatePid: () => { terminated = true; },
     }));
     assert.strictEqual(terminated, false);
   });
 
-  test('skips termination for stale dispatch (older than 7 days)', () => {
+  test('skips termination for stale dispatch (older than 7 days)', async () => {
     let terminated = false;
     const staleDate = new Date(Date.now() - STALE_PID_MS - 1000).toISOString();
-    cleanupDispatch(makeDispatch({ created: staleDate }), '/repo', makeOpts({
+    await cleanupDispatch(makeDispatch({ created: staleDate }), '/repo', makeOpts({
       _terminatePid: () => { terminated = true; },
     }));
     assert.strictEqual(terminated, false);
   });
 
-  test('terminates PID for dispatch exactly at stale boundary', () => {
+  test('terminates PID for dispatch exactly at stale boundary', async () => {
     let terminated = false;
     // Age equal to STALE_PID_MS should still terminate (age <= STALE_PID_MS)
     const boundaryDate = new Date(Date.now() - (STALE_PID_MS - 1000)).toISOString();
-    cleanupDispatch(makeDispatch({ created: boundaryDate }), '/repo', makeOpts({
+    await cleanupDispatch(makeDispatch({ created: boundaryDate }), '/repo', makeOpts({
       _terminatePid: () => { terminated = true; },
     }));
     assert.strictEqual(terminated, true);
   });
 
-  test('skips termination when created is missing (age is Infinity)', () => {
+  test('skips termination when created is missing (age is Infinity)', async () => {
     let terminated = false;
     const dispatch = makeDispatch();
     delete dispatch.created;
-    cleanupDispatch(dispatch, '/repo', makeOpts({
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
       _terminatePid: () => { terminated = true; },
     }));
     assert.strictEqual(terminated, false);
   });
 
-  test('cleanupDispatch continues cleanup when PID termination throws', () => {
+  test('cleanupDispatch continues cleanup when PID termination throws', async () => {
     const calls = [];
-    cleanupDispatch(makeDispatch(), '/repo', makeOpts({
+    await cleanupDispatch(makeDispatch(), '/repo', makeOpts({
       _terminatePid: () => { throw new Error('kill failed'); },
       _removeWorktree: () => calls.push('removeWt'),
       _exec: () => calls.push('exec'),
@@ -125,44 +167,44 @@ describe('PID termination', () => {
 });
 
 describe('worktree removal', () => {
-  test('skips worktree removal when repoPath is null', () => {
+  test('skips worktree removal when repoPath is null', async () => {
     let removed = false;
-    cleanupDispatch(makeDispatch(), null, makeOpts({
+    await cleanupDispatch(makeDispatch(), null, makeOpts({
       _removeWorktree: () => { removed = true; },
     }));
     assert.strictEqual(removed, false);
   });
 
-  test('skips worktree removal when repoPath is empty string', () => {
+  test('skips worktree removal when repoPath is empty string', async () => {
     let removed = false;
-    cleanupDispatch(makeDispatch(), '', makeOpts({
+    await cleanupDispatch(makeDispatch(), '', makeOpts({
       _removeWorktree: () => { removed = true; },
     }));
     assert.strictEqual(removed, false);
   });
 
-  test('skips worktree removal when worktreePath is missing', () => {
+  test('skips worktree removal when worktreePath is missing', async () => {
     let removed = false;
     const dispatch = makeDispatch({ worktreePath: null });
-    cleanupDispatch(dispatch, '/repo', makeOpts({
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
       _removeWorktree: () => { removed = true; },
     }));
     assert.strictEqual(removed, false);
   });
 
-  test('skips worktree removal when worktreePath is undefined', () => {
+  test('skips worktree removal when worktreePath is undefined', async () => {
     let removed = false;
     const dispatch = makeDispatch();
     delete dispatch.worktreePath;
-    cleanupDispatch(dispatch, '/repo', makeOpts({
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
       _removeWorktree: () => { removed = true; },
     }));
     assert.strictEqual(removed, false);
   });
 
-  test('cleanupDispatch continues cleanup when worktree removal throws', () => {
+  test('cleanupDispatch continues cleanup when worktree removal throws', async () => {
     const calls = [];
-    cleanupDispatch(makeDispatch(), '/repo', makeOpts({
+    await cleanupDispatch(makeDispatch(), '/repo', makeOpts({
       _removeWorktree: () => { throw new Error('worktree already removed'); },
       _exec: () => calls.push('exec'),
     }));
@@ -171,44 +213,44 @@ describe('worktree removal', () => {
 });
 
 describe('branch deletion', () => {
-  test('skips branch deletion when repoPath is null', () => {
+  test('skips branch deletion when repoPath is null', async () => {
     let executed = false;
-    cleanupDispatch(makeDispatch(), null, makeOpts({
+    await cleanupDispatch(makeDispatch(), null, makeOpts({
       _exec: () => { executed = true; },
     }));
     assert.strictEqual(executed, false);
   });
 
-  test('skips branch deletion when branch is missing', () => {
+  test('skips branch deletion when branch is missing', async () => {
     let executed = false;
     const dispatch = makeDispatch({ branch: null });
-    cleanupDispatch(dispatch, '/repo', makeOpts({
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
       _exec: () => { executed = true; },
     }));
     assert.strictEqual(executed, false);
   });
 
-  test('skips branch deletion when branch is undefined', () => {
+  test('skips branch deletion when branch is undefined', async () => {
     let executed = false;
     const dispatch = makeDispatch();
     delete dispatch.branch;
-    cleanupDispatch(dispatch, '/repo', makeOpts({
+    await cleanupDispatch(dispatch, '/repo', makeOpts({
       _exec: () => { executed = true; },
     }));
     assert.strictEqual(executed, false);
   });
 
-  test('cleanupDispatch continues without throwing when branch deletion fails', () => {
-    assert.doesNotThrow(() => {
-      cleanupDispatch(makeDispatch(), '/repo', makeOpts({
+  test('cleanupDispatch continues without throwing when branch deletion fails', async () => {
+    await assert.doesNotReject(async () => {
+      await cleanupDispatch(makeDispatch(), '/repo', makeOpts({
         _exec: () => { throw new Error('branch not found'); },
       }));
     });
   });
 
-  test('cleanupDispatch passes correct arguments to exec for branch deletion', () => {
+  test('cleanupDispatch passes correct arguments to exec for branch deletion', async () => {
     let capturedArgs;
-    cleanupDispatch(makeDispatch({ branch: 'rally/99-feature' }), '/my/repo', makeOpts({
+    await cleanupDispatch(makeDispatch({ branch: 'rally/99-feature' }), '/my/repo', makeOpts({
       _exec: (cmd, args, opts) => { capturedArgs = { cmd, args, encoding: opts.encoding, cwd: opts.cwd }; },
     }));
     assert.deepEqual(capturedArgs, {
@@ -221,9 +263,9 @@ describe('branch deletion', () => {
 });
 
 describe('all operations fail gracefully', () => {
-  test('does not throw when all three operations fail', () => {
-    assert.doesNotThrow(() => {
-      cleanupDispatch(makeDispatch(), '/repo', makeOpts({
+  test('does not throw when all three operations fail', async () => {
+    await assert.doesNotReject(async () => {
+      await cleanupDispatch(makeDispatch(), '/repo', makeOpts({
         _terminatePid: () => { throw new Error('kill failed'); },
         _removeWorktree: () => { throw new Error('worktree gone'); },
         _exec: () => { throw new Error('branch gone'); },
@@ -233,25 +275,25 @@ describe('all operations fail gracefully', () => {
 });
 
 describe('minimal dispatch (no optional fields)', () => {
-  test('handles dispatch with only required fields', () => {
+  test('handles dispatch with only required fields', async () => {
     const minimal = { id: 'min-1', status: 'upstream' };
-    assert.doesNotThrow(() => {
-      cleanupDispatch(minimal, '/repo', makeOpts());
+    await assert.doesNotReject(async () => {
+      await cleanupDispatch(minimal, '/repo', makeOpts());
     });
   });
 
-  test('handles dispatch with empty object', () => {
-    assert.doesNotThrow(() => {
-      cleanupDispatch({}, null, makeOpts());
+  test('handles dispatch with empty object', async () => {
+    await assert.doesNotReject(async () => {
+      await cleanupDispatch({}, null, makeOpts());
     });
   });
 });
 
 describe('default dependencies', () => {
-  test('uses default opts when none provided (no crash with empty dispatch)', () => {
+  test('uses default opts when none provided (no crash with empty dispatch)', async () => {
     // With no pid, no worktreePath, no branch, no real deps are called
-    assert.doesNotThrow(() => {
-      cleanupDispatch({ id: 'safe' }, null);
+    await assert.doesNotReject(async () => {
+      await cleanupDispatch({ id: 'safe' }, null);
     });
   });
 });

@@ -117,6 +117,11 @@ function noopSetupConsultMode() {
   // No-op for tests
 }
 
+/** Mock for ensurePersonalSquad that always returns true */
+async function noopEnsurePersonalSquad() {
+  return true;
+}
+
 // =====================================================
 // fetchPrOrFail
 // =====================================================
@@ -177,7 +182,7 @@ describe('dispatchPr error paths', () => {
       throw new Error('gh: command not found');
     };
     await assert.rejects(
-      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: execMissingGh }),
+      () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: execMissingGh, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('gh'));
         assert.ok(err.message.includes('Missing required tools'));
@@ -189,7 +194,7 @@ describe('dispatchPr error paths', () => {
   test('throws when PR number is missing', async () => {
     setupRallyHome();
     await assert.rejects(
-      () => dispatchPr({ repo: 'owner/repo', repoPath }),
+      () => dispatchPr({ repo: 'owner/repo', repoPath, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('PR number is required'));
         return true;
@@ -200,7 +205,7 @@ describe('dispatchPr error paths', () => {
   test('throws when repo is missing', async () => {
     setupRallyHome();
     await assert.rejects(
-      () => dispatchPr({ prNumber: 1, repoPath }),
+      () => dispatchPr({ prNumber: 1, repoPath, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('Repository'));
         return true;
@@ -211,7 +216,7 @@ describe('dispatchPr error paths', () => {
   test('throws when repoPath is missing', async () => {
     setupRallyHome();
     await assert.rejects(
-      () => dispatchPr({ prNumber: 1, repo: 'o/r' }),
+      () => dispatchPr({ prNumber: 1, repo: 'o/r', _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('path'));
         return true;
@@ -226,7 +231,7 @@ describe('dispatchPr error paths', () => {
 
     const exec = createExecWithPr(makePr());
     await assert.rejects(
-      () => dispatchPr({ prNumber: 1, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchPr({ prNumber: 1, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('not onboarded'));
         return true;
@@ -238,7 +243,7 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr());
     await assert.rejects(
-      () => dispatchPr({ prNumber: 0, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchPr({ prNumber: 0, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('PR number is required') || err.message.includes('positive integer'));
         return true;
@@ -250,7 +255,7 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const exec = createExecWithPr(makePr());
     await assert.rejects(
-      () => dispatchPr({ prNumber: 'abc', repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchPr({ prNumber: 'abc', repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('positive integer'));
         return true;
@@ -262,7 +267,7 @@ describe('dispatchPr error paths', () => {
     setupRallyHome();
     const exec = createExecWithPr(null);
     await assert.rejects(
-      () => dispatchPr({ prNumber: 999, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchPr({ prNumber: 999, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('not found') || err.message.includes('999'));
         return true;
@@ -275,7 +280,7 @@ describe('dispatchPr error paths', () => {
     const exec = createExecWithPr(makePr({ state: 'MERGED' }));
     await assert.rejects(
       () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode, trust: true }),
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true }),
       (err) => {
         assert.ok(err.message.includes('already merged'));
         return true;
@@ -288,7 +293,7 @@ describe('dispatchPr error paths', () => {
     const exec = createExecWithPr(makePr({ state: 'CLOSED' }));
     await assert.rejects(
       () => dispatchPr({ prNumber: 5, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode, trust: true }),
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true }),
       (err) => {
         assert.ok(err.message.includes('closed'));
         return true;
@@ -312,7 +317,7 @@ describe('dispatchPr error paths', () => {
 
     await assert.rejects(
       () => dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode, trust: true }),
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true }),
       (err) => {
         assert.ok(err.message.includes('Failed to checkout PR #42 head'), 'should mention checkout failure and PR number');
         assert.ok(err.message.includes(checkoutError.message), 'should preserve original error message');
@@ -343,7 +348,7 @@ describe('dispatchPr error paths', () => {
 
     await assert.rejects(
       () => dispatchPr({ prNumber: 7, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode, trust: true }),
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true }),
       (err) => {
         // The wrapper should include both the context (PR number) and the original error
         assert.ok(err.message.startsWith('Failed to checkout PR #7 head:'), 'should start with contextual prefix');
@@ -368,7 +373,7 @@ describe('dispatchPr error paths', () => {
     }), 'utf8');
 
     const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode, trust: true });
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true });
     assert.strictEqual(result.existing, true);
   });
 
@@ -394,7 +399,7 @@ describe('dispatchPr error paths', () => {
     };
 
     const result = await dispatchPr({ prNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode, trust: true });
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-pr-42'));
     assert.strictEqual(result.sessionId, null);
@@ -420,9 +425,9 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     // Verify return value
@@ -475,9 +480,9 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.branch, 'rally/pr-7-add-dark-mode-support');
@@ -502,9 +507,9 @@ describe('dispatchPr happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     const expected = join(repoPath, '.worktrees', 'rally-pr-99');
@@ -528,9 +533,9 @@ describe('dispatchPr happy path', () => {
       teamDir,
       _exec: exec,
       _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     const squadInWorktree = join(result.worktreePath, '.squad');
@@ -551,7 +556,7 @@ describe('dispatchPr happy path', () => {
       _exec: exec,
       _spawn: () => ({ pid: 98765, unref() {} }),
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.sessionId, '98765');
@@ -575,7 +580,7 @@ describe('dispatchPr happy path', () => {
       _exec: exec,
       _spawn: () => { throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }); },
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.sessionId, null);
@@ -604,9 +609,9 @@ describe('dispatchPr happy path', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
         trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       }),
     );
 
@@ -802,7 +807,7 @@ describe('dispatchPr with custom prompt file', () => {
       _exec: exec,
       _spawn: capturingSpawn,
       trust: true,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.ok(result.worktreePath, 'should return worktree path');
@@ -827,7 +832,7 @@ describe('dispatchPr with custom prompt file', () => {
         promptFile: '/nonexistent/prompt.md',
         _exec: exec,
         _spawn: noopSpawn,
-      _setupConsultMode: noopSetupConsultMode,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       }),
       (err) => {
         assert.ok(err.message.includes('prompt file') || err.code === 'ENOENT');

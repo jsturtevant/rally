@@ -16,6 +16,7 @@ export default defineConfig({
 					label: 'Getting Started',
 					items: [
 						{ label: 'Introduction', slug: 'guides/introduction' },
+						{ label: 'Rally Overview', slug: 'guides/overview' },
 						{ label: 'Installation', slug: 'guides/installation' },
 						{ label: 'Quick Start', slug: 'guides/quickstart' },
 						{ label: 'Onboarding Projects', slug: 'guides/onboarding' },

@@ -27,27 +27,25 @@ owner/myrepo
 
 2 active · 0 done · 0 orphaned
 
-↑/↓ navigate · Enter actions · d details · v open · o browser · a attach
-c connect IDE · l logs · n new dispatch · u upstream · x delete · r refresh · q quit
+↑/↓ navigate · Enter actions · d details · l logs · v VSCode · o browser
+n new dispatch · a attach · u upstream · x delete · r refresh · q quit
 ```
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `↑/↓` or `j/k` | Navigate selection |
+| `↑/↓` | Navigate selection |
 | `Enter` | Open action menu for selected item |
 | `d` | Show dispatch details |
 | `n` | New dispatch (issue or PR) |
 | `v` | Open worktree in VS Code |
-| `c` | Connect IDE to Copilot session |
 | `o` | Open in browser |
 | `a` | Attach to running Copilot session |
 | `l` | View Copilot logs |
 | `u` | Mark as "waiting on upstream" |
 | `x` | Delete dispatch (with confirmation) |
 | `r` | Refresh data |
-| `?` | Toggle help |
 | `q` | Quit |
 
 ### Status Icons

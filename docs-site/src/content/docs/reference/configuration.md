@@ -16,6 +16,7 @@ Rally stores configuration in `~/rally/config.yaml`.
 | `review_template` | path string | none | Custom review template file |
 | `deny_tools_copilot` | array of tool names | defaults | Tools to deny in normal mode |
 | `deny_tools_sandbox` | array of tool names | defaults | Tools to deny in sandbox mode |
+| `disallow_temp_dir` | boolean | `true` | Prevent Copilot from writing to temp directories outside the worktree |
 
 ## Example Configuration
 
@@ -24,6 +25,7 @@ settings:
   docker_sandbox: ask
   require_trust: always
   review_template: review-template.md
+  disallow_temp_dir: true
   deny_tools_copilot:
     - bash
     - edit

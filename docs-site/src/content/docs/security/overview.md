@@ -9,9 +9,10 @@ Rally implements defense-in-depth security:
 
 1. **Read-Only by Default** — Copilot cannot edit files without explicit trust
 2. **Worktree Isolation** — Each dispatch is isolated in its own worktree
-3. **Docker Sandbox** — Optional containerized execution
-4. **Trust Checks** — Confirmation before granting write access
-5. **Secure File Handling** — Restrictive permissions on sensitive files
+3. **Path Isolation** — Copilot is prevented from writing to temp directories outside the worktree
+4. **Docker Sandbox** — Optional containerized execution
+5. **Trust Checks** — Confirmation before granting write access
+6. **Secure File Handling** — Restrictive permissions on sensitive files
 
 ## Security Features
 
@@ -25,6 +26,22 @@ By default, Rally runs Copilot with `--deny-tool` flags that prevent:
 This allows Copilot to analyze code and propose changes without making them.
 
 See [Read-Only Policy](/rally/security/read-only-policy/) for details.
+
+### Path Isolation
+
+Rally passes the `--disallow-temp-dir` flag to the Copilot CLI by default, preventing Copilot from writing files to temporary directories outside the worktree (such as `/tmp` or the system temp directory). This ensures all work stays inside the worktree for easier cleanup and isolation.
+
+Configure in `~/rally/config.yaml`:
+```yaml
+settings:
+  disallow_temp_dir: true   # Default: prevents temp directory writes
+  disallow_temp_dir: false  # Allow temp directory writes (not recommended)
+```
+
+This feature:
+- **Improves isolation** — All files created during a dispatch remain in the worktree
+- **Simplifies cleanup** — No orphaned temp files after dispatch completion
+- **Reduces exposure** — Prevents accidental data leakage via shared temp directories
 
 ### Docker Sandbox
 

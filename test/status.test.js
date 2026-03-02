@@ -36,7 +36,7 @@ test('getStatus reports config path existence correctly', (t) => {
   assert.strictEqual(before.configPaths.active.exists, false);
 
   // Write config file
-  writeConfig({ teamDir: '/tmp/team', version: '0.1.0' });
+  writeConfig({ projectsDir: '/tmp/projects', version: '0.1.0' });
   const after = getStatus();
   assert.strictEqual(after.configPaths.config.exists, true);
   assert.strictEqual(after.configPaths.projects.exists, false);
@@ -45,9 +45,9 @@ test('getStatus reports config path existence correctly', (t) => {
 test('getStatus returns directories from config', (t) => {
   withTempRallyHome(t);
 
-  writeConfig({ teamDir: '/home/user/.rally/team', projectsDir: '/home/user/.rally/projects', version: '0.1.0' });
+  writeConfig({ projectsDir: '/home/user/.rally/projects', version: '0.1.0' });
   const status = getStatus();
-  assert.strictEqual(status.teamDir, '/home/user/.rally/team');
+  // personalSquad comes from SDK, not config - check projectsDir instead
   assert.strictEqual(status.projectsDir, '/home/user/.rally/projects');
 });
 
@@ -55,7 +55,6 @@ test('getStatus returns null directories when no config', (t) => {
   withTempRallyHome(t);
 
   const status = getStatus();
-  assert.strictEqual(status.teamDir, null);
   assert.strictEqual(status.projectsDir, null);
 });
 
@@ -115,7 +114,7 @@ test('getStatus returns populated active dispatches', (t) => {
 test('getStatus outputs valid JSON via --json flag', (t) => {
   const tempDir = withTempRallyHome(t);
 
-  writeConfig({ teamDir: '/tmp/team', version: '0.1.0' });
+  writeConfig({ projectsDir: '/tmp/projects', version: '0.1.0' });
   const binPath = join(__dirname, '..', 'bin', 'rally.js');
   const output = execFileSync('node', [binPath, 'status', '--json'], {
     env: { ...process.env, RALLY_HOME: tempDir },
@@ -152,7 +151,7 @@ test('formatStatus handles empty status correctly', () => {
       projects: { path: '/tmp/test/projects.yaml', exists: false },
       active: { path: '/tmp/test/active.yaml', exists: false },
     },
-    teamDir: null,
+    personalSquad: null,
     projectsDir: null,
     projects: [],
     dispatches: [],
@@ -171,7 +170,7 @@ test('formatStatus renders projects and dispatches', () => {
       projects: { path: '/tmp/test/projects.yaml', exists: true },
       active: { path: '/tmp/test/active.yaml', exists: true },
     },
-    teamDir: '/tmp/team',
+    personalSquad: '/tmp/squad',
     projectsDir: '/tmp/projects',
     projects: [{ name: 'my-app', path: '/home/user/my-app' }],
     dispatches: [{ id: 'my-app-issue-42', number: 42, repo: 'owner/my-app', type: 'issue', status: 'implementing' }],

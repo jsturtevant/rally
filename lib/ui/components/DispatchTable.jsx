@@ -129,7 +129,9 @@ export default function DispatchTable({ dispatches = [], selectedIndex = -1, onb
       {/* Data rows grouped by project */}
       {groups.length === 0 ? (
         <Box>
-          <Text dimColor>No active dispatches</Text>
+          <Text dimColor>No active dispatches. Press </Text>
+          <Text color="cyan">n</Text>
+          <Text dimColor> to launch a new dispatch.</Text>
         </Box>
       ) : (
         (() => {

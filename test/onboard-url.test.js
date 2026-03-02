@@ -118,7 +118,7 @@ describe('onboard URL cloning', () => {
   let tempDir;
 
   // Mock select that picks "shared" team (used for tests that don't test team selection itself)
-  const sharedSelect = async () => 'shared';
+  
 
   beforeEach((t) => {
     tempDir = mkdtempSync(join(tmpdir(), 'rally-url-test-'));
@@ -170,7 +170,7 @@ describe('onboard URL cloning', () => {
   }
 
   test('clones from owner/repo shorthand (using local bare repo)', async () => {
-    const { rallyHome } = setupTeam();
+    const { rallyHome, teamDir } = setupTeam();
     const barePath = createBareRepo('my-project');
 
     // Monkey-patch: onboard will call `git clone <url> <target>`. We can't use
@@ -181,7 +181,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['clone', barePath, join(projectsDir, 'my-project')], { stdio: 'ignore' });
 
     // Now onboard with a "shorthand" — it should detect the existing clone and skip
-    await onboard({ path: 'octocat/my-project', _select: sharedSelect });
+    await onboard({ path: 'octocat/my-project', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
@@ -190,7 +190,7 @@ describe('onboard URL cloning', () => {
   });
 
   test('skips clone when target directory already exists', async () => {
-    const { rallyHome } = setupTeam();
+    const { rallyHome, teamDir } = setupTeam();
     const barePath = createBareRepo('existing-repo');
 
     // Pre-create the clone target
@@ -199,7 +199,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['clone', barePath, join(projectsDir, 'existing-repo')], { stdio: 'ignore' });
 
     // Should not throw or attempt a second clone
-    await onboard({ path: 'someone/existing-repo', _select: sharedSelect });
+    await onboard({ path: 'someone/existing-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
 
     assert.ok(existsSync(join(projectsDir, 'existing-repo', '.squad')), '.squad symlink should exist');
   });
@@ -213,7 +213,7 @@ describe('onboard URL cloning', () => {
     mkdirSync(projectsDir, { recursive: true });
     execFileSync('git', ['clone', barePath, join(projectsDir, 'flow-test')], { stdio: 'ignore' });
 
-    await onboard({ path: 'user/flow-test', _select: sharedSelect });
+    await onboard({ path: 'user/flow-test', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
 
     const clonedPath = join(projectsDir, 'flow-test');
     // Verify symlinks created
@@ -224,11 +224,11 @@ describe('onboard URL cloning', () => {
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(projects.projects[0].name, 'flow-test');
-    assert.strictEqual(projects.projects[0].team, 'shared');
+    assert.ok(projects.projects[0].onboarded, 'should have onboarded timestamp');
   });
 
   test('clone failure throws descriptive error', async () => {
-    setupTeam();
+    const { teamDir } = setupTeam();
 
     const _clone = () => {
       const err = new Error('fatal: repository not found');
@@ -246,7 +246,7 @@ describe('onboard URL cloning', () => {
   });
 
   test('rejects collision when directory exists with different owner', async () => {
-    const { rallyHome } = setupTeam();
+    const { rallyHome, teamDir } = setupTeam();
     const projectsDir = join(rallyHome, 'projects');
     mkdirSync(projectsDir, { recursive: true });
 
@@ -260,7 +260,7 @@ describe('onboard URL cloning', () => {
 
     // Now try to onboard ownerB/my-repo — should throw collision error
     await assert.rejects(
-      () => onboard({ path: 'ownerB/my-repo', _select: sharedSelect }),
+      () => onboard({ path: 'ownerB/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) }),
       (err) => {
         assert.ok(
           err.message.includes('already exists but belongs to a different repository'),
@@ -274,7 +274,7 @@ describe('onboard URL cloning', () => {
   });
 
   test('onboard allows reuse when directory exists with matching owner (HTTPS)', async () => {
-    const { rallyHome } = setupTeam();
+    const { rallyHome, teamDir } = setupTeam();
     const projectsDir = join(rallyHome, 'projects');
     mkdirSync(projectsDir, { recursive: true });
 
@@ -287,13 +287,13 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'https://github.com/octocat/my-repo.git'], { stdio: 'ignore' });
 
     // Try to onboard octocat/my-repo — should succeed (reuse existing directory)
-    await onboard({ path: 'octocat/my-repo', _select: sharedSelect });
+    await onboard({ path: 'octocat/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
 
     assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
   });
 
   test('onboard allows reuse when directory exists with matching owner (SSH)', async () => {
-    const { rallyHome } = setupTeam();
+    const { rallyHome, teamDir } = setupTeam();
     const projectsDir = join(rallyHome, 'projects');
     mkdirSync(projectsDir, { recursive: true });
 
@@ -306,18 +306,18 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'git@github.com:octocat/my-repo.git'], { stdio: 'ignore' });
 
     // Try to onboard octocat/my-repo — should succeed (reuse existing directory)
-    await onboard({ path: 'octocat/my-repo', _select: sharedSelect });
+    await onboard({ path: 'octocat/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
 
     assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
   });
 
   test('onboard passes local path unchanged', async () => {
-    setupTeam();
+    const { teamDir } = setupTeam();
     const repoPath = join(tempDir, 'local-repo');
     mkdirSync(repoPath, { recursive: true });
     execFileSync('git', ['init', repoPath], { stdio: 'ignore' });
 
-    await onboard({ path: repoPath, _select: sharedSelect });
+    await onboard({ path: repoPath, _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
 
     assert.ok(existsSync(join(repoPath, '.squad')), '.squad should exist for local path');
   });

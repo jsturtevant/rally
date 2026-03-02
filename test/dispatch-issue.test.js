@@ -92,6 +92,16 @@ function noopSpawn() {
   };
 }
 
+/** No-op mock for setupConsultMode */
+function noopSetupConsultMode() {
+  // No-op for tests
+}
+
+/** Mock for ensurePersonalSquad that always returns true */
+async function noopEnsurePersonalSquad() {
+  return true;
+}
+
 // =====================================================
 // slugify
 // =====================================================
@@ -136,7 +146,7 @@ describe('dispatchIssue error paths', () => {
       throw new Error('gh: command not found');
     };
     await assert.rejects(
-      () => dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: execMissingGh }),
+      () => dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: execMissingGh, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('gh'));
         assert.ok(err.message.includes('Missing required tools'));
@@ -148,7 +158,7 @@ describe('dispatchIssue error paths', () => {
   test('throws when issue number is missing', async () => {
     setupRallyHome();
     await assert.rejects(
-      () => dispatchIssue({ repo: 'owner/repo', repoPath }),
+      () => dispatchIssue({ repo: 'owner/repo', repoPath, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('Issue number is required'));
         return true;
@@ -159,7 +169,7 @@ describe('dispatchIssue error paths', () => {
   test('throws when repo is missing', async () => {
     setupRallyHome();
     await assert.rejects(
-      () => dispatchIssue({ issueNumber: 1, repoPath }),
+      () => dispatchIssue({ issueNumber: 1, repoPath, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('Repository'));
         return true;
@@ -170,7 +180,7 @@ describe('dispatchIssue error paths', () => {
   test('throws when repoPath is missing', async () => {
     setupRallyHome();
     await assert.rejects(
-      () => dispatchIssue({ issueNumber: 1, repo: 'o/r' }),
+      () => dispatchIssue({ issueNumber: 1, repo: 'o/r', _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('path'));
         return true;
@@ -182,7 +192,7 @@ describe('dispatchIssue error paths', () => {
     setupRallyHome();
     const exec = createExecWithIssue(null);
     await assert.rejects(
-      () => dispatchIssue({ issueNumber: 999, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchIssue({ issueNumber: 999, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('not found') || err.message.includes('999'));
         return true;
@@ -204,7 +214,8 @@ describe('dispatchIssue error paths', () => {
       dispatches: [{ id: 'repo-issue-42', repo: 'owner/repo', number: 42, type: 'issue', branch: 'rally/42-existing', worktreePath: wtPath, status: 'implementing' }],
     }), 'utf8');
 
-    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-42'));
   });
@@ -230,7 +241,8 @@ describe('dispatchIssue error paths', () => {
       return execFileSync(cmd, args, opts);
     };
 
-    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, trust: true });
+    const result = await dispatchIssue({ issueNumber: 42, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad, trust: true });
     assert.strictEqual(result.existing, true);
     assert.ok(result.worktreePath.includes('rally-42'));
     assert.strictEqual(result.sessionId, null);
@@ -244,7 +256,7 @@ describe('dispatchIssue error paths', () => {
 
     const exec = createExecWithIssue(makeIssue());
     await assert.rejects(
-      () => dispatchIssue({ issueNumber: 1, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchIssue({ issueNumber: 1, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('not onboarded'));
         return true;
@@ -256,7 +268,7 @@ describe('dispatchIssue error paths', () => {
     setupRallyHome();
     const exec = createExecWithIssue(makeIssue());
     await assert.rejects(
-      () => dispatchIssue({ issueNumber: 0, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchIssue({ issueNumber: 0, repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('Issue number is required') || err.message.includes('positive integer'));
         return true;
@@ -268,7 +280,7 @@ describe('dispatchIssue error paths', () => {
     setupRallyHome();
     const exec = createExecWithIssue(makeIssue());
     await assert.rejects(
-      () => dispatchIssue({ issueNumber: 'abc', repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn }),
+      () => dispatchIssue({ issueNumber: 'abc', repo: 'owner/repo', repoPath, _exec: exec, _spawn: noopSpawn, _ensurePersonalSquad: noopEnsurePersonalSquad }),
       (err) => {
         assert.ok(err.message.includes('positive integer'));
         return true;
@@ -298,7 +310,9 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     // Verify return value
@@ -345,7 +359,9 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.branch, 'rally/7-fix-broken-navbar-component');
@@ -370,7 +386,9 @@ describe('dispatchIssue happy path', () => {
       repoPath,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     const expected = join(repoPath, '.worktrees', 'rally-99');
@@ -395,7 +413,9 @@ describe('dispatchIssue happy path', () => {
       teamDir,
       _exec: exec,
       _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     // Verify .squad exists in worktree (either as symlink or directory)
@@ -417,6 +437,7 @@ describe('dispatchIssue happy path', () => {
       _exec: exec,
       _spawn: () => ({ pid: 98765, unref() {} }),
       trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.sessionId, '98765');
@@ -441,6 +462,7 @@ describe('dispatchIssue happy path', () => {
       _exec: exec,
       _spawn: () => { throw Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }); },
       trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     // Should complete without throwing, sessionId null
@@ -478,6 +500,7 @@ describe('dispatchIssue happy path', () => {
       _exec: exec,
       _spawn: () => { spawnCalled = true; return { pid: 1, unref() {} }; },
       trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
     });
 
     assert.strictEqual(result.sessionId, null);
@@ -515,7 +538,9 @@ describe('dispatchIssue happy path', () => {
         repoPath,
         _exec: exec,
         _spawn: noopSpawn,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
         trust: true,
+      _setupConsultMode: noopSetupConsultMode, _ensurePersonalSquad: noopEnsurePersonalSquad,
       }),
     );
 

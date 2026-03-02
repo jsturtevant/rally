@@ -41,10 +41,10 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   const [dispatchMessage, setDispatchMessage] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
-  // Show a toast message that auto-clears after 2 seconds
+  // Show a toast message that auto-clears after 15 seconds
   function showToast(msg) {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 2000);
+    setTimeout(() => setToastMessage(''), 15000);
   }
 
   const [data, setData] = useState(() => {
@@ -130,7 +130,11 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     try {
       const result = await onDispatch(item);
       if (result && result.aborted) {
-        setDispatchMessage('Dispatch aborted.');
+        if (result.reason === 'no-squad') {
+          setDispatchMessage('No personal squad found. Run: rally squad init');
+        } else {
+          setDispatchMessage('Dispatch aborted.');
+        }
         setDispatchStatus('error');
       } else {
         const title = result?.pr?.title || result?.issue?.title || '';
@@ -200,10 +204,28 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   }
 
   function removeSelectedDispatch(dispatch) {
-    _dispatchRemove(dispatch.number, { repo: dispatch.repo })
-      .then(() => reloadData())
+    _dispatchRemove(dispatch.number, { repo: dispatch.repo, silent: true })
+      .then(({ extractionResult }) => {
+        reloadData();
+        // Show extraction summary in toast
+        if (extractionResult && extractionResult.error) {
+          showToast(`⚠ Removed (extraction failed: ${extractionResult.error.slice(0, 40)})`);
+        } else if (extractionResult && !extractionResult.blocked) {
+          const { extracted = [], decisionsMerged = 0, skillsCreated = 0 } = extractionResult;
+          const total = extracted.length + decisionsMerged + skillsCreated;
+          if (total > 0) {
+            showToast(`📚 ${total} learning${total === 1 ? '' : 's'} merged to personal squad`);
+          } else {
+            showToast('📚 Removed (no learnings to extract)');
+          }
+        } else if (extractionResult && extractionResult.blocked) {
+          showToast('⚠ Removed (extraction blocked by license)');
+        } else {
+          showToast('✓ Removed');
+        }
+      })
       .catch((err) => {
-        console.error(`Failed to remove dispatch: ${err.message}`);
+        showToast(`✗ Failed: ${err.message}`);
       });
   }
 
@@ -435,9 +457,9 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
       <Box flexDirection="column" height={termRows}>
         <OnboardInput
           terminalRows={termRows}
-          onSubmit={(repoPath, team) => {
+          onSubmit={(repoPath) => {
             if (onAddProject) {
-              return onAddProject(repoPath, team);
+              return onAddProject(repoPath);
             }
           }}
           onBack={() => setBrowseMode('projects')}

@@ -101,9 +101,21 @@ const dashboard = program
         const { getTrustWarnings: _getTrustWarnings } = await import('../lib/dispatch-trust.js');
         const { resolveRepo } = await import('../lib/dispatch.js');
         const { getSettings, getConfigDir } = await import('../lib/config.js');
+        const { ensurePersonalSquad, personalSquadExists } = await import('../lib/squad-sdk.js');
         const settings = getSettings();
 
-        const onAddProject = (repoPath, team) => onboard({ path: repoPath, team });
+        // Check for personal squad BEFORE starting Ink (prompts work here)
+        const squadReady = await ensurePersonalSquad();
+        if (!squadReady) {
+          console.log('Dashboard requires a personal squad. Run: rally squad init');
+          process.exitCode = 1;
+          return;
+        }
+
+        const onAddProject = (repoPath) => onboard({ path: repoPath });
+
+        // Non-prompting squad check for dispatch calls (squad already verified above)
+        const dashboardEnsureSquad = async () => personalSquadExists();
 
         const onDispatch = async (item) => {
           const sandbox = settings.docker_sandbox === 'always' ? true : undefined;
@@ -115,6 +127,7 @@ const dashboard = program
               sandbox, trust: true,
               denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
               disallowTempDir: settings.disallow_temp_dir,
+              _ensurePersonalSquad: dashboardEnsureSquad,
             });
           }
           const { dispatchPr } = await import('../lib/dispatch-pr.js');
@@ -124,6 +137,7 @@ const dashboard = program
             sandbox, trust: true, promptFile,
             denyToolsCopilot: settings.deny_tools_copilot, denyToolsSandbox: settings.deny_tools_sandbox,
             disallowTempDir: settings.disallow_temp_dir,
+            _ensurePersonalSquad: dashboardEnsureSquad,
           });
         };
 
@@ -207,7 +221,6 @@ dispatch
   })
   .option('--repo <owner/repo>', 'Target repository (owner/repo)')
   .option('--repo-path <path>', 'Path to local repo clone')
-  .option('--team-dir <path>', 'Path to custom squad directory')
   .option('--sandbox', 'Run Copilot inside a Docker sandbox microVM for host isolation')
   .option('--trust', 'Skip author/org trust warnings (for automation)')
   .action(async (number, opts) => {
@@ -234,7 +247,6 @@ dispatch
         issueNumber: number,
         repo: resolved.fullName,
         repoPath: opts.repoPath || resolved.project.path,
-        teamDir: opts.teamDir,
         sandbox,
         trust,
         denyToolsCopilot: settings.deny_tools_copilot,
@@ -258,7 +270,6 @@ dispatch
   })
   .option('--repo <owner/repo>', 'Target repository (owner/repo)')
   .option('--repo-path <path>', 'Path to local repo clone')
-  .option('--team-dir <path>', 'Path to custom squad directory')
   .option('--sandbox', 'Run Copilot inside a Docker sandbox microVM for host isolation')
   .option('--prompt <path>', 'Path to a custom review prompt file')
   .option('--trust', 'Skip author/org trust warnings (for automation)')
@@ -287,7 +298,6 @@ dispatch
         prNumber: number,
         repo: resolved.fullName,
         repoPath: opts.repoPath || resolved.project.path,
-        teamDir: opts.teamDir,
         sandbox,
         promptFile,
         trust,

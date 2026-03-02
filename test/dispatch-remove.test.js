@@ -48,7 +48,7 @@ test('dispatchRemove removes dispatch by number', async () => {
     _chalk: silentChalk,
   });
 
-  assert.strictEqual(result.number, 42);
+  assert.strictEqual(result.dispatch.number, 42);
   assert.strictEqual(removedId, 'rally-issue-42');
   assert.strictEqual(branchDeleted, 'rally/42-fix-bug');
 });
@@ -77,7 +77,7 @@ test('dispatchRemove disambiguates with --repo when multiple matches', async () 
     _chalk: silentChalk,
   });
 
-  assert.strictEqual(result.id, 'rally-issue-42-b');
+  assert.strictEqual(result.dispatch.id, 'rally-issue-42-b');
   assert.strictEqual(removedId, 'rally-issue-42-b');
 });
 
@@ -106,7 +106,7 @@ test('dispatchRemove handles missing worktree gracefully', async () => {
     _chalk: silentChalk,
   });
 
-  assert.strictEqual(result.number, 42);
+  assert.strictEqual(result.dispatch.number, 42);
   assert.strictEqual(removedId, 'rally-issue-42');
   assert.strictEqual(branchDeleted, 'rally/42-fix-bug');
 });
@@ -125,7 +125,7 @@ test('dispatchRemove handles missing project path gracefully', async () => {
     _chalk: silentChalk,
   });
 
-  assert.strictEqual(result.number, 42);
+  assert.strictEqual(result.dispatch.number, 42);
   assert.strictEqual(removedId, 'rally-issue-42');
   assert.strictEqual(worktreeRemoveCalled, false);
   assert.strictEqual(execCalled, false, 'should not try to delete branch without project path');
@@ -143,7 +143,7 @@ test('dispatchRemove handles branch deletion failure gracefully', async () => {
     _chalk: silentChalk,
   });
 
-  assert.strictEqual(result.number, 42);
+  assert.strictEqual(result.dispatch.number, 42);
   assert.strictEqual(removedId, 'rally-issue-42');
 });
 
@@ -159,7 +159,7 @@ test('dispatchRemove terminates tracked PID before cleanup', async () => {
     _chalk: silentChalk,
   });
   
-  assert.strictEqual(result.number, 42);
+  assert.strictEqual(result.dispatch.number, 42);
   assert.deepStrictEqual(terminatedPids, [67890]);
 });
 
@@ -175,6 +175,6 @@ test('dispatchRemove skips PID termination when PID is null', async () => {
     _chalk: silentChalk,
   });
   
-  assert.strictEqual(result.number, 42);
+  assert.strictEqual(result.dispatch.number, 42);
   assert.strictEqual(terminateCalled, false);
 });

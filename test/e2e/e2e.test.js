@@ -205,7 +205,8 @@ describe('e2e: dispatch issue 54 (library)', () => {
       issueNumber: 54,
       repo: 'jsturtevant/rally',
       repoPath: REPO_ROOT,
-      teamDir: join(tempDir, 'nonexistent-team'),
+      _ensurePersonalSquad: async () => true,
+      _setupConsultMode: () => {}, // Skip consult mode (repo already has .squad/)
     });
 
     worktreePath = dispatchResult.worktreePath;

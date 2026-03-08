@@ -104,14 +104,17 @@ describe('getDashboardData', () => {
 describe('Dashboard component', () => {
   let instance;
   const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
+  // Strip ANSI escape codes for clean text matching
+  const stripAnsi = (str) => str.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '');
   
   // Waits until instance.lastFrame() includes expected text, with timeout.
   // Used for flaky tests where fixed delays are insufficient on slower systems.
+  // Strips ANSI codes before matching to handle colored/styled output.
   const waitForFrame = async (expected, { timeout = 2000, interval = 50 } = {}) => {
     const start = Date.now();
     while (Date.now() - start < timeout) {
       const frame = instance.lastFrame();
-      if (frame && frame.includes(expected)) return frame;
+      if (frame && stripAnsi(frame).includes(expected)) return frame;
       await delay(interval);
     }
     throw new Error(`waitForFrame timeout: "${expected}" not found after ${timeout}ms`);
@@ -369,6 +372,7 @@ describe('Dashboard component', () => {
     dispatches[0].logPath = logFile;
     writeFileSync(logFile, 'action-log-line', 'utf8');
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+    mkdirSync(WORKTREE_DIR, { recursive: true });
 
     instance = render(
       React.createElement(Dashboard, {
@@ -382,11 +386,11 @@ describe('Dashboard component', () => {
     await waitForFrame('Actions for');
     // Navigate down to "View logs" (4th option)
     instance.stdin.write('\x1B[B');
-    await delay(100);
+    await waitForFrame('❯ Open in browser');
     instance.stdin.write('\x1B[B');
-    await delay(100);
+    await waitForFrame('❯ Attach to session');
     instance.stdin.write('\x1B[B');
-    await delay(100);
+    await waitForFrame('❯ View logs');
     instance.stdin.write('\r');
     // Wait for log viewer to appear
     await waitForFrame('Logs for');

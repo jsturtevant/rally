@@ -372,4 +372,39 @@ describe('onboard --fork integration', () => {
 
     assert.strictEqual(clonedUrl, 'https://github.com/hyperlight-dev/hyperlight-wasm.git');
   });
+
+  test('fork=auto with path triggers auto-discovery from GitHub username', async () => {
+    const { rallyHome } = setupTeam();
+    const repoPath = createRepoWithOrigin('auto-fork', 'https://github.com/bradygaster/squad.git');
+
+    const _exec = (cmd, args, opts) => {
+      // Mock gh api user to return the test user
+      if (cmd === 'gh' && args[0] === 'api' && args[1] === 'user') {
+        return 'jsturtevant\n';
+      }
+      if (cmd === 'gh') return '';
+      if (args.includes('fetch')) return '';
+      return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
+    };
+
+    await onboard({
+      path: repoPath,
+      fork: 'auto',  // This is the UI "auto-detect" scenario
+      _exec,
+      _selectTeam: mockSelectTeam,
+    });
+
+    // origin should be user's fork, NOT the same as upstream
+    const origin = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).trim();
+    assert.strictEqual(origin, 'https://github.com/jsturtevant/squad.git');
+
+    // upstream should be the original repo
+    const upstream = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', 'upstream'], { encoding: 'utf8' }).trim();
+    assert.strictEqual(upstream, 'https://github.com/bradygaster/squad.git');
+
+    // Project should be registered with fork info
+    const projectsPath = join(rallyHome, 'projects.yaml');
+    const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
+    assert.strictEqual(projects.projects[0].fork, 'jsturtevant/squad');
+  });
 });

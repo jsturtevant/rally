@@ -114,8 +114,8 @@ const dashboard = program
 
         const onAddProject = (opts) => {
           // opts: { path, fork } where fork is 'auto' | 'owner/repo' | undefined
-          const forkValue = opts.fork === 'auto' ? opts.path : opts.fork;
-          return onboard({ path: opts.path, fork: forkValue });
+          // When fork === 'auto', pass it through — onboard() handles auto-discovery
+          return onboard({ path: opts.path, fork: opts.fork });
         };
 
         // Non-prompting squad check for dispatch calls (squad already verified above)

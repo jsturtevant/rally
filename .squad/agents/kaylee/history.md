@@ -644,3 +644,15 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **--update-snapshots flag:** When present in `process.argv`, auto-blesses failing snapshots (returns `{match: true, updated: true}`).
 - **Threshold:** Default 0.5% (0.005) pixel difference tolerance for minor anti-aliasing variance.
 - **Dimension mismatch handling:** Reports error with full diagnostics when baseline/actual dimensions differ.
+
+### 2026 — Fork Picker in Dashboard Add Project Flow
+
+- **Feature:** Added fork toggle and optional fork URL input to OnboardInput component for the Dashboard's "Add Project" flow.
+- **UI Flow:** 3-step wizard: (1) Enter repo path → (2) Toggle "This is a fork" → (3) Enter fork owner/repo (or leave empty for auto-detect).
+- **Implementation details:**
+  - `OnboardInput.jsx` now tracks `step` state: 'path' | 'fork-toggle' | 'fork-input' | 'running'
+  - `onSubmit` callback now receives `{ path, fork }` object instead of just a string path
+  - Fork value of 'auto' triggers GitHub username auto-detection via `gh api user`
+  - `bin/rally.js` updated to pass fork option through to `onboard()` function
+- **Keyboard patterns:** Toggle uses ←/→ arrows or space; Escape goes back one step at a time.
+- **Wire-through:** Dashboard.jsx → OnboardInput → bin/rally.js onAddProject → lib/onboard.js (which already handles fork via `configureForkRemotes()`).

@@ -7,7 +7,7 @@ Rally integrates with the [Squad SDK](https://github.com/bradygaster/squad) to e
 
 ## How Rally Uses Squad SDK
 
-Rally imports key functions from `@jsturtevant/rally-squad-sdk`:
+Rally imports key functions from `@bradygaster/squad-sdk`:
 
 - **`initSquad`** — Creates a new squad with specified agents/roles
 - **`setupConsultMode`** — Configures a worktree to consult an external squad

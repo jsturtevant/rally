@@ -104,6 +104,21 @@ describe('getDashboardData', () => {
 describe('Dashboard component', () => {
   let instance;
   const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
+  // Strip ANSI escape codes for clean text matching
+  const stripAnsi = (str) => str.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '');
+  
+  // Waits until instance.lastFrame() includes expected text, with timeout.
+  // Used for flaky tests where fixed delays are insufficient on slower systems.
+  // Strips ANSI codes before matching to handle colored/styled output.
+  const waitForFrame = async (expected, { timeout = 2000, interval = 50 } = {}) => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const frame = instance.lastFrame();
+      if (frame && stripAnsi(frame).includes(expected)) return frame;
+      await delay(interval);
+    }
+    throw new Error(`waitForFrame timeout: "${expected}" not found after ${timeout}ms`);
+  };
 
   beforeEach((t) => {
     setupWithDispatches(t);
@@ -357,23 +372,28 @@ describe('Dashboard component', () => {
     dispatches[0].logPath = logFile;
     writeFileSync(logFile, 'action-log-line', 'utf8');
     writeFileSync(join(TEST_DIR, 'active.yaml'), yaml.dump({ dispatches }), 'utf8');
+    mkdirSync(WORKTREE_DIR, { recursive: true });
 
     instance = render(
       React.createElement(Dashboard, {
         refreshInterval: 0,
       })
     );
-    await delay();
+    // Wait for dashboard to render before opening action menu
+    await waitForFrame('Rally Dashboard');
     instance.stdin.write('\r');
-    await delay();
+    // Wait for action menu to appear before navigating
+    await waitForFrame('Actions for');
+    // Navigate down to "View logs" (4th option)
     instance.stdin.write('\x1B[B');
-    await delay();
+    await waitForFrame('❯ Open in browser');
     instance.stdin.write('\x1B[B');
-    await delay();
+    await waitForFrame('❯ Attach to session');
     instance.stdin.write('\x1B[B');
-    await delay();
+    await waitForFrame('❯ View logs');
     instance.stdin.write('\r');
-    await delay();
+    // Wait for log viewer to appear
+    await waitForFrame('Logs for');
     const output = instance.lastFrame();
     assert.ok(output.includes('Logs for'), 'should show log viewer');
     assert.ok(output.includes('#42'), 'should show dispatch ref');

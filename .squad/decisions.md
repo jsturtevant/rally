@@ -2376,3 +2376,44 @@ The Rally CLI codebase demonstrates mature security practices:
 - **Appropriate file permissions** for sensitive data
 
 No action required. The codebase is ready for production use from a security standpoint.
+
+---
+
+## Decision: Use waitForFrame pattern for Ink UI tests
+
+**Date:** 2026-02-24  
+**Author:** Jayne (Tester)  
+**Status:** Implemented
+
+### Context
+
+Flaky test on Windows Node 20 (#385) caused by fixed delays in multi-step UI interactions.
+
+### Decision
+
+For Ink component tests requiring multi-step UI interactions, use content-based waits via `waitForFrame(expected)` instead of fixed `delay()` calls.
+
+### Rationale
+
+- Fixed delays are timing-dependent and fail on slower systems
+- Content-based waits are deterministic - proceed when UI is ready
+- Works across Node versions and operating systems
+
+### Implementation
+
+Helper added to `test/ui/Dashboard.test.js`:
+```javascript
+const waitForFrame = async (expected, { timeout = 2000, interval = 50 } = {}) => {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const frame = instance.lastFrame();
+    if (frame && frame.includes(expected)) return frame;
+    await delay(interval);
+  }
+  throw new Error(`waitForFrame timeout: "${expected}" not found after ${timeout}ms`);
+};
+```
+
+### Action for team
+
+Consider extracting `waitForFrame` to a shared test helper if the pattern is needed in other UI test files.

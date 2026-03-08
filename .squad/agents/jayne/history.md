@@ -657,3 +657,21 @@ Complete user journey test for dispatching to a GitHub issue through the dashboa
 5. Worktree cleanup must happen via git before temp dir cleanup (same as in e2e.test.js).
 
 **6 tests passing**, 1 skipped (happy path needs GH_TOKEN).
+
+### 2026-02-24 — Flaky Test Fix: action menu View logs (Issue #385)
+
+**Problem:** Test "action menu View logs opens inline log viewer" in `test/ui/Dashboard.test.js:354` was flaky on Windows CI (Node 20). Passed on Ubuntu and Windows Node 22.
+
+**Root Cause:** Fixed 50ms delays between keystrokes were insufficient for Windows Node 20's event loop to process UI updates. The test sends Enter → ↓↓↓ → Enter to navigate the action menu, and timing varied enough to cause intermittent failures.
+
+**Fix:** Added `waitForFrame(expected)` helper that polls `instance.lastFrame()` until expected content appears (with timeout). Replaced critical fixed delays with content-based waits:
+1. Wait for "Rally Dashboard" before opening menu
+2. Wait for "Actions for" before navigating
+3. Wait for "Logs for" after selecting option
+
+Also increased arrow-key delays from 50ms to 100ms for additional safety margin.
+
+**Pattern:** For Ink component tests with multi-step UI interactions, use content-based waits (`waitForFrame`) instead of fixed delays to avoid timing-dependent flakiness across different Node versions and OS.
+
+**File:** `test/ui/Dashboard.test.js` - `waitForFrame` helper at line 107
+

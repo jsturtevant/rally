@@ -104,6 +104,18 @@ describe('getDashboardData', () => {
 describe('Dashboard component', () => {
   let instance;
   const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
+  
+  // Waits until instance.lastFrame() includes expected text, with timeout.
+  // Used for flaky tests where fixed delays are insufficient on slower systems.
+  const waitForFrame = async (expected, { timeout = 2000, interval = 50 } = {}) => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const frame = instance.lastFrame();
+      if (frame && frame.includes(expected)) return frame;
+      await delay(interval);
+    }
+    throw new Error(`waitForFrame timeout: "${expected}" not found after ${timeout}ms`);
+  };
 
   beforeEach((t) => {
     setupWithDispatches(t);
@@ -363,17 +375,21 @@ describe('Dashboard component', () => {
         refreshInterval: 0,
       })
     );
-    await delay();
+    // Wait for dashboard to render before opening action menu
+    await waitForFrame('Rally Dashboard');
     instance.stdin.write('\r');
-    await delay();
+    // Wait for action menu to appear before navigating
+    await waitForFrame('Actions for');
+    // Navigate down to "View logs" (4th option)
     instance.stdin.write('\x1B[B');
-    await delay();
+    await delay(100);
     instance.stdin.write('\x1B[B');
-    await delay();
+    await delay(100);
     instance.stdin.write('\x1B[B');
-    await delay();
+    await delay(100);
     instance.stdin.write('\r');
-    await delay();
+    // Wait for log viewer to appear
+    await waitForFrame('Logs for');
     const output = instance.lastFrame();
     assert.ok(output.includes('Logs for'), 'should show log viewer');
     assert.ok(output.includes('#42'), 'should show dispatch ref');

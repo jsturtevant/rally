@@ -647,12 +647,11 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 
 ### 2026 — Fork Picker in Dashboard Add Project Flow
 
-- **Feature:** Added fork toggle and optional fork URL input to OnboardInput component for the Dashboard's "Add Project" flow.
-- **UI Flow:** 3-step wizard: (1) Enter repo path → (2) Toggle "This is a fork" → (3) Enter fork owner/repo (or leave empty for auto-detect).
+- **Feature:** Added a fork choice (yes/no) to the OnboardInput component for the Dashboard's "Add Project" flow; no separate fork URL input is required.
+- **UI Flow:** 2-step wizard: (1) Enter repo path → (2) Answer "Is this a fork?" with a y/n prompt.
 - **Implementation details:**
-  - `OnboardInput.jsx` now tracks `step` state: 'path' | 'fork-toggle' | 'fork-input' | 'running'
+  - `OnboardInput.jsx` now tracks `step` state: 'path' | 'fork' | 'running'
   - `onSubmit` callback now receives `{ path, fork }` object instead of just a string path
-  - Fork value of 'auto' triggers GitHub username auto-detection via `gh api user`
+  - When `fork` is enabled, Rally auto-detects fork remotes (e.g., via `gh api user`) instead of requiring the user to paste a fork URL.
   - `bin/rally.js` updated to pass fork option through to `onboard()` function
-- **Keyboard patterns:** Toggle uses ←/→ arrows or space; Escape goes back one step at a time.
-- **Wire-through:** Dashboard.jsx → OnboardInput → bin/rally.js onAddProject → lib/onboard.js (which already handles fork via `configureForkRemotes()`).
+- **Keyboard patterns:** Uses standard confirm-style input (y/n, Enter to accept default); Escape goes back one step at a time.

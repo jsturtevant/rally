@@ -154,7 +154,7 @@ export default function OnboardInput({ terminalRows, onSubmit, onBack }) {
         <Text dimColor>
           {step === 'path' && 'Enter continue · Esc back'}
           {step === 'fork' && 'Enter submit · Esc back'}
-          {step === 'running' && ''}
+          {step === 'running' && (status === 'error' ? 'Press any key to continue' : '')}
         </Text>
       </Box>
     </Box>

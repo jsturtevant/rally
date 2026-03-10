@@ -112,7 +112,11 @@ const dashboard = program
           return;
         }
 
-        const onAddProject = (repoPath) => onboard({ path: repoPath });
+        const onAddProject = (opts) => {
+          // opts: { path, fork } where fork is 'auto' | 'owner/repo' | undefined
+          // When fork === 'auto', pass it through — onboard() handles auto-discovery
+          return onboard({ path: opts.path, fork: opts.fork });
+        };
 
         // Non-prompting squad check for dispatch calls (squad already verified above)
         const dashboardEnsureSquad = async () => personalSquadExists();

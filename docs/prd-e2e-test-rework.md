@@ -159,6 +159,30 @@ The PTY harness requires `node-pty` and `canvas` (native compilation). These can
 
 ---
 
+## 3.5 Test Fixture Repository
+
+E2E tests that exercise `dispatch issue` and `dispatch pr` need a real GitHub repo with known issues and PRs. Instead of using `jsturtevant/rally` itself (fragile, noisy), we maintain a dedicated fixture repo:
+
+| Resource | Location |
+|----------|----------|
+| **Fixture repo** | `jsturtevant/rally-test-fixtures` (override owner with `RALLY_TEST_OWNER` env var) |
+| **Issue #1** | `[E2E Test] Dispatch issue test` — single-dispatch testing |
+| **Issue #2** | `[E2E Test] Second dispatch issue` — multi-dispatch testing |
+| **PR #1** | `[E2E Test] Sample PR for review dispatch` — dispatch-pr testing |
+| **Setup script** | `scripts/setup-test-fixtures.sh` |
+
+The setup script is **idempotent** — it checks for existing resources before creating anything. Run it once before the first CI run or when bootstrapping a fork:
+
+```bash
+# Default owner (jsturtevant)
+./scripts/setup-test-fixtures.sh
+
+# Custom owner / fork
+RALLY_TEST_OWNER=myorg ./scripts/setup-test-fixtures.sh
+```
+
+---
+
 ## 4. Proposed Architecture: Markdown-Driven Tests
 
 ### 4.1 Core Concept
@@ -283,6 +307,12 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 ---
 
 ## 5. Work Items
+
+### Phase 0: Bootstrap Test Fixture Repo
+
+| ID | Task | Dependencies | Est. |
+|----|------|-------------|------|
+| **E0** | **Run `scripts/setup-test-fixtures.sh`** — creates `jsturtevant/rally-test-fixtures` with 2 issues and 1 PR for dispatch e2e tests. Idempotent; safe to re-run. | None | S |
 
 ### Phase 1: Build the Markdown Test Runner
 

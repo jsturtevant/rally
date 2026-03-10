@@ -48,7 +48,7 @@ Three shared modules in `test/harness/`:
 | `onboard` (with flags) | ⚠️ Partial | PTY tests exist but aren't run in CI |
 | `dispatch issue` (library) | ✅ Good | Real GitHub integration in `e2e.test.js` |
 | `dispatch issue` (UI journey) | ⚠️ Partial | Full journey in `journeys/dispatch/issue.test.js` — not in CI |
-| `dispatch clean` | ✅ Good | Library-level test with mocked deps |
+| `dispatch clean` | ✅ Good | Library-level test |
 | `dispatch sessions` | ⚠️ Partial | PTY tests exist, not in CI |
 | `dispatch pr` | ❌ Missing | No e2e coverage |
 | `dispatch remove` | ⚠️ Partial | Journey test exists, not in CI |
@@ -81,16 +81,16 @@ The `test:e2e` script glob `./test/e2e/*.test.js` does not recurse into subdirec
 
 **Files affected:** All of `test/e2e/cli/*.test.js` and `test/e2e/journeys/**/*.test.js`.
 
-### 2.2 🔴 Massive Helper Duplication
+### 2.2 🔴 Fake State Instead of Real Commands
 
-`seedConfig()` is copy-pasted into **16 of 23 files** with slight variations. The shared `e2e-dispatch-fixture.js` provides `createIsolatedConfig()` but only 7 files use it. Each copy is 15-25 lines doing the same thing: create temp dir, write `config.yaml`, `projects.yaml`, `active.yaml`.
+16 of 23 test files manually create fake config state — writing `config.yaml`, `projects.yaml`, and `active.yaml` directly into temp directories instead of running real CLI commands. The shared `e2e-dispatch-fixture.js` provides `createIsolatedConfig()` but only 7 files use it. Each copy is 15-25 lines manufacturing state that the CLI itself should be creating.
 
-**Impact:** When the config schema changes (it has before — JSON→YAML), every copy must be updated independently.
+**Impact:** Tests validate against hand-crafted config, not config produced by real commands. When the config schema changes (it has before — JSON→YAML), every copy must be updated independently, and the fake state may not match what the CLI actually produces.
 
 **Worst offenders:**
-- `journeys/dispatch/issue.test.js` — redefines both `seedConfig()` AND `cleanupWorktree()` that already exist in the fixture
-- `journeys/navigation/selection.test.js` — 14 references to its own `seedConfig` variant
-- `journeys/lifecycle/cancel.test.js` and `complete.test.js` — identical `seedConfig()` in both
+- `journeys/dispatch/issue.test.js` — redefines config setup AND `cleanupWorktree()` that already exist in the fixture
+- `journeys/navigation/selection.test.js` — 14 references to its own config setup variant
+- `journeys/lifecycle/cancel.test.js` and `complete.test.js` — identical config setup in both
 
 ### 2.3 🟡 Two Competing Test Styles
 
@@ -151,7 +151,7 @@ The PTY harness requires `node-pty` and `canvas` (native compilation). These can
 ### Should Have
 5. **One runner, many test files.** Adding a new test = adding a `## \`command\`` heading to a markdown file. Zero boilerplate.
 6. **Cover untested commands.** `dispatch pr`, `dispatch refresh` — should get markdown test cases.
-7. **Single source of truth for config seeding.** The runner handles `RALLY_HOME` setup so individual test files don't need to.
+7. **No pre-seeded config.** The runner creates an empty `RALLY_HOME` — tests that need project state run `rally onboard` first. No fake config files, no mocking.
 
 ### Nice to Have
 8. **Test files double as command reference.** The `.md` files in `test/e2e/cli/` should be browsable on GitHub as informal CLI documentation.
@@ -187,7 +187,7 @@ RALLY_TEST_OWNER=myorg ./scripts/setup-test-fixtures.sh
 
 Onboard tests require two distinct setups depending on the input form:
 
-**Local path tests** (`rally onboard .`, `rally onboard ./my-project`): The markdown test runner creates a temporary local git repo (`git init` + `git remote add origin`) for each test file that declares `setup: local-git-repo` in its frontmatter. This is fast and doesn't need network access. The runner handles setup and teardown automatically.
+**Local path tests** (`rally onboard .`, `rally onboard ./my-project`): The markdown test runner creates a temporary local git repo (`git init` + `git remote add origin`) for each test file that declares `repo: local` in its frontmatter. This is fast and doesn't need network access. The runner handles setup and teardown automatically.
 
 **Remote tests** (`rally onboard owner/repo`, `rally onboard https://github.com/owner/repo`): These use `jsturtevant/rally-test-fixtures` as the target. They are integration tests that require network access and a valid GitHub token. Mark these tests accordingly so CI can gate them behind a network-available flag.
 
@@ -257,33 +257,42 @@ test/e2e/
 The runner is the **only JavaScript file** involved in markdown-driven tests. It must:
 
 1. **Discover** all `.md` files in `test/e2e/cli/`.
-2. **Parse frontmatter** — each `.md` file may begin with a YAML frontmatter block declaring its setup type:
+2. **Parse frontmatter** — each `.md` file may begin with a YAML frontmatter block declaring its repo setup:
 
    ```markdown
    ---
-   setup: local-git-repo
+   repo: jsturtevant/rally-test-fixtures
    ---
    ```
 
-   Supported setup types:
+   Supported `repo:` values:
 
-   | Value | Runner behavior |
-   |-------|-----------------|
-   | `local-git-repo` | Creates a temp directory, runs `git init`, adds a dummy commit, and sets `git remote add origin https://github.com/jsturtevant/rally-test-fixtures.git`. Tests in this file run with `cwd` set to the temp repo. |
-   | `seeded-config` | Creates a temp `RALLY_HOME` with a pre-populated `projects.yaml` containing one onboarded project (already planned for status/dashboard tests). |
-   | `none` *(default)* | No setup — runner only creates a bare temp `RALLY_HOME`. |
+   | `repo:` value | Runner behavior |
+   |---------------|-----------------|
+   | `local` | Creates a temp directory, runs `git init`, adds a dummy commit, sets remote to `https://github.com/jsturtevant/rally-test-fixtures.git`. Fast, no network. |
+   | `jsturtevant/rally-test-fixtures` (or any `owner/repo`) | Clones the fixture repo into a temp directory. Requires network. |
+   | *(not specified)* | No repo setup — just creates a temp `RALLY_HOME` dir. For `--help`/`--version` tests. |
+
+   The runner ALWAYS creates a temp directory to use as `RALLY_HOME` (to isolate from real config). No pre-seeding of any files — all config state is built by running real CLI commands within the test file.
 
    **No test logic lives in the markdown.** The frontmatter is declarative metadata; the runner owns all setup/teardown code.
 
-3. **Parse test cases** — extract `## \`command\`` headings and their following `` ```expected `` blocks.
-4. **Setup** environment per the frontmatter type (see above).
-5. **Execute** each command via `execSync`, capturing stdout.
-6. **Fuzzy-compare** actual output against expected:
+3. **Execute tests sequentially, in order.** Tests within a markdown file run **sequentially, top to bottom**. This means earlier tests build state for later tests — the file reads like a script:
+   - `## \`rally onboard .\`` runs first, onboards the project
+   - `## \`rally status\`` runs second, sees the onboarded project
+   - `## \`rally status --json\`` runs third, sees the same state
+
+   This is the key insight: **tests are ordered steps, not independent units.** If a test needs an onboarded project, a prior test in the same file runs `rally onboard` — no fake config, no pre-seeding.
+
+4. **Parse test cases** — extract `## \`command\`` headings and their following `` ```expected `` blocks.
+5. **Setup** environment per the frontmatter `repo:` value (see above).
+6. **Execute** each command via `execSync` **in order**, capturing stdout. Each test sees the state left by previous tests.
+7. **Fuzzy-compare** actual output against expected:
    - Normalize whitespace (collapse runs, trim lines).
    - Ignore trailing newlines.
    - Comparison is line-by-line after normalization — not a raw string equality check.
-7. **Report** results using Node's built-in test runner (`node:test`) so it integrates with `node --test`.
-8. **Cleanup** temp dirs after each file.
+8. **Report** results using Node's built-in test runner (`node:test`) so it integrates with `node --test`.
+9. **Cleanup** temp dirs after each file.
 
 ```javascript
 // Pseudocode sketch of runner.js
@@ -347,7 +356,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E1** | **Implement `test/e2e/runner.js`** — markdown parser, command executor, fuzzy matcher, `node:test` integration. | None | M |
-| **E2** | **Implement config seeding in the runner.** Create temp `RALLY_HOME` with minimal config for each test file. Extract and centralize the `seedConfig` logic from the 16 existing files that duplicate it. | None | S |
+| **E2** | **Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (temp git repo) and `repo: owner/repo` (clone) setup per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
 | **E3** | **Implement fuzzy matching.** Whitespace normalization, line-by-line comparison, clear diff output on failure. | None | S |
 
 ### Phase 2: First Markdown Test File (Proof of Concept)
@@ -355,7 +364,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E4** | **Write `test/e2e/cli/help.md`** with test cases for `rally --help` and `rally --version`. Validate that `node --test test/e2e/runner.js` discovers and passes them. | E1 | S |
-| **E5** | **Write `test/e2e/cli/status.md`** — `rally status` and `rally status --json` test cases. Validates that seeded config works for tests that need project state. | E1, E2 | S |
+| **E5** | **Write `test/e2e/cli/status.md`** — first runs `rally onboard .` to create project state, then tests `rally status` and `rally status --json`. Validates sequential test execution model. | E1, E2 | S |
 
 ### Phase 3: Convert Existing CLI Tests to Markdown
 
@@ -401,7 +410,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 1. **You can read any `.md` file in `test/e2e/cli/` and immediately understand what command is being tested and what output is expected.** No JavaScript knowledge required.
 2. **Adding a new CLI test = adding a heading to a markdown file.** No new `.test.js` file, no boilerplate, no imports.
 3. **`npm run test:e2e` runs the markdown-driven tests** and passes on all CI matrix combos.
-4. **Zero duplicated `seedConfig` helpers.** Config seeding lives in `runner.js` (or a module it imports).
+4. **Zero pre-seeded config files.** All test state is created by running real CLI commands. No fake `projects.yaml`, no mocking, no config pre-population.
 5. **All CLI-stdout commands have at least one markdown test case** — including `dispatch pr` and `dispatch refresh` which currently have zero coverage.
 6. **The `.md` test files are browsable on GitHub** as informal command reference documentation.
 
@@ -426,7 +435,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 | # | Decision | Rationale |
 |---|----------|-----------|
 | 1 | **Tests are documentation.** `.md` files should be readable on GitHub as command reference. | Lowers the barrier to contributing tests. Anyone who can read markdown can review or write a test. |
-| 2 | **No JavaScript in test files.** All logic lives in `runner.js`. | Eliminates boilerplate duplication (the `seedConfig` problem). Test files can't drift in style or approach. |
+| 2 | **No JavaScript in test files.** All logic lives in `runner.js`. | Eliminates boilerplate duplication. Test files can't drift in style or approach. |
 | 3 | **Fuzzy matching, not exact.** Whitespace-tolerant, line-by-line substring comparison. | CLI output has minor formatting differences across platforms and versions. Tests should catch real regressions, not whitespace noise. |
 | 4 | **One runner, many `.md` files.** Adding a test = adding a heading. | Maximally low friction for test authors. No imports, no setup, no teardown code to write. |
 | 5 | **PTY/interactive tests stay as JS.** Markdown format covers CLI-stdout tests only. | Interactive terminal tests need `node-pty`, keyboard input simulation, and frame-based assertions — fundamentally different from "run command, check output". |
@@ -437,7 +446,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 
 Every test case needed for complete CLI coverage. Each entry maps directly to a `## \`command\`` heading in the markdown test files.
 
-> **How these were captured:** Every command below was run against the real `rally` CLI (v0.1.0). Commands that need config state used a temporary `RALLY_HOME` seeded with one onboarded project (`jsturtevant/rally`) and zero dispatches — the same pattern used by the existing test harness (`e2e-dispatch-fixture.js`).
+> **How these were captured:** Every command below was run against the real `rally` CLI (v0.1.0). Commands that need config state were tested by running `rally onboard` first to create real state — the same approach the new markdown tests will use.
 
 ### rally (top-level)
 
@@ -495,7 +504,7 @@ Commands:
 
 #### `rally onboard .`
 
-Onboards the current directory (local path form). Requires `setup: local-git-repo` — the runner creates a temp git repo with a remote pointing to the fixture repo. Modifies filesystem (symlinks, `.git/info/exclude`) and writes to `projects.yaml`.
+Onboards the current directory (local path form). Requires `repo: local` — the runner creates a temp git repo with a remote pointing to the fixture repo. Modifies filesystem (symlinks, `.git/info/exclude`) and writes to `projects.yaml`.
 
 *(Requires runner setup support)*
 
@@ -513,7 +522,7 @@ Onboards by owner/repo shorthand (remote form). Integration test — needs netwo
 
 #### `rally onboard --team default .`
 
-Onboards with an explicit team name, skipping the interactive prompt. Requires `setup: local-git-repo`.
+Onboards with an explicit team name, skipping the interactive prompt. Requires `repo: local`.
 
 *(Requires runner setup support)*
 
@@ -523,7 +532,7 @@ Onboards with an explicit team name, skipping the interactive prompt. Requires `
 
 #### `rally onboard --fork jsturtevant/rally-test-fixtures .`
 
-Onboards with a fork configuration. Requires `setup: local-git-repo`. Modifies git remotes (`origin`, `upstream`).
+Onboards with a fork configuration. Requires `repo: local`. Modifies git remotes (`origin`, `upstream`).
 
 *(Requires runner setup support)*
 
@@ -553,7 +562,7 @@ Options:
 
 #### `rally onboard remove --yes <project>`
 
-Removes a previously onboarded project, skipping the confirmation prompt. Requires a project to be onboarded first — use `setup: seeded-config` or chain after an `onboard .` test.
+Removes a previously onboarded project, skipping the confirmation prompt. Requires a project to be onboarded first — chain after an `onboard .` test earlier in the same file.
 
 *(Requires runner setup support)*
 
@@ -579,7 +588,7 @@ Options:
 
 #### `rally status`
 
-Displays config paths, directories, onboarded projects, and active dispatches in human-readable format. Requires seeded `RALLY_HOME`.
+Displays config paths, directories, onboarded projects, and active dispatches in human-readable format. Runs after `rally onboard .` in the same file.
 
 ```expected
 Rally Status
@@ -603,7 +612,7 @@ Active Dispatches (0):
 
 #### `rally status --json`
 
-Outputs full config state as JSON. Requires seeded `RALLY_HOME`.
+Outputs full config state as JSON. Runs after `rally onboard .` in the same file.
 
 ```expected
 {
@@ -653,7 +662,7 @@ Options:
 
 #### `rally dashboard --json`
 
-Outputs dispatch data as JSON. Requires seeded `RALLY_HOME`.
+Outputs dispatch data as JSON. Runs after `rally onboard .` in the same file.
 
 ```expected
 {
@@ -666,7 +675,7 @@ Outputs dispatch data as JSON. Requires seeded `RALLY_HOME`.
 
 #### `rally dashboard --json --project myrepo`
 
-Filters dispatches to a specific project. With no matching dispatches, returns empty list with no matching onboarded projects. Requires seeded `RALLY_HOME`.
+Filters dispatches to a specific project. With no matching dispatches, returns empty list with no matching onboarded projects. Runs after `rally onboard .` in the same file.
 
 ```expected
 {
@@ -781,7 +790,7 @@ Options:
 
 #### `rally dispatch refresh`
 
-Checks all active dispatches and updates status for any whose Copilot process has exited. With zero dispatches, reports all up to date. Requires seeded `RALLY_HOME`.
+Checks all active dispatches and updates status for any whose Copilot process has exited. With zero dispatches, reports all up to date. Runs after `rally onboard .` in the same file.
 
 ```expected
 All dispatch statuses are up to date.
@@ -826,7 +835,7 @@ Options:
 
 #### `rally dispatch clean`
 
-Cleans done dispatches. With no dispatches, prints a no-op message. Requires seeded `RALLY_HOME`.
+Cleans done dispatches. With no dispatches, prints a no-op message. Runs after `rally onboard .` in the same file.
 
 ```expected
 No active dispatches.
@@ -834,7 +843,7 @@ No active dispatches.
 
 #### `rally dispatch clean --all --yes`
 
-Cleans all dispatches without prompting. With no dispatches, prints a no-op message. Requires seeded `RALLY_HOME`.
+Cleans all dispatches without prompting. With no dispatches, prints a no-op message. Runs after `rally onboard .` in the same file.
 
 ```expected
 No active dispatches.
@@ -877,7 +886,7 @@ Options:
 
 #### `rally dispatch sessions`
 
-Lists dispatches with Copilot session info. With zero dispatches, prints a no-op message. Requires seeded `RALLY_HOME`.
+Lists dispatches with Copilot session info. With zero dispatches, prints a no-op message. Runs after `rally onboard .` in the same file.
 
 ```expected
 No active dispatches.

@@ -171,6 +171,8 @@ E2E tests that exercise `dispatch issue` and `dispatch pr` need a real GitHub re
 | **PR #1** | `[E2E Test] Sample PR for review dispatch` — dispatch-pr testing |
 | **Setup script** | `scripts/setup-test-fixtures.sh` |
 
+The fixture repo serves **double duty**: it is both the dispatch target (issues/PRs for `dispatch issue` and `dispatch pr` tests) AND the onboard target for remote `rally onboard` tests (e.g., `rally onboard jsturtevant/rally-test-fixtures` and `rally onboard https://github.com/jsturtevant/rally-test-fixtures`).
+
 The setup script is **idempotent** — it checks for existing resources before creating anything. Run it once before the first CI run or when bootstrapping a fork:
 
 ```bash
@@ -180,6 +182,14 @@ The setup script is **idempotent** — it checks for existing resources before c
 # Custom owner / fork
 RALLY_TEST_OWNER=myorg ./scripts/setup-test-fixtures.sh
 ```
+
+### 3.5.1 Onboard Test Strategy
+
+Onboard tests require two distinct setups depending on the input form:
+
+**Local path tests** (`rally onboard .`, `rally onboard ./my-project`): The markdown test runner creates a temporary local git repo (`git init` + `git remote add origin`) for each test file that declares `setup: local-git-repo` in its frontmatter. This is fast and doesn't need network access. The runner handles setup and teardown automatically.
+
+**Remote tests** (`rally onboard owner/repo`, `rally onboard https://github.com/owner/repo`): These use `jsturtevant/rally-test-fixtures` as the target. They are integration tests that require network access and a valid GitHub token. Mark these tests accordingly so CI can gate them behind a network-available flag.
 
 ---
 
@@ -247,15 +257,33 @@ test/e2e/
 The runner is the **only JavaScript file** involved in markdown-driven tests. It must:
 
 1. **Discover** all `.md` files in `test/e2e/cli/`.
-2. **Parse** each file: extract `## \`command\`` headings and their following `` ```expected `` blocks.
-3. **Setup** environment: create a temp `RALLY_HOME` dir with seeded config for each file (or per-test if needed).
-4. **Execute** each command via `execSync`, capturing stdout.
-5. **Fuzzy-compare** actual output against expected:
+2. **Parse frontmatter** — each `.md` file may begin with a YAML frontmatter block declaring its setup type:
+
+   ```markdown
+   ---
+   setup: local-git-repo
+   ---
+   ```
+
+   Supported setup types:
+
+   | Value | Runner behavior |
+   |-------|-----------------|
+   | `local-git-repo` | Creates a temp directory, runs `git init`, adds a dummy commit, and sets `git remote add origin https://github.com/jsturtevant/rally-test-fixtures.git`. Tests in this file run with `cwd` set to the temp repo. |
+   | `seeded-config` | Creates a temp `RALLY_HOME` with a pre-populated `projects.yaml` containing one onboarded project (already planned for status/dashboard tests). |
+   | `none` *(default)* | No setup — runner only creates a bare temp `RALLY_HOME`. |
+
+   **No test logic lives in the markdown.** The frontmatter is declarative metadata; the runner owns all setup/teardown code.
+
+3. **Parse test cases** — extract `## \`command\`` headings and their following `` ```expected `` blocks.
+4. **Setup** environment per the frontmatter type (see above).
+5. **Execute** each command via `execSync`, capturing stdout.
+6. **Fuzzy-compare** actual output against expected:
    - Normalize whitespace (collapse runs, trim lines).
    - Ignore trailing newlines.
    - Comparison is line-by-line after normalization — not a raw string equality check.
-6. **Report** results using Node's built-in test runner (`node:test`) so it integrates with `node --test`.
-7. **Cleanup** temp dirs after each file.
+7. **Report** results using Node's built-in test runner (`node:test`) so it integrates with `node --test`.
+8. **Cleanup** temp dirs after each file.
 
 ```javascript
 // Pseudocode sketch of runner.js
@@ -467,26 +495,40 @@ Commands:
 
 #### `rally onboard .`
 
-Onboards the current directory. Requires integration test — modifies filesystem (symlinks, `.git/info/exclude`) and writes to `projects.yaml`.
+Onboards the current directory (local path form). Requires `setup: local-git-repo` — the runner creates a temp git repo with a remote pointing to the fixture repo. Modifies filesystem (symlinks, `.git/info/exclude`) and writes to `projects.yaml`.
+
+*(Requires runner setup support)*
 
 ```expected
 ✓ Updated .git/info/exclude
 ```
 
-#### `rally onboard --team myteam .`
+#### `rally onboard jsturtevant/rally-test-fixtures`
 
-Onboards with an explicit team name, skipping the interactive prompt. Requires integration test — modifies filesystem.
+Onboards by owner/repo shorthand (remote form). Integration test — needs network access to resolve the repo on GitHub. Uses the shared fixture repo as the onboard target.
 
 ```expected
 ✓ Updated .git/info/exclude
 ```
 
-#### `rally onboard --fork owner/repo .`
+#### `rally onboard --team default .`
 
-Onboards with a fork configuration. Requires integration test — modifies git remotes (`origin`, `upstream`).
+Onboards with an explicit team name, skipping the interactive prompt. Requires `setup: local-git-repo`.
+
+*(Requires runner setup support)*
 
 ```expected
-✓ Updated origin → https://github.com/owner/repo.git
+✓ Updated .git/info/exclude
+```
+
+#### `rally onboard --fork jsturtevant/rally-test-fixtures .`
+
+Onboards with a fork configuration. Requires `setup: local-git-repo`. Modifies git remotes (`origin`, `upstream`).
+
+*(Requires runner setup support)*
+
+```expected
+✓ Updated origin → https://github.com/jsturtevant/rally-test-fixtures.git
 ✓ Updated .git/info/exclude
 ```
 
@@ -507,6 +549,16 @@ Arguments:
 Options:
   --yes       Skip confirmation prompt
   -h, --help  display help for command
+```
+
+#### `rally onboard remove --yes <project>`
+
+Removes a previously onboarded project, skipping the confirmation prompt. Requires a project to be onboarded first — use `setup: seeded-config` or chain after an `onboard .` test.
+
+*(Requires runner setup support)*
+
+```expected
+✓ Removed
 ```
 
 ### rally status

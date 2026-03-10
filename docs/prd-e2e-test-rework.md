@@ -55,7 +55,6 @@ Three shared modules in `test/harness/`:
 | `dispatch continue` | ⚠️ Partial | Journey test exists, not in CI |
 | `dispatch log` | ⚠️ Partial | Journey test exists, not in CI |
 | `dispatch refresh` | ❌ Missing | No e2e coverage (only dashboard `r` key) |
-| `dispatch continue` | ⚠️ Partial | Journey test exists, not in CI |
 | Dashboard keyboard nav | ⚠️ Partial | Journey tests exist, not in CI |
 | Dashboard display/layout | ⚠️ Partial | Journey tests exist, not in CI |
 | Visual regression | ⚠️ Built | Infrastructure exists (`snapshots.js`), baselines taken but not asserted in CI |
@@ -247,10 +246,21 @@ test/e2e/
 │   ├── onboard.md         ← onboard commands
 │   ├── status.md          ← status, status --json
 │   ├── dispatch.md        ← dispatch issue, dispatch clean, etc.
-│   └── dashboard.md       ← dashboard --json
-├── cli/                   ← (existing PTY tests remain as .test.js for now)
-└── journeys/              ← (existing journey tests remain as .test.js for now)
+│   ├── dashboard.md       ← dashboard --json
+│   ├── help.test.js       ← (existing PTY tests remain)
+│   ├── onboard.test.js
+│   ├── sessions.test.js
+│   └── status.test.js
+├── journeys/              ← (existing journey tests remain as .test.js for now)
+│   ├── actions/
+│   ├── dispatch/
+│   ├── display/
+│   ├── lifecycle/
+│   └── navigation/
+└── harness/               ← (shared test utilities)
 ```
+
+The `.md` files are new markdown-driven tests. Existing `.test.js` files in `cli/` (PTY-based) and all `journeys/` tests remain as-is for now.
 
 ### 4.4 The Runner (`runner.js`)
 
@@ -389,7 +399,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 |----|------|-------------|------|
 | **E13** | **Add `dispatch pr` test cases** to `dispatch.md`. | E8 | S |
 | **E14** | **Add `dispatch refresh` test cases** to `dispatch.md`. | E8 | S |
-| **E16** | **Add `dispatch refresh` test cases** to `dispatch.md`. | E8 | S |
+| **E15** | **Add `dispatch log` test cases** to `dispatch.md`. | E8 | S |
 
 **Size key:** S = < 1 hour, M = 1–3 hours, L = 3–8 hours.
 

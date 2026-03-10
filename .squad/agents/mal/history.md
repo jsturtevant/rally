@@ -728,3 +728,22 @@ Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-0
 **Decision:** Approved for implementation. Phase 1 is minimal (2-line changes per file), Phase 2 adds robustness. All existing tests pass without modification.
 
 **Status:** Posted to GitHub issue #361. Team can begin Phase 1 immediately.
+
+### 2026-03-10 — E2E Test Suite Analysis & PRD
+
+**Task:** Comprehensive analysis of `test/e2e/` directory to draft a rework PRD.
+
+**Key findings:**
+1. **22 of 23 test files never run in CI.** The `test:e2e` script glob `./test/e2e/*.test.js` doesn't recurse into `cli/` or `journeys/` subdirectories. Only `e2e.test.js` executes. This means ~65 of ~71 e2e tests have no CI validation.
+2. **`seedConfig()` is copy-pasted into 16 files.** The shared `e2e-dispatch-fixture.js` exists and provides `createIsolatedConfig()`, but only 7 files use it.
+3. **94 bare `setTimeout` delays** across journey tests. These should use the `waitFor()` method that already exists in the PTY harness.
+4. **Weak assertions** — many tests accept any of 5+ possible strings as a pass condition, making them unable to catch regressions.
+5. **Two competing test styles** coexist: library-level imports (good for dispatch logic) and PTY terminal tests (good for UI). Both valid but should be explicitly separated.
+
+**Deliverable:** `docs/prd-e2e-test-rework.md` — 4-phase plan:
+- Phase 1: Fix the glob, triage failures, update CI (critical, ship first)
+- Phase 2: Extract shared helpers, migrate 16 files, delete monolith
+- Phase 3: Fix assertions, replace setTimeout, standardize cleanup
+- Phase 4: Add missing coverage (dispatch pr, dispatch branch, visual regression)
+
+**Status:** PRD drafted, ready for team review.

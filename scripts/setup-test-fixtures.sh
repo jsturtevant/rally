@@ -85,7 +85,7 @@ Do not close manually."
       --body "This issue is used by Rally e2e tests for multi-dispatch testing.
 
 ## Task
-Confirm multi-dispatch works by saying hi from each agent.
+Just say hi from the squad, tell me who the team is and what agent you are running as. then run a retro with the team and save one new skill and have the scribe record.
 
 Do not close manually."
     echo "  Issue #2 created."

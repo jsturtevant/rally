@@ -187,7 +187,7 @@ RALLY_TEST_OWNER=myorg ./scripts/setup-test-fixtures.sh
 
 Onboard tests require two distinct setups depending on the input form:
 
-**Local path tests** (`rally onboard .`, `rally onboard ./my-project`): The markdown test runner creates a temporary local git repo (`git init` + `git remote add origin`) for each test file that declares `repo: local` in its frontmatter. This is fast and doesn't need network access. The runner handles setup and teardown automatically.
+**Local path tests** (`rally onboard .`): The runner clones `jsturtevant/rally-test-fixtures` into a temp directory for each test file that declares `repo: local` in its frontmatter. Tests then run `rally onboard .` from inside that clone — testing the "I already have a repo cloned" flow. Requires network for the initial clone.
 
 **Remote tests** (`rally onboard owner/repo`, `rally onboard https://github.com/owner/repo`): These use `jsturtevant/rally-test-fixtures` as the target. They are integration tests that require network access and a valid GitHub token. Mark these tests accordingly so CI can gate them behind a network-available flag.
 
@@ -269,7 +269,7 @@ The runner is the **only JavaScript file** involved in markdown-driven tests. It
 
    | `repo:` value | Runner behavior |
    |---------------|-----------------|
-   | `local` | Creates a temp directory, runs `git init`, adds a dummy commit, sets remote to `https://github.com/jsturtevant/rally-test-fixtures.git`. Fast, no network. |
+   | `local` | Clones `jsturtevant/rally-test-fixtures` into a temp directory via `gh repo clone`. Tests run with `cwd` set to that clone. Used for `rally onboard .` tests. |
    | `jsturtevant/rally-test-fixtures` (or any `owner/repo`) | Clones the fixture repo into a temp directory. Requires network. |
    | *(not specified)* | No repo setup — just creates a temp `RALLY_HOME` dir. For `--help`/`--version` tests. |
 
@@ -356,7 +356,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E1** | **Implement `test/e2e/runner.js`** — markdown parser, command executor, fuzzy matcher, `node:test` integration. | None | M |
-| **E2** | **Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (temp git repo) and `repo: owner/repo` (clone) setup per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
+| **E2** | **Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (clone fixture repo into temp dir) and `repo: owner/repo` (no setup — rally clones it) per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
 | **E3** | **Implement fuzzy matching.** Whitespace normalization, line-by-line comparison, clear diff output on failure. | None | S |
 
 ### Phase 2: First Markdown Test File (Proof of Concept)
@@ -504,7 +504,7 @@ Commands:
 
 #### `rally onboard .`
 
-Onboards the current directory (local path form). Requires `repo: local` — the runner creates a temp git repo with a remote pointing to the fixture repo. Modifies filesystem (symlinks, `.git/info/exclude`) and writes to `projects.yaml`.
+Onboards the current directory (local path form). Requires `repo: local` — the runner clones `rally-test-fixtures` into a temp directory first. Modifies filesystem (symlinks, `.git/info/exclude`) and writes to `projects.yaml`.
 
 *(Requires runner setup support)*
 

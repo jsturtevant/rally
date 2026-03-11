@@ -655,3 +655,27 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
   - When `fork` is enabled, Rally auto-detects fork remotes (e.g., via `gh api user`) instead of requiring the user to paste a fork URL.
   - `bin/rally.js` updated to pass fork option through to `onboard()` function
 - **Keyboard patterns:** Uses standard confirm-style input (y/n, Enter to accept default); Escape goes back one step at a time.
+
+### 2026-03-10 — Markdown-Driven E2E Test Runner (Issues #E1, #E2, #E3)
+
+- **Built `test/e2e/runner.js`:** Single-file markdown-driven test runner for CLI-stdout tests. Discovers `.md` files in `test/e2e/cli/`, parses YAML frontmatter + test cases, executes commands sequentially, fuzzy-matches output, reports via `node:test`.
+- **Architecture decisions:**
+  - **Pure Node.js built-ins:** Uses only `node:test`, `node:fs`, `node:path`, `node:child_process`, `node:os`, `node:assert/strict` — zero native dependencies for the runner itself (js-yaml is already a project dep).
+  - **Frontmatter repo setup:** `repo: local` clones `jsturtevant/rally-test-fixtures` (or `$RALLY_TEST_OWNER/rally-test-fixtures` if env var set). `repo: owner/repo` clones that repo. No frontmatter = no repo clone, just temp RALLY_HOME.
+  - **Sequential test execution:** Tests within a markdown file run in order, top to bottom. Earlier tests build state for later tests (e.g., `rally onboard .` runs first, `rally status` runs second and sees the onboarded project). This is the key pattern — tests are ordered steps, not independent units.
+  - **Environment isolation:** Each markdown file gets a fresh temp `RALLY_HOME` directory. Sets `NO_COLOR=1` and `GIT_TERMINAL_PROMPT=0` to suppress colors and git prompts. Cleanup after each file.
+  - **Fuzzy matching:** Split both strings into lines, trim + collapse whitespace, remove empty lines, compare line-by-line with substring matching. On mismatch, reports first divergent line with both actual and expected text for easy debugging.
+  - **Variable substitution:** `$RALLY_HOME` and `$REPO_ROOT` in expected output are replaced with actual temp paths during comparison.
+  - **Smoke tests:** Test cases without an ` ```expected ` block are treated as "command should exit 0" — validates the command runs without checking output.
+- **Command execution:** Extracts args from `## \`rally ...\`` headings, runs via `execFileSync('node', [RALLY_BIN, ...args], { env, cwd })`. The rally binary is at `bin/rally.js`.
+- **Integration with node:test:** Runner IS the test file — `node --test test/e2e/runner.js` discovers and runs all markdown tests. Each `.md` file becomes a `describe()` suite, each command heading becomes an `it()` test.
+- **Graceful no-tests scenario:** If `test/e2e/cli/` doesn't exist or has no `.md` files, runner reports "no .md files found" as a passing test — never fails on missing test files.
+- **Key file paths:**
+  - `test/e2e/runner.js` — the runner (270 lines)
+  - `test/e2e/cli/*.md` — markdown test files (Jayne writes these)
+  - `bin/rally.js` — rally CLI binary (already exists)
+- **Validation:** Tested with `node --test test/e2e/runner.js` — discovers 2 markdown files (help.md, status.md) from Jayne, runs 6 tests, 3 pass. Failures are expected test expectation mismatches (actual CLI output differs from Jayne's expected strings), not runner bugs.
+- **Windows compatibility:** Uses `path.join()` everywhere for cross-platform path handling.
+- **Command parsing:** Simple `.split(/\s+/)` after extracting command from backticks. Args after "rally" are passed to execFileSync.
+- **Pattern for future:** Adding a new CLI test = adding a heading to a markdown file. No JavaScript knowledge required. Test files are also browsable documentation on GitHub.
+

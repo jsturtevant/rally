@@ -94,14 +94,15 @@ function normalizeLine(line) {
 /**
  * Fuzzy match actual output against expected, returning per-line results.
  *
- * Joins all actual output into a single normalized string, then checks that
- * each expected line appears as a substring in order. This handles terminal
- * line wrapping and extra preamble lines in actual output.
+ * Uses a two-pointer scan: walks through actual lines to find each expected
+ * line in order using equality after normalization (trim + collapse whitespace).
+ * Handles terminal line wrapping by joining 2–3 consecutive actual lines.
+ * Extra actual lines (preamble, decorations) are skipped automatically.
  *
  * @param {string} actual
  * @param {string} expected
  * @param {object} vars - variable substitutions
- * @returns {{ results: Array<{ line: string, found: boolean, context: string }>, actualFlat: string }}
+ * @returns {{ results: Array<{ line: string, found: boolean, context: string }>, actualLines: string[] }}
  */
 function fuzzyMatch(actual, expected, vars = {}) {
   // Apply variable substitutions to expected
@@ -110,8 +111,10 @@ function fuzzyMatch(actual, expected, vars = {}) {
     processedExpected = processedExpected.replaceAll(key, value);
   }
 
-  // Collapse actual output into one normalized string (handles line wrapping)
-  const actualFlat = actual.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  const actualLines = actual
+    .split(/\r?\n/)
+    .map(normalizeLine)
+    .filter(line => line.length > 0);
 
   const expectedLines = processedExpected
     .split('\n')
@@ -119,21 +122,48 @@ function fuzzyMatch(actual, expected, vars = {}) {
     .filter(line => line.length > 0);
 
   const results = [];
-  let searchFrom = 0;
+  let a = 0; // actual line pointer
 
   for (const expectedLine of expectedLines) {
-    const idx = actualFlat.indexOf(expectedLine, searchFrom);
-    if (idx === -1) {
-      // Show nearby actual content for context
-      const nearby = actualFlat.slice(Math.max(0, searchFrom - 20), searchFrom + 80);
-      results.push({ line: expectedLine, found: false, context: nearby });
-    } else {
-      searchFrom = idx + expectedLine.length;
-      results.push({ line: expectedLine, found: true, context: '' });
+    let found = false;
+    const searchStart = a;
+
+    while (a < actualLines.length) {
+      // Direct line equality
+      if (actualLines[a] === expectedLine) {
+        results.push({ line: expectedLine, found: true, context: '' });
+        a++;
+        found = true;
+        break;
+      }
+
+      // Try joining consecutive actual lines to handle terminal wrapping
+      for (let n = 2; n <= 3 && a + n - 1 < actualLines.length; n++) {
+        const segment = actualLines.slice(a, a + n);
+        if (segment.join(' ') === expectedLine || segment.join('') === expectedLine) {
+          results.push({ line: expectedLine, found: true, context: '' });
+          a += n;
+          found = true;
+          break;
+        }
+      }
+
+      if (found) break;
+
+      // This actual line doesn't match — skip it (preamble/extra output)
+      a++;
+    }
+
+    if (!found) {
+      // Show nearby actual lines for context
+      const contextStart = Math.max(0, searchStart);
+      const contextEnd = Math.min(actualLines.length, searchStart + 5);
+      const context = actualLines.slice(contextStart, contextEnd).join(' | ');
+      results.push({ line: expectedLine, found: false, context });
     }
   }
 
-  return { results, actualFlat };
+  return { results, actualLines };
 }
 
 /**

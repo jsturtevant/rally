@@ -8,6 +8,7 @@ import yaml from 'js-yaml';
 
 const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
 const CLI_DIR = join(import.meta.dirname, 'cli');
+const VERBOSE = !!process.env.VERBOSE;
 
 /**
  * Parse YAML frontmatter from markdown content
@@ -279,6 +280,12 @@ if (!existsSync(CLI_DIR)) {
             if (expected === null) {
               // Smoke test - command should exit 0
               output = executeCommand(command, rallyHome, repoSetup.cwd);
+              if (VERBOSE) {
+                console.log(`\n── ${command} ──`);
+                console.log(`ACTUAL:\n${output}`);
+                console.log('(no expected block — smoke test)');
+                console.log('MATCH ✓');
+              }
               assert.ok(output !== undefined, 'command should succeed');
             } else {
               // Match against expected output
@@ -290,7 +297,23 @@ if (!existsSync(CLI_DIR)) {
                 '$REPO_ROOT': repoSetup.cwd,
               };
 
-              assertFuzzyMatch(output, expected, vars);
+              if (VERBOSE) {
+                let processedExpected = expected;
+                for (const [key, value] of Object.entries(vars)) {
+                  processedExpected = processedExpected.replaceAll(key, value);
+                }
+                console.log(`\n── ${command} ──`);
+                console.log(`ACTUAL:\n${output}`);
+                console.log(`EXPECTED:\n${processedExpected}`);
+              }
+
+              try {
+                assertFuzzyMatch(output, expected, vars);
+                if (VERBOSE) console.log('MATCH ✓');
+              } catch (err) {
+                if (VERBOSE) console.log(`MISMATCH ✗\n${err.message}`);
+                throw err;
+              }
             }
           });
         }

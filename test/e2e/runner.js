@@ -92,7 +92,7 @@ function normalizeLine(line) {
 }
 
 /**
- * Fuzzy match actual output against expected.
+ * Fuzzy match actual output against expected, returning per-line results.
  *
  * Joins all actual output into a single normalized string, then checks that
  * each expected line appears as a substring in order. This handles terminal
@@ -101,8 +101,9 @@ function normalizeLine(line) {
  * @param {string} actual
  * @param {string} expected
  * @param {object} vars - variable substitutions
+ * @returns {{ results: Array<{ line: string, found: boolean, context: string }>, actualFlat: string }}
  */
-function assertFuzzyMatch(actual, expected, vars = {}) {
+function fuzzyMatch(actual, expected, vars = {}) {
   // Apply variable substitutions to expected
   let processedExpected = expected;
   for (const [key, value] of Object.entries(vars)) {
@@ -117,23 +118,68 @@ function assertFuzzyMatch(actual, expected, vars = {}) {
     .map(normalizeLine)
     .filter(line => line.length > 0);
 
-  // Each expected line must appear as a substring, in order
+  const results = [];
   let searchFrom = 0;
-  for (let i = 0; i < expectedLines.length; i++) {
-    const expectedLine = expectedLines[i];
-    const idx = actualFlat.indexOf(expectedLine, searchFrom);
 
+  for (const expectedLine of expectedLines) {
+    const idx = actualFlat.indexOf(expectedLine, searchFrom);
     if (idx === -1) {
+      // Show nearby actual content for context
+      const nearby = actualFlat.slice(Math.max(0, searchFrom - 20), searchFrom + 80);
+      results.push({ line: expectedLine, found: false, context: nearby });
+    } else {
+      searchFrom = idx + expectedLine.length;
+      results.push({ line: expectedLine, found: true, context: '' });
+    }
+  }
+
+  return { results, actualFlat };
+}
+
+/**
+ * Assert fuzzy match — throws on first missing line.
+ *
+ * @param {string} actual
+ * @param {string} expected
+ * @param {object} vars - variable substitutions
+ */
+function assertFuzzyMatch(actual, expected, vars = {}) {
+  const { results } = fuzzyMatch(actual, expected, vars);
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (!r.found) {
       assert.fail(
-        `Expected line ${i + 1} not found in actual output (searching from position ${searchFrom}):\n` +
-        `Expected (substring): "${expectedLine}"\n` +
-        `Actual (flat): "${actualFlat.slice(Math.max(0, searchFrom - 40), searchFrom + 200)}..."`
+        `Expected line ${i + 1} not found in actual output:\n` +
+        `  expected: "${r.line}"\n` +
+        `  near:     "${r.context}..."`
       );
     }
-
-    // Advance past this match to enforce ordering
-    searchFrom = idx + expectedLine.length;
   }
+}
+
+/**
+ * Format a compact diff between expected and actual output.
+ * Shows each expected line with ✓ (found) or ✗ (missing), plus context for misses.
+ *
+ * @param {string} actual
+ * @param {string} expected
+ * @param {object} vars - variable substitutions
+ * @returns {string}
+ */
+function formatDiff(actual, expected, vars = {}) {
+  const { results } = fuzzyMatch(actual, expected, vars);
+  const lines = [];
+
+  for (const r of results) {
+    if (r.found) {
+      lines.push(`  ✓ ${r.line}`);
+    } else {
+      lines.push(`  ✗ ${r.line}`);
+      lines.push(`    actual near: "${r.context}..."`);
+    }
+  }
+
+  return lines.join('\n');
 }
 
 /**
@@ -298,20 +344,24 @@ if (!existsSync(CLI_DIR)) {
               };
 
               if (VERBOSE) {
-                let processedExpected = expected;
-                for (const [key, value] of Object.entries(vars)) {
-                  processedExpected = processedExpected.replaceAll(key, value);
-                }
                 console.log(`\n── ${command} ──`);
                 console.log(`ACTUAL:\n${output}`);
-                console.log(`EXPECTED:\n${processedExpected}`);
+                console.log(`DIFF (expected vs actual):`);
+                console.log(formatDiff(output, expected, vars));
               }
 
               try {
                 assertFuzzyMatch(output, expected, vars);
                 if (VERBOSE) console.log('MATCH ✓');
               } catch (err) {
-                if (VERBOSE) console.log(`MISMATCH ✗\n${err.message}`);
+                if (VERBOSE) {
+                  console.log(`MISMATCH ✗\n${err.message}`);
+                } else {
+                  console.log(`\n── ${command} ──`);
+                  console.log(`ACTUAL:\n${output}`);
+                  console.log(`DIFF (expected vs actual):`);
+                  console.log(formatDiff(output, expected, vars));
+                }
                 throw err;
               }
             }

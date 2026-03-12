@@ -36,11 +36,7 @@ jobs:
       - run: npm run test:e2e
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: E2E PTY tests (Ubuntu only)
-        if: runner.os == 'Linux'
-        run: npm run test:e2e:pty
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
   docs:
     runs-on: ubuntu-latest

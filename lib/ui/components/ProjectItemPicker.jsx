@@ -27,6 +27,10 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
       setError(`Invalid repo format: "${project.repo || project.name}". Expected "owner/repo".`);
       return;
     }
+    setError(null);
+    setData(null);
+    setWarnings([]);
+    setSelectedIndex(0);
     const w = [];
     let issues = [];
     let prs = [];
@@ -108,7 +112,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
             <Text bold>{repo}</Text>
           </Box>
           {warnings.length > 0
-            ? warnings.map((w, i) => <Text key={i} color="yellow">⚠ {w}</Text>)
+            ? warnings.map((w) => <Text key={w} color="yellow">⚠ {w}</Text>)
             : <Text dimColor>No open issues or pull requests</Text>
           }
           <Box marginTop={1}>
@@ -135,7 +139,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
           <Text> — select an issue, PR, or start a new branch</Text>
         </Box>
 
-        {warnings.map((w, i) => <Text key={`warn-${i}`} color="yellow">⚠ {w}</Text>)}
+        {warnings.map((w) => <Text key={w} color="yellow">⚠ {w}</Text>)}
 
         <Box>
           <Text color="cyan">{selectedIndex === newBranchIdx ? '❯ ' : '  '}</Text>

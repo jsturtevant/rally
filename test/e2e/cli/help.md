@@ -28,5 +28,5 @@ Commands:
 Prints the installed version number.
 
 ```expected
-$RALLY_VERSION
+0.1.0
 ```

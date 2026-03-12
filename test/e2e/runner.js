@@ -11,11 +11,6 @@ const CLI_DIR = join(import.meta.dirname, 'cli');
 const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
 const DEFAULT_TIMEOUT = 30_000;
 
-// Read version from package.json
-const packageJsonPath = join(import.meta.dirname, '..', '..', 'package.json');
-const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-const RALLY_VERSION = packageJson.version;
-
 /**
  * Parse YAML frontmatter from markdown content
  * @param {string} content - markdown file content
@@ -408,7 +403,6 @@ if (!existsSync(CLI_DIR)) {
                 '$REPO_ROOT': repoSetup.cwd,
                 '$RALLY_HOME_JSON': rallyHome.replace(/\\/g, '\\\\'),
                 '$REPO_ROOT_JSON': repoSetup.cwd.replace(/\\/g, '\\\\'),
-                '$RALLY_VERSION': RALLY_VERSION,
               };
 
               if (VERBOSE) {

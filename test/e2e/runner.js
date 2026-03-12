@@ -115,7 +115,7 @@ function fuzzyMatch(actual, expected, vars = {}) {
   // Normalize path separators for cross-platform comparison
   // Replace backslashes with forward slashes, then collapse consecutive forward slashes
   // (but preserve :// for protocol prefixes like https://)
-  const normalizePaths = (str) => str.replace(/\\/g, '/').replace(/(?<!:)\/\//g, '/');
+  const normalizePaths = (str) => str.replace(/\\\\/g, '/').replace(/\\/g, '/');
   processedExpected = normalizePaths(processedExpected);
   actual = normalizePaths(actual);
 

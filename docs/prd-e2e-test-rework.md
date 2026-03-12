@@ -374,7 +374,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E4** | **✅ Write `test/e2e/cli/help.md`** with test cases for `rally --help` and `rally --version`. Validate that `node --test test/e2e/runner.js` discovers and passes them. | E1 | S |
-| **E5** | **✅ Write `test/e2e/cli/status.md`** — first runs `rally onboard .` to create project state, then tests `rally status` and `rally status --json`. Validates sequential test execution model. | E1, E2 | S |
+| **E5** | **✅ Write `test/e2e/cli/status.md`** — Tests `rally status` commands in a fresh environment with no onboarded projects. Validates basic CLI functionality without repo setup. | E1, E2 | S |
 
 ### Phase 3: Convert Existing CLI Tests to Markdown
 

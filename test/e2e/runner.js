@@ -113,7 +113,9 @@ function fuzzyMatch(actual, expected, vars = {}) {
   }
 
   // Normalize path separators for cross-platform comparison
-  const normalizePaths = (str) => str.replace(/\\/g, '/');
+  // Replace backslashes with forward slashes, then collapse consecutive forward slashes
+  // (but preserve :// for protocol prefixes like https://)
+  const normalizePaths = (str) => str.replace(/\\/g, '/').replace(/(?<!:)\/\//g, '/');
   processedExpected = normalizePaths(processedExpected);
   actual = normalizePaths(actual);
 
@@ -247,8 +249,12 @@ function setupRepo(rallyHome, frontmatter) {
       execFileSync('gh', ['auth', 'status'], {
         encoding: 'utf8',
         stdio: 'pipe',
+        timeout: 30_000,
       });
     } catch (err) {
+      if (err.code === 'ENOENT') {
+        throw new Error(`gh not installed. Install GitHub CLI from https://cli.github.com`);
+      }
       throw new Error(`gh not authenticated. Run 'gh auth login' to authenticate.`);
     }
 
@@ -259,6 +265,7 @@ function setupRepo(rallyHome, frontmatter) {
       execFileSync('gh', ['repo', 'clone', ownerRepo, repoDir], {
         encoding: 'utf8',
         stdio: 'pipe',
+        timeout: 30_000,
         env: {
           ...process.env,
           GIT_TERMINAL_PROMPT: '0',
@@ -394,11 +401,13 @@ if (!existsSync(CLI_DIR)) {
               assert.ok(output !== undefined, 'command should succeed');
             } else {
               // Match against expected output
+              let exitCode = 0;
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd);
               } catch (err) {
-                // Command exited non-zero - use captured output for matching
+                // Command exited non-zero - capture output and exit code
                 output = err.output || '';
+                exitCode = err.status || err.code || 1;
                 // Don't throw yet - let fuzzy match run against the output
               }
 
@@ -410,6 +419,9 @@ if (!existsSync(CLI_DIR)) {
 
               if (VERBOSE) {
                 console.log(`\n── ${command} ──`);
+                if (exitCode !== 0) {
+                  console.log(`⚠️  Command exited with code ${exitCode}`);
+                }
                 console.log(`ACTUAL:\n${output}`);
                 console.log(`DIFF (expected vs actual):`);
                 console.log(formatDiff(output, expected, vars));

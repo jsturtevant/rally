@@ -661,7 +661,7 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Built `test/e2e/runner.js`:** Single-file markdown-driven test runner for CLI-stdout tests. Discovers `.md` files in `test/e2e/cli/`, parses YAML frontmatter + test cases, executes commands sequentially, fuzzy-matches output, reports via `node:test`.
 - **Architecture decisions:**
   - **Pure Node.js built-ins:** Uses only `node:test`, `node:fs`, `node:path`, `node:child_process`, `node:os`, `node:assert/strict` — zero native dependencies for the runner itself (js-yaml is already a project dep).
-  - **Frontmatter repo setup:** `repo: local` clones `jsturtevant/rally-test-fixtures` (or `$RALLY_TEST_OWNER/rally-test-fixtures` if env var set). `repo: owner/repo` clones that repo. No frontmatter = no repo clone, just temp RALLY_HOME.
+  - **Frontmatter repo setup:** `repo: local` clones `jsturtevant/rally-test-fixtures` (or `$RALLY_TEST_OWNER/rally-test-fixtures` if env var set). `repo: owner/repo` creates a temp dir without cloning (rally handles cloning). No frontmatter = no repo clone, just temp RALLY_HOME.
   - **Sequential test execution:** Tests within a markdown file run in order, top to bottom. Earlier tests build state for later tests (e.g., `rally onboard .` runs first, `rally status` runs second and sees the onboarded project). This is the key pattern — tests are ordered steps, not independent units.
   - **Environment isolation:** Each markdown file gets a fresh temp `RALLY_HOME` directory. Sets `NO_COLOR=1` and `GIT_TERMINAL_PROMPT=0` to suppress colors and git prompts. Cleanup after each file.
   - **Fuzzy matching:** Normalized line equality with line-joining for wrapping. Split both strings into lines, trim + collapse whitespace, remove empty lines, compare line-by-line. Handles terminal line wrapping by joining 2-3 consecutive actual lines. On mismatch, reports first divergent line with both actual and expected text for easy debugging.
@@ -694,3 +694,25 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **JSX/JS compilation flow:** The `.js` files in `lib/ui/components/` are compiled outputs from `.jsx` sources via `test/build-jsx.mjs` (esbuild). Always edit the `.jsx` and rebuild — never edit the `.js` directly.
 - **PR review thread resolution:** Use `gh api graphql` with `resolveReviewThread` mutation and thread node IDs (PRRT_* format). Reply to comments first via REST (`/comments/{id}/replies`), then resolve via GraphQL.
 - **External contributor PRs:** `gh pr checkout` sets up tracking to the fork remote, so `git push` goes to the contributor's fork branch directly.
+- **Boolean environment variable parsing:** `!!process.env.VAR` treats any non-empty string as truthy, including `"0"` and `"false"`. Correct pattern: `typeof process.env.VAR === 'string' && /^(1|true|yes)$/i.test(process.env.VAR.trim())`.
+- **Windows path escaping in JSON:** JSON output on Windows contains backslashes that are automatically escaped by JSON.stringify (single `\` becomes `\\`). For cross-platform tests, provide both regular and JSON-escaped path variables (`$VAR` and `$VAR_JSON`) so test authors can choose the right one.
+- **Non-zero exit code testing:** Commands that exit non-zero throw in execFileSync. To test error output, catch the error and extract `err.stdout + err.stderr` before matching against expected. Only throw if there's no expected block (smoke test that requires success).
+- **process.execPath vs 'node':** Always use `process.execPath` instead of hardcoded `'node'` to ensure the test runs with the same Node.js binary that invoked the test runner.
+- **GraphQL mutation batching:** Can resolve multiple review threads with a simple bash loop over thread IDs. Each mutation completes in ~300ms, so 10 threads resolve in ~3 seconds total.
+
+### 2026-03-11 — PR #411 Review Feedback (All 10 Comments)
+
+- **Addressed all 10 Copilot review comments** on PR #411 (markdown-driven E2E test runner).
+- **Fix 1 — VERBOSE parsing:** Changed `!!process.env.VERBOSE` to regex test for `1|true|yes` (case-insensitive). Avoids treating `VERBOSE=0` as truthy.
+- **Fix 2 — repo: owner/repo semantics:** Changed to only clone for `repo: local`. For `owner/repo` values, create temp dir without cloning (rally handles it).
+- **Fix 3 — gh auth guard:** Added `gh auth status` check before cloning. Throws clear error if not authenticated instead of cryptic clone failure.
+- **Fix 4 — process.execPath + timeout:** Changed `'node'` to `process.execPath` and added `timeout: DEFAULT_TIMEOUT` (30s) to execFileSync.
+- **Fix 5 — Non-zero exit testing:** Wrapped executeCommand in try-catch when `expected` block exists, use `err.stdout + err.stderr` for matching. Only throw if no expected (smoke test).
+- **Fix 6 — Version variable:** Added `$RALLY_VERSION` that reads from package.json. Updated help.md to use it instead of hardcoded `0.1.0`.
+- **Fix 7 — JSON path escaping:** Added `$RALLY_HOME_JSON` and `$REPO_ROOT_JSON` that escape backslashes for Windows JSON output. On Linux they're identical to the regular variants.
+- **Fix 8 — Misleading log:** Changed "creating it" to "skipping markdown tests" — runner doesn't create the directory.
+- **Fix 9 — Jayne's history:** Updated to reflect that status.md has no frontmatter and no `rally onboard .` step.
+- **Fix 10 — Kaylee's history:** Changed "substring matching" to "normalized line equality with line-joining for wrapping" — more accurate description of the fuzzy matcher.
+- **All tests pass** after changes: 5 tests in 2 files (help.md, status.md), all green.
+- **GitHub workflow:** Replied to all 10 review threads via GraphQL mutation, then resolved all threads. Each thread got a ✅ checkmark reply.
+- **Decision file:** Created `.squad/decisions/inbox/kaylee-pr411-feedback.md` with 8 decisions about environment variable parsing, repo setup semantics, cross-platform paths, non-zero exit testing, process.execPath, timeouts, dynamic version, and auth preflight.

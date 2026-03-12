@@ -667,7 +667,7 @@ Wrote the first two markdown test files for the new E2E test format (PRD: docs/p
 **Format rules:**
 - `## \`command\`` heading = exact CLI command to execute
 - Prose between heading and code block = human description (ignored by runner)
-- \`\`\`expected code block = expected stdout (fuzzy substring match)
+- \`\`\`expected code block = expected stdout (normalized equality with line-joining)
 - No expected block = smoke test (command should exit 0)
 - Tests run sequentially top to bottom — earlier tests build state
 - Frontmatter: `repo: local` = clone rally-test-fixtures into temp dir first

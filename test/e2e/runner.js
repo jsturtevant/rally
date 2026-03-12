@@ -112,6 +112,11 @@ function fuzzyMatch(actual, expected, vars = {}) {
     processedExpected = processedExpected.replaceAll(key, value);
   }
 
+  // Normalize path separators for cross-platform comparison
+  const normalizePaths = (str) => str.replace(/\\/g, '/');
+  processedExpected = normalizePaths(processedExpected);
+  actual = normalizePaths(actual);
+
   const actualLines = actual
     .split(/\r?\n/)
     .map(normalizeLine)
@@ -401,8 +406,6 @@ if (!existsSync(CLI_DIR)) {
               const vars = {
                 '$RALLY_HOME': rallyHome,
                 '$REPO_ROOT': repoSetup.cwd,
-                '$RALLY_HOME_JSON': rallyHome.replace(/\\/g, '\\\\'),
-                '$REPO_ROOT_JSON': repoSetup.cwd.replace(/\\/g, '\\\\'),
               };
 
               if (VERBOSE) {

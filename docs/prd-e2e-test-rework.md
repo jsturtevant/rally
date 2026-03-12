@@ -365,16 +365,16 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E1** | **Implement `test/e2e/runner.js`** — markdown parser, command executor, fuzzy matcher, `node:test` integration. | None | M |
-| **E2** | **Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (clone fixture repo into temp dir) and `repo: owner/repo` (no setup — rally clones it) per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
-| **E3** | **Implement fuzzy matching.** Whitespace normalization, line-by-line comparison, clear diff output on failure. | None | S |
+| **E1** | **✅ Implement `test/e2e/runner.js`** — markdown parser, command executor, fuzzy matcher, `node:test` integration. | None | M |
+| **E2** | **✅ Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (clone fixture repo into temp dir) and `repo: owner/repo` (no setup — rally clones it) per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
+| **E3** | **✅ Implement fuzzy matching.** Whitespace normalization, line-by-line comparison, clear diff output on failure. | None | S |
 
 ### Phase 2: First Markdown Test File (Proof of Concept)
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E4** | **Write `test/e2e/cli/help.md`** with test cases for `rally --help` and `rally --version`. Validate that `node --test test/e2e/runner.js` discovers and passes them. | E1 | S |
-| **E5** | **Write `test/e2e/cli/status.md`** — first runs `rally onboard .` to create project state, then tests `rally status` and `rally status --json`. Validates sequential test execution model. | E1, E2 | S |
+| **E4** | **✅ Write `test/e2e/cli/help.md`** with test cases for `rally --help` and `rally --version`. Validate that `node --test test/e2e/runner.js` discovers and passes them. | E1 | S |
+| **E5** | **✅ Write `test/e2e/cli/status.md`** — Tests `rally status` commands in a fresh environment with no onboarded projects. Validates basic CLI functionality without repo setup. | E1, E2 | S |
 
 ### Phase 3: Convert Existing CLI Tests to Markdown
 
@@ -389,9 +389,9 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E10** | **Fix the `test:e2e` script.** Replace the broken glob (`./test/e2e/*.test.js`) with `node --test test/e2e/runner.js`. | E4 | S |
+| **E10** | **✅ Fix the `test:e2e` script.** Runs both `test/e2e/runner.js` (markdown tests) and `./test/e2e/e2e.test.js` (existing monolith) until monolith is retired in E9. | E4 | S |
 | **E11** | **Add `test:e2e:pty` script** for existing PTY/journey tests. Run on Ubuntu-only in CI. Fix the glob to actually discover `cli/*.test.js` and `journeys/**/*.test.js`. | None | S |
-| **E12** | **Update CI workflow** to run `test:e2e` (markdown tests, all platforms) and `test:e2e:pty` (PTY tests, Ubuntu-only). | E10, E11 | S |
+| **E12** | **✅ Update CI workflow** to run `test:e2e` (markdown + monolith tests, all platforms). PTY test wiring deferred. | E10 | S |
 
 ### Phase 5: Expand Coverage to Untested Commands
 

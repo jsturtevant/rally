@@ -655,3 +655,79 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
   - When `fork` is enabled, Rally auto-detects fork remotes (e.g., via `gh api user`) instead of requiring the user to paste a fork URL.
   - `bin/rally.js` updated to pass fork option through to `onboard()` function
 - **Keyboard patterns:** Uses standard confirm-style input (y/n, Enter to accept default); Escape goes back one step at a time.
+
+### 2026-03-10 — Markdown-Driven E2E Test Runner (Issues #E1, #E2, #E3)
+
+- **Built `test/e2e/runner.js`:** Single-file markdown-driven test runner for CLI-stdout tests. Discovers `.md` files in `test/e2e/cli/`, parses YAML frontmatter + test cases, executes commands sequentially, fuzzy-matches output, reports via `node:test`.
+- **Architecture decisions:**
+  - **Pure Node.js built-ins:** Uses only `node:test`, `node:fs`, `node:path`, `node:child_process`, `node:os`, `node:assert/strict` — zero native dependencies for the runner itself (js-yaml is already a project dep).
+  - **Frontmatter repo setup:** `repo: local` clones `jsturtevant/rally-test-fixtures` (or `$RALLY_TEST_OWNER/rally-test-fixtures` if env var set). `repo: owner/repo` creates a temp dir without cloning (rally handles cloning). No frontmatter = no repo clone, just temp RALLY_HOME.
+  - **Sequential test execution:** Tests within a markdown file run in order, top to bottom. Earlier tests build state for later tests (e.g., `rally onboard .` runs first, `rally status` runs second and sees the onboarded project). This is the key pattern — tests are ordered steps, not independent units.
+  - **Environment isolation:** Each markdown file gets a fresh temp `RALLY_HOME` directory. Sets `NO_COLOR=1` and `GIT_TERMINAL_PROMPT=0` to suppress colors and git prompts. Cleanup after each file.
+  - **Fuzzy matching:** Normalized line equality with line-joining for wrapping. Split both strings into lines, trim + collapse whitespace, remove empty lines, compare line-by-line. Handles terminal line wrapping by joining 2-3 consecutive actual lines. On mismatch, reports first divergent line with both actual and expected text for easy debugging.
+  - **Variable substitution:** `$RALLY_HOME` and `$REPO_ROOT` in expected output are replaced with actual temp paths during comparison.
+  - **Smoke tests:** Test cases without an ` ```expected ` block are treated as "command should exit 0" — validates the command runs without checking output.
+- **Command execution:** Extracts args from `## \`rally ...\`` headings, runs via `execFileSync('node', [RALLY_BIN, ...args], { env, cwd })`. The rally binary is at `bin/rally.js`.
+- **Integration with node:test:** Runner IS the test file — `node --test test/e2e/runner.js` discovers and runs all markdown tests. Each `.md` file becomes a `describe()` suite, each command heading becomes an `it()` test.
+- **Graceful no-tests scenario:** If `test/e2e/cli/` doesn't exist, runner reports "no .md files found" as a passing test. If the directory exists but contains no `.md` files, the test fails with "No markdown test specs found".
+- **Key file paths:**
+  - `test/e2e/runner.js` — the runner
+  - `test/e2e/cli/*.md` — markdown test files (Jayne writes these)
+  - `bin/rally.js` — rally CLI binary (already exists)
+- **Validation:** Tested with `node --test test/e2e/runner.js` — discovers 2 markdown files (help.md, status.md) from Jayne, runs 6 tests, 3 pass. Failures are expected test expectation mismatches (actual CLI output differs from Jayne's expected strings), not runner bugs.
+- **Windows compatibility:** Uses `path.join()` everywhere for cross-platform path handling.
+- **Command parsing:** Simple `.split(/\s+/)` after extracting command from backticks. Args after "rally" are passed to execFileSync.
+- **Pattern for future:** Adding a new CLI test = adding a heading to a markdown file. No JavaScript knowledge required. Test files are also browsable documentation on GitHub.
+
+
+### 2026-03-12 — PR #407 Review Comment Fixes (ProjectItemPicker)
+
+- **Addressed 4 Copilot review threads** on external contributor PR #407 (dblnz/rally).
+- **Fix 1 — Error state never reset:** Added `setError(null)`, `setData(null)`, `setWarnings([])`, `setSelectedIndex(0)` at the start of the useEffect when `repo` is valid. Previously, if project prop changed from invalid→valid repo, the component stayed stuck on the error screen.
+- **Fix 2 — Array index as React key:** Changed `warnings.map((w, i) => <Text key={i}>)` to `warnings.map((w) => <Text key={w}>)` in both the empty-state and main render paths. Warning strings are unique, so they serve as stable keys for React reconciliation.
+- **Build process:** Only edited `.jsx` source, then ran `node test/build-jsx.mjs` to regenerate the compiled `.js` file. Both files are committed together.
+- **All 11 ProjectItemPicker tests pass** after the changes.
+- **Workflow:** `gh pr checkout 407` → edit .jsx → rebuild .js → test → commit → push → reply to 4 review comments → resolve 4 threads via GraphQL → `git checkout feat/e2e-test-rework`.
+
+## Learnings
+
+- **JSX/JS compilation flow:** The `.js` files in `lib/ui/components/` are compiled outputs from `.jsx` sources via `test/build-jsx.mjs` (esbuild). Always edit the `.jsx` and rebuild — never edit the `.js` directly.
+- **PR review thread resolution:** Use `gh api graphql` with `resolveReviewThread` mutation and thread node IDs (PRRT_* format). Reply to comments first via REST (`/comments/{id}/replies`), then resolve via GraphQL.
+- **External contributor PRs:** `gh pr checkout` sets up tracking to the fork remote, so `git push` goes to the contributor's fork branch directly.
+- **Boolean environment variable parsing:** `!!process.env.VAR` treats any non-empty string as truthy, including `"0"` and `"false"`. Correct pattern: `typeof process.env.VAR === 'string' && /^(1|true|yes)$/i.test(process.env.VAR.trim())`.
+- **Windows path escaping in JSON:** JSON output on Windows contains backslashes that are automatically escaped by JSON.stringify (single `\` becomes `\\`). For cross-platform tests, provide both regular and JSON-escaped path variables (`$VAR` and `$VAR_JSON`) so test authors can choose the right one.
+- **Non-zero exit code testing:** Commands that exit non-zero throw in execFileSync. To test error output, catch the error and extract `err.stdout + err.stderr` before matching against expected. Only throw if there's no expected block (smoke test that requires success).
+- **process.execPath vs 'node':** Always use `process.execPath` instead of hardcoded `'node'` to ensure the test runs with the same Node.js binary that invoked the test runner.
+- **GraphQL mutation batching:** Can resolve multiple review threads with a simple bash loop over thread IDs. Each mutation completes in ~300ms, so 10 threads resolve in ~3 seconds total.
+
+### 2026-03-11 — PR #411 Review Feedback (All 10 Comments)
+
+- **Addressed all 10 Copilot review comments** on PR #411 (markdown-driven E2E test runner).
+- **Fix 1 — VERBOSE parsing:** Changed `!!process.env.VERBOSE` to regex test for `1|true|yes` (case-insensitive). Avoids treating `VERBOSE=0` as truthy.
+- **Fix 2 — repo: owner/repo semantics:** Changed to only clone for `repo: local`. For `owner/repo` values, create temp dir without cloning (rally handles it).
+- **Fix 3 — gh auth guard:** Added `gh auth status` check before cloning. Throws clear error if not authenticated instead of cryptic clone failure.
+- **Fix 4 — process.execPath + timeout:** Changed `'node'` to `process.execPath` and added `timeout: DEFAULT_TIMEOUT` (30s) to execFileSync.
+- **Fix 5 — Non-zero exit testing:** Wrapped executeCommand in try-catch when `expected` block exists, use `err.stdout + err.stderr` for matching. Only throw if no expected (smoke test).
+- **Fix 6 — Version pinning:** Kept version hardcoded in test specs (not using a variable). This ensures test failures force specs to stay current on version bumps.
+- **Fix 7 — Path variables:** Test runner provides `$RALLY_HOME` and `$REPO_ROOT` environment variables. No JSON-escaped variants needed — the normalizer handles cross-platform path comparison.
+- **Fix 8 — Misleading log:** Changed "creating it" to "skipping markdown tests" — runner doesn't create the directory.
+- **Fix 9 — Jayne's history:** Updated to reflect that status.md has no frontmatter and no `rally onboard .` step.
+- **Fix 10 — Kaylee's history:** Changed "substring matching" to "normalized line equality with line-joining for wrapping" — more accurate description of the fuzzy matcher.
+- **All tests pass** after changes: 5 tests in 2 files (help.md, status.md), all green.
+- **GitHub workflow:** Replied to all 10 review threads via GraphQL mutation, then resolved all threads. Each thread got a ✅ checkmark reply.
+- **Decision file:** Created `.squad/decisions/inbox/kaylee-pr411-feedback.md` with 8 decisions about environment variable parsing, repo setup semantics, cross-platform paths, non-zero exit testing, process.execPath, timeouts, dynamic version, and auth preflight.
+
+### 2026-03-12 — PR #411 Windows CI Fix + Review Comments
+
+- **Fixed Windows double-slash bug:** The path normalizer replaced `\` with `/`, but JSON output from CLI contains escaped backslashes as `\\` in the JSON string. When the normalizer ran, `\\` became `//` (double forward slash) instead of single `/`. **Solution:** After replacing backslashes with forward slashes, collapse consecutive forward slashes using negative lookbehind to preserve `://` for protocol prefixes: `str.replace(/\\/g, '/').replace(/(?<!:)\/\//g, '/')`.
+- **ENOENT vs auth failure:** Added check for `err.code === 'ENOENT'` in `gh auth status` catch block. Now distinguishes "gh not installed" (with install URL) from "gh not authenticated" (with login instructions).
+- **Timeouts for gh commands:** Added `timeout: 30_000` to both `gh auth status` and `gh repo clone` execFileSync calls to prevent indefinite hangs in CI.
+- **Non-zero exit visibility:** When a command exits non-zero AND an expected block exists, the test still matches output (as intended for testing error messages), but in VERBOSE mode we now log `⚠️ Command exited with code X` to make the exit status visible.
+- **Documentation corrections:**
+  - Fixed Kaylee's history (line 664): Changed "repo: owner/repo clones that repo" to "creates a temp dir without cloning (rally handles cloning)".
+  - Fixed Jayne's history (line 670): Changed "fuzzy substring match" to "normalized equality with line-joining".
+  - Fixed PRD E5 description (line 377): Removed incorrect "first runs `rally onboard .`" text; updated to say "Tests `rally status` commands in a fresh environment with no onboarded projects."
+- **Resolved all 12 unresolved review threads** on PR #411 via GraphQL mutations. Mix of fixes (8 threads) and deferrals/clarifications (4 threads: parseTestCases format, quoted args, runner filename, version pinning).
+- **All E2E tests pass locally** after fixes: 5 tests in 2 files (help.md, status.md), all green.
+
+## Learnings

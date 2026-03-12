@@ -657,3 +657,39 @@ Complete user journey test for dispatching to a GitHub issue through the dashboa
 5. Worktree cleanup must happen via git before temp dir cleanup (same as in e2e.test.js).
 
 **6 tests passing**, 1 skipped (happy path needs GH_TOKEN).
+
+### E2E Test Files — Markdown Test Format
+
+**Created:** `test/e2e/cli/help.md` and `test/e2e/cli/status.md`
+
+Wrote the first two markdown test files for the new E2E test format (PRD: docs/prd-e2e-test-rework.md). These are pure data files — human-readable documentation AND executable test specifications. A runner (being built by Kaylee) will parse and execute them.
+
+**Format rules:**
+- `## \`command\`` heading = exact CLI command to execute
+- Prose between heading and code block = human description (ignored by runner)
+- \`\`\`expected code block = expected stdout (normalized equality with line-joining)
+- No expected block = smoke test (command should exit 0)
+- Tests run sequentially top to bottom — earlier tests build state
+- Frontmatter: `repo: local` = clone rally-test-fixtures into temp dir first
+- Variable placeholders: $RALLY_HOME and $REPO_ROOT substituted by runner
+
+**test/e2e/cli/help.md:**
+- No frontmatter (no repo setup needed)
+- 2 test cases: `rally --help` and `rally --version`
+- Captures actual CLI output from running `node bin/rally.js`
+- Version is hardcoded as 0.1.0 (current package.json version)
+
+**test/e2e/cli/status.md:**
+- No frontmatter (no repo cloning needed)
+- 3 test cases (sequential):
+  1. `rally status --help` — shows usage
+  2. `rally status` — human-readable output
+  3. `rally status --json` — JSON output
+- Expected output uses $RALLY_HOME and $REPO_ROOT placeholders
+- active.yaml shows ✗ (doesn't exist) because no dispatches yet
+
+**Key learnings:**
+1. Real CLI output differs from PRD examples — PRD captured v0.1.0, but CLI may change. Always verify against actual CLI.
+2. JSON output includes more fields than PRD showed (`personalSquad`, `onboarded` timestamp). Used actual output.
+3. RALLY_HOME env var must be set explicitly to create isolated test environment (otherwise picks up user's real config).
+4. Markdown test files are documentation first — they should be readable by humans browsing the repo.

@@ -36,7 +36,7 @@ function parseFrontmatter(content) {
  */
 function parseTestCases(body) {
   const testCases = [];
-  const lines = body.split('\n');
+  const lines = body.split(/\r?\n/);
   let i = 0;
 
   while (i < lines.length) {
@@ -113,8 +113,7 @@ function fuzzyMatch(actual, expected, vars = {}) {
   }
 
   // Normalize path separators for cross-platform comparison
-  // Replace backslashes with forward slashes, then collapse consecutive forward slashes
-  // (but preserve :// for protocol prefixes like https://)
+  // Normalize path separators: replace escaped backslashes (\\) and single backslashes (\) with forward slashes
   const normalizePaths = (str) => str.replace(/\\\\/g, '/').replace(/\\/g, '/');
   processedExpected = normalizePaths(processedExpected);
   actual = normalizePaths(actual);
@@ -366,7 +365,12 @@ if (!existsSync(CLI_DIR)) {
           rallyHome = mkdtempSync(join(tmpdir(), 'rally-test-home-'));
 
           // Setup repo if needed
-          repoSetup = setupRepo(frontmatter);
+          try {
+            repoSetup = setupRepo(frontmatter);
+          } catch (err) {
+            rmSync(rallyHome, { recursive: true, force: true });
+            throw err;
+          }
         });
 
         after(() => {

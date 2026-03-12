@@ -16,6 +16,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [warnings, setWarnings] = useState([]);
 
   const repo = resolveRepo(project);
   const _fi = _fetchIssues || fetchIssues;
@@ -26,13 +27,25 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
       setError(`Invalid repo format: "${project.repo || project.name}". Expected "owner/repo".`);
       return;
     }
+    setError(null);
+    setData(null);
+    setWarnings([]);
+    setSelectedIndex(0);
+    const w = [];
+    let issues = [];
+    let prs = [];
     try {
-      const issues = _fi(repo);
-      const prs = _fp(repo);
-      setData({ issues, prs });
+      issues = _fi(repo);
     } catch (err) {
-      setError(err.message);
+      w.push(err.message);
     }
+    try {
+      prs = _fp(repo);
+    } catch (err) {
+      w.push(err.message);
+    }
+    setWarnings(w);
+    setData({ issues, prs });
   }, [repo, _fi, _fp]);
 
   const items = data
@@ -98,7 +111,10 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
           <Box marginBottom={1}>
             <Text bold>{repo}</Text>
           </Box>
-          <Text dimColor>No open issues or pull requests</Text>
+          {warnings.length > 0
+            ? warnings.map((w) => <Text key={w} color="yellow">⚠ {w}</Text>)
+            : <Text dimColor>No open issues or pull requests</Text>
+          }
           <Box marginTop={1}>
             <Text color="cyan">{selectedIndex === 0 ? '❯ ' : '  '}</Text>
             <Text bold={selectedIndex === 0} color="green">+ Dispatch new branch</Text>
@@ -122,6 +138,8 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
           <Text bold>{repo}</Text>
           <Text> — select an issue, PR, or start a new branch</Text>
         </Box>
+
+        {warnings.map((w) => <Text key={w} color="yellow">⚠ {w}</Text>)}
 
         <Box>
           <Text color="cyan">{selectedIndex === newBranchIdx ? '❯ ' : '  '}</Text>

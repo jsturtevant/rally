@@ -51,21 +51,66 @@ describe('ProjectItemPicker', () => {
     assert.ok(output.includes('Pull Requests'), 'should show Pull Requests header');
   });
 
-  it('shows error state when fetches fail', async () => {
+  it('shows warning and new-branch option when fetches fail', async () => {
     const project = { repo: 'owner/repo' };
     lastInstance = render(
       React.createElement(ProjectItemPicker, {
         project,
         onSelectItem: () => {},
         onBack: () => {},
+        onNewBranch: () => {},
         _fetchIssues: () => { throw new Error('Network error'); },
         _fetchPrs: () => [],
       })
     );
     await delay();
     const output = lastInstance.lastFrame();
-    assert.ok(output.includes('Network error'), 'should show error message');
-    assert.ok(output.includes('Esc back'), 'should show escape hint');
+    assert.ok(output.includes('Network error'), 'should show warning message');
+    assert.ok(output.includes('Dispatch new branch'), 'should still offer new branch option');
+    assert.ok(output.includes('Enter dispatch'), 'should show dispatch hint');
+  });
+
+  it('shows warnings for both fetches failing and still allows branch creation', async () => {
+    let branchRepo = null;
+    const project = { repo: 'owner/repo' };
+    lastInstance = render(
+      React.createElement(ProjectItemPicker, {
+        project,
+        onSelectItem: () => {},
+        onBack: () => {},
+        onNewBranch: (repo) => { branchRepo = repo; },
+        _fetchIssues: () => { throw new Error('Issues disabled'); },
+        _fetchPrs: () => { throw new Error('PR fetch failed'); },
+      })
+    );
+    await delay();
+    const output = lastInstance.lastFrame();
+    assert.ok(output.includes('Issues disabled'), 'should show issues warning');
+    assert.ok(output.includes('PR fetch failed'), 'should show PRs warning');
+    assert.ok(output.includes('Dispatch new branch'), 'should offer new branch option');
+
+    // Select the new-branch option
+    lastInstance.stdin.write('\r');
+    await delay();
+    assert.equal(branchRepo, 'owner/repo', 'should dispatch new branch for correct repo');
+  });
+
+  it('shows PRs with warning when issue fetch fails', async () => {
+    const project = { repo: 'owner/repo' };
+    lastInstance = render(
+      React.createElement(ProjectItemPicker, {
+        project,
+        onSelectItem: () => {},
+        onBack: () => {},
+        _fetchIssues: () => { throw new Error('Issues disabled'); },
+        _fetchPrs: () => SAMPLE_PRS,
+      })
+    );
+    await delay();
+    const output = lastInstance.lastFrame();
+    assert.ok(output.includes('Issues disabled'), 'should show issues warning');
+    assert.ok(output.includes('#10 PR one'), 'should still show PRs');
+    assert.ok(output.includes('Dispatch new branch'), 'should offer new branch option');
   });
 
   it('shows error for invalid repo format', async () => {

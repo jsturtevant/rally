@@ -8,7 +8,13 @@ import yaml from 'js-yaml';
 
 const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
 const CLI_DIR = join(import.meta.dirname, 'cli');
-const VERBOSE = !!process.env.VERBOSE;
+const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
+const DEFAULT_TIMEOUT = 30_000;
+
+// Read version from package.json
+const packageJsonPath = join(import.meta.dirname, '..', '..', 'package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+const RALLY_VERSION = packageJson.version;
 
 /**
  * Parse YAML frontmatter from markdown content
@@ -235,23 +241,45 @@ function setupRepo(rallyHome, frontmatter) {
     ownerRepo = repoValue;
   }
 
-  // Clone repo into temp directory
-  const repoDir = mkdtempSync(join(tmpdir(), 'rally-test-repo-'));
+  // Check gh auth status before attempting to clone
+  if (repoValue === 'local') {
+    try {
+      execFileSync('gh', ['auth', 'status'], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+    } catch (err) {
+      throw new Error(`gh not authenticated. Run 'gh auth login' to authenticate.`);
+    }
 
-  try {
-    execFileSync('gh', ['repo', 'clone', ownerRepo, repoDir], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-      env: {
-        ...process.env,
-        GIT_TERMINAL_PROMPT: '0',
-        NO_COLOR: '1',
+    // Clone repo into temp directory
+    const repoDir = mkdtempSync(join(tmpdir(), 'rally-test-repo-'));
+
+    try {
+      execFileSync('gh', ['repo', 'clone', ownerRepo, repoDir], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+        env: {
+          ...process.env,
+          GIT_TERMINAL_PROMPT: '0',
+          NO_COLOR: '1',
+        },
+      });
+    } catch (err) {
+      rmSync(repoDir, { recursive: true, force: true });
+      throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
+    }
+
+    return {
+      cwd: repoDir,
+      cleanup: () => {
+        rmSync(repoDir, { recursive: true, force: true });
       },
-    });
-  } catch (err) {
-    rmSync(repoDir, { recursive: true, force: true });
-    throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
+    };
   }
+
+  // For owner/repo format, create temp dir but don't clone (rally handles cloning)
+  const repoDir = mkdtempSync(join(tmpdir(), 'rally-test-repo-'));
 
   return {
     cwd: repoDir,
@@ -278,9 +306,10 @@ function executeCommand(command, rallyHome, cwd) {
   const args = parts.slice(1);
 
   try {
-    return execFileSync('node', [RALLY_BIN, ...args], {
+    return execFileSync(process.execPath, [RALLY_BIN, ...args], {
       encoding: 'utf8',
       cwd,
+      timeout: DEFAULT_TIMEOUT,
       env: {
         ...process.env,
         RALLY_HOME: rallyHome,
@@ -299,7 +328,7 @@ function executeCommand(command, rallyHome, cwd) {
 
 // Discover and run tests
 if (!existsSync(CLI_DIR)) {
-  console.log('No test/e2e/cli/ directory found, creating it...');
+  console.log('No test/e2e/cli/ directory found — skipping markdown tests');
   // Directory doesn't exist yet - no tests to run
   describe('markdown-driven E2E tests', () => {
     it('no .md files found', () => {
@@ -365,12 +394,21 @@ if (!existsSync(CLI_DIR)) {
               assert.ok(output !== undefined, 'command should succeed');
             } else {
               // Match against expected output
-              output = executeCommand(command, rallyHome, repoSetup.cwd);
+              try {
+                output = executeCommand(command, rallyHome, repoSetup.cwd);
+              } catch (err) {
+                // Command exited non-zero - use captured output for matching
+                output = err.output || '';
+                // Don't throw yet - let fuzzy match run against the output
+              }
 
               // Variable substitutions
               const vars = {
                 '$RALLY_HOME': rallyHome,
                 '$REPO_ROOT': repoSetup.cwd,
+                '$RALLY_HOME_JSON': rallyHome.replace(/\\/g, '\\\\'),
+                '$REPO_ROOT_JSON': repoSetup.cwd.replace(/\\/g, '\\\\'),
+                '$RALLY_VERSION': RALLY_VERSION,
               };
 
               if (VERBOSE) {

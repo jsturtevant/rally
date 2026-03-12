@@ -680,12 +680,11 @@ Wrote the first two markdown test files for the new E2E test format (PRD: docs/p
 - Version is hardcoded as 0.1.0 (current package.json version)
 
 **test/e2e/cli/status.md:**
-- Frontmatter: `repo: local` (runner clones rally-test-fixtures)
-- 4 test cases (sequential):
+- No frontmatter (no repo cloning needed)
+- 3 test cases (sequential):
   1. `rally status --help` — shows usage
-  2. `rally onboard .` — builds config state for later tests
-  3. `rally status` — human-readable output
-  4. `rally status --json` — JSON output
+  2. `rally status` — human-readable output
+  3. `rally status --json` — JSON output
 - Expected output uses $RALLY_HOME and $REPO_ROOT placeholders
 - active.yaml shows ✗ (doesn't exist) because no dispatches yet
 

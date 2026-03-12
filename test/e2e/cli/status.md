@@ -1,6 +1,6 @@
 # Status Tests
 
-Tests for the `rally status` command in a fresh Rally environment with no onboarded projects.
+Tests for the `rally status` command in a fresh Rally environment with no onboarded projects or active dispatches.
 
 ## `rally status --help`
 

@@ -664,7 +664,7 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
   - **Frontmatter repo setup:** `repo: local` clones `jsturtevant/rally-test-fixtures` (or `$RALLY_TEST_OWNER/rally-test-fixtures` if env var set). `repo: owner/repo` clones that repo. No frontmatter = no repo clone, just temp RALLY_HOME.
   - **Sequential test execution:** Tests within a markdown file run in order, top to bottom. Earlier tests build state for later tests (e.g., `rally onboard .` runs first, `rally status` runs second and sees the onboarded project). This is the key pattern — tests are ordered steps, not independent units.
   - **Environment isolation:** Each markdown file gets a fresh temp `RALLY_HOME` directory. Sets `NO_COLOR=1` and `GIT_TERMINAL_PROMPT=0` to suppress colors and git prompts. Cleanup after each file.
-  - **Fuzzy matching:** Split both strings into lines, trim + collapse whitespace, remove empty lines, compare line-by-line with substring matching. On mismatch, reports first divergent line with both actual and expected text for easy debugging.
+  - **Fuzzy matching:** Normalized line equality with line-joining for wrapping. Split both strings into lines, trim + collapse whitespace, remove empty lines, compare line-by-line. Handles terminal line wrapping by joining 2-3 consecutive actual lines. On mismatch, reports first divergent line with both actual and expected text for easy debugging.
   - **Variable substitution:** `$RALLY_HOME` and `$REPO_ROOT` in expected output are replaced with actual temp paths during comparison.
   - **Smoke tests:** Test cases without an ` ```expected ` block are treated as "command should exit 0" — validates the command runs without checking output.
 - **Command execution:** Extracts args from `## \`rally ...\`` headings, runs via `execFileSync('node', [RALLY_BIN, ...args], { env, cwd })`. The rally binary is at `bin/rally.js`.
@@ -679,3 +679,18 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Command parsing:** Simple `.split(/\s+/)` after extracting command from backticks. Args after "rally" are passed to execFileSync.
 - **Pattern for future:** Adding a new CLI test = adding a heading to a markdown file. No JavaScript knowledge required. Test files are also browsable documentation on GitHub.
 
+
+### 2026-03-12 — PR #407 Review Comment Fixes (ProjectItemPicker)
+
+- **Addressed 4 Copilot review threads** on external contributor PR #407 (dblnz/rally).
+- **Fix 1 — Error state never reset:** Added `setError(null)`, `setData(null)`, `setWarnings([])`, `setSelectedIndex(0)` at the start of the useEffect when `repo` is valid. Previously, if project prop changed from invalid→valid repo, the component stayed stuck on the error screen.
+- **Fix 2 — Array index as React key:** Changed `warnings.map((w, i) => <Text key={i}>)` to `warnings.map((w) => <Text key={w}>)` in both the empty-state and main render paths. Warning strings are unique, so they serve as stable keys for React reconciliation.
+- **Build process:** Only edited `.jsx` source, then ran `node test/build-jsx.mjs` to regenerate the compiled `.js` file. Both files are committed together.
+- **All 11 ProjectItemPicker tests pass** after the changes.
+- **Workflow:** `gh pr checkout 407` → edit .jsx → rebuild .js → test → commit → push → reply to 4 review comments → resolve 4 threads via GraphQL → `git checkout feat/e2e-test-rework`.
+
+## Learnings
+
+- **JSX/JS compilation flow:** The `.js` files in `lib/ui/components/` are compiled outputs from `.jsx` sources via `test/build-jsx.mjs` (esbuild). Always edit the `.jsx` and rebuild — never edit the `.js` directly.
+- **PR review thread resolution:** Use `gh api graphql` with `resolveReviewThread` mutation and thread node IDs (PRRT_* format). Reply to comments first via REST (`/comments/{id}/replies`), then resolve via GraphQL.
+- **External contributor PRs:** `gh pr checkout` sets up tracking to the fork remote, so `git push` goes to the contributor's fork branch directly.

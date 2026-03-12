@@ -669,9 +669,9 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
   - **Smoke tests:** Test cases without an ` ```expected ` block are treated as "command should exit 0" — validates the command runs without checking output.
 - **Command execution:** Extracts args from `## \`rally ...\`` headings, runs via `execFileSync('node', [RALLY_BIN, ...args], { env, cwd })`. The rally binary is at `bin/rally.js`.
 - **Integration with node:test:** Runner IS the test file — `node --test test/e2e/runner.js` discovers and runs all markdown tests. Each `.md` file becomes a `describe()` suite, each command heading becomes an `it()` test.
-- **Graceful no-tests scenario:** If `test/e2e/cli/` doesn't exist or has no `.md` files, runner reports "no .md files found" as a passing test — never fails on missing test files.
+- **Graceful no-tests scenario:** If `test/e2e/cli/` doesn't exist, runner reports "no .md files found" as a passing test. If the directory exists but contains no `.md` files, the test fails with "No markdown test specs found".
 - **Key file paths:**
-  - `test/e2e/runner.js` — the runner (270 lines)
+  - `test/e2e/runner.js` — the runner
   - `test/e2e/cli/*.md` — markdown test files (Jayne writes these)
   - `bin/rally.js` — rally CLI binary (already exists)
 - **Validation:** Tested with `node --test test/e2e/runner.js` — discovers 2 markdown files (help.md, status.md) from Jayne, runs 6 tests, 3 pass. Failures are expected test expectation mismatches (actual CLI output differs from Jayne's expected strings), not runner bugs.

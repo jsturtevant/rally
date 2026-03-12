@@ -26,13 +26,19 @@ function parseFrontmatter(content) {
 
   const frontmatter = yaml.load(match[1], { schema: yaml.CORE_SCHEMA });
   const body = content.slice(match[0].length);
+  
+  // Validate frontmatter is an object
+  if (frontmatter !== null && (typeof frontmatter !== 'object' || Array.isArray(frontmatter))) {
+    throw new Error(`Frontmatter must be a YAML object (got ${typeof frontmatter}${Array.isArray(frontmatter) ? ' array' : ''})`);
+  }
+  
   return { frontmatter, body };
 }
 
 /**
  * Parse test cases from markdown body
  * @param {string} body - markdown content after frontmatter
- * @returns {Array<{ command: string, expected: string | null }>}
+ * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number }>}
  */
 function parseTestCases(body) {
   const testCases = [];
@@ -42,10 +48,11 @@ function parseTestCases(body) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Look for heading: ## `command`
-    const headingMatch = line.match(/^##\s+`([^`]+)`/);
+    // Look for heading: ## `command` or ## `command` (exit N)
+    const headingMatch = line.match(/^##\s+`([^`]+)`(?:\s+\(exit\s+(\d+)\))?/);
     if (headingMatch) {
       const command = headingMatch[1];
+      const expectedExitCode = headingMatch[2] ? parseInt(headingMatch[2], 10) : 0;
       i++;
 
       // Skip prose until we find ```expected or another heading
@@ -74,7 +81,7 @@ function parseTestCases(body) {
         i++;
       }
 
-      testCases.push({ command, expected });
+      testCases.push({ command, expected, expectedExitCode });
     } else {
       i++;
     }
@@ -385,9 +392,16 @@ if (!existsSync(CLI_DIR)) {
           }
         });
 
+        // Ensure at least one test case exists
+        if (testCases.length === 0) {
+          it('should have at least one test case', () => {
+            assert.fail(`No test cases found in ${file}. Check that headings follow the format: ## \`command\``);
+          });
+        }
+
         // Execute tests sequentially
         for (const testCase of testCases) {
-          const { command, expected } = testCase;
+          const { command, expected, expectedExitCode } = testCase;
 
           it(command, () => {
             let output;
@@ -433,6 +447,14 @@ if (!existsSync(CLI_DIR)) {
               try {
                 assertFuzzyMatch(output, expected, vars);
                 if (VERBOSE) console.log('MATCH ✓');
+                
+                // Check exit code after output matching
+                if (exitCode !== expectedExitCode) {
+                  assert.fail(
+                    `Command exited with code ${exitCode} (expected exit ${expectedExitCode}). ` +
+                    `Output matched but exit code indicates ${exitCode === 0 ? 'success' : 'failure'}.`
+                  );
+                }
               } catch (err) {
                 if (VERBOSE) {
                   console.log(`MISMATCH ✗\n${err.message}`);

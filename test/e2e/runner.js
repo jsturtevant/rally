@@ -222,11 +222,10 @@ function formatDiff(actual, expected, vars = {}) {
 
 /**
  * Setup repo environment based on frontmatter
- * @param {string} rallyHome - temp RALLY_HOME directory
  * @param {object} frontmatter - parsed frontmatter
  * @returns {{ cwd: string, cleanup: Function }}
  */
-function setupRepo(rallyHome, frontmatter) {
+function setupRepo(frontmatter) {
   if (!frontmatter || !frontmatter.repo) {
     // No repo setup needed
     return { cwd: process.cwd(), cleanup: () => {} };
@@ -348,7 +347,7 @@ if (!existsSync(CLI_DIR)) {
   if (mdFiles.length === 0) {
     describe('markdown-driven E2E tests', () => {
       it('no .md files found', () => {
-        assert.ok(true, 'no .md test files in test/e2e/cli/');
+        assert.fail('No markdown test specs found in test/e2e/cli/');
       });
     });
   } else {
@@ -367,7 +366,7 @@ if (!existsSync(CLI_DIR)) {
           rallyHome = mkdtempSync(join(tmpdir(), 'rally-test-home-'));
 
           // Setup repo if needed
-          repoSetup = setupRepo(rallyHome, frontmatter);
+          repoSetup = setupRepo(frontmatter);
         });
 
         after(() => {

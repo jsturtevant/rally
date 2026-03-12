@@ -37,7 +37,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
   docs:
     runs-on: ubuntu-latest
     defaults:

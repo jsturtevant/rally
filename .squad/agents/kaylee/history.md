@@ -708,11 +708,26 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Fix 3 — gh auth guard:** Added `gh auth status` check before cloning. Throws clear error if not authenticated instead of cryptic clone failure.
 - **Fix 4 — process.execPath + timeout:** Changed `'node'` to `process.execPath` and added `timeout: DEFAULT_TIMEOUT` (30s) to execFileSync.
 - **Fix 5 — Non-zero exit testing:** Wrapped executeCommand in try-catch when `expected` block exists, use `err.stdout + err.stderr` for matching. Only throw if no expected (smoke test).
-- **Fix 6 — Version variable:** Added `$RALLY_VERSION` that reads from package.json. Updated help.md to use it instead of hardcoded `0.1.0`.
-- **Fix 7 — JSON path escaping:** Added `$RALLY_HOME_JSON` and `$REPO_ROOT_JSON` that escape backslashes for Windows JSON output. On Linux they're identical to the regular variants.
+- **Fix 6 — Version pinning:** Kept version hardcoded in test specs (not using a variable). This ensures test failures force specs to stay current on version bumps.
+- **Fix 7 — Path variables:** Test runner provides `$RALLY_HOME` and `$REPO_ROOT` environment variables. No JSON-escaped variants needed — the normalizer handles cross-platform path comparison.
 - **Fix 8 — Misleading log:** Changed "creating it" to "skipping markdown tests" — runner doesn't create the directory.
 - **Fix 9 — Jayne's history:** Updated to reflect that status.md has no frontmatter and no `rally onboard .` step.
 - **Fix 10 — Kaylee's history:** Changed "substring matching" to "normalized line equality with line-joining for wrapping" — more accurate description of the fuzzy matcher.
 - **All tests pass** after changes: 5 tests in 2 files (help.md, status.md), all green.
 - **GitHub workflow:** Replied to all 10 review threads via GraphQL mutation, then resolved all threads. Each thread got a ✅ checkmark reply.
 - **Decision file:** Created `.squad/decisions/inbox/kaylee-pr411-feedback.md` with 8 decisions about environment variable parsing, repo setup semantics, cross-platform paths, non-zero exit testing, process.execPath, timeouts, dynamic version, and auth preflight.
+
+### 2026-03-12 — PR #411 Windows CI Fix + Review Comments
+
+- **Fixed Windows double-slash bug:** The path normalizer replaced `\` with `/`, but JSON output from CLI contains escaped backslashes as `\\` in the JSON string. When the normalizer ran, `\\` became `//` (double forward slash) instead of single `/`. **Solution:** After replacing backslashes with forward slashes, collapse consecutive forward slashes using negative lookbehind to preserve `://` for protocol prefixes: `str.replace(/\\/g, '/').replace(/(?<!:)\/\//g, '/')`.
+- **ENOENT vs auth failure:** Added check for `err.code === 'ENOENT'` in `gh auth status` catch block. Now distinguishes "gh not installed" (with install URL) from "gh not authenticated" (with login instructions).
+- **Timeouts for gh commands:** Added `timeout: 30_000` to both `gh auth status` and `gh repo clone` execFileSync calls to prevent indefinite hangs in CI.
+- **Non-zero exit visibility:** When a command exits non-zero AND an expected block exists, the test still matches output (as intended for testing error messages), but in VERBOSE mode we now log `⚠️ Command exited with code X` to make the exit status visible.
+- **Documentation corrections:**
+  - Fixed Kaylee's history (line 664): Changed "repo: owner/repo clones that repo" to "creates a temp dir without cloning (rally handles cloning)".
+  - Fixed Jayne's history (line 670): Changed "fuzzy substring match" to "normalized equality with line-joining".
+  - Fixed PRD E5 description (line 377): Removed incorrect "first runs `rally onboard .`" text; updated to say "Tests `rally status` commands in a fresh environment with no onboarded projects."
+- **Resolved all 12 unresolved review threads** on PR #411 via GraphQL mutations. Mix of fixes (8 threads) and deferrals/clarifications (4 threads: parseTestCases format, quoted args, runner filename, version pinning).
+- **All E2E tests pass locally** after fixes: 5 tests in 2 files (help.md, status.md), all green.
+
+## Learnings

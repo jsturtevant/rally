@@ -365,16 +365,16 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E1** | **Implement `test/e2e/runner.js`** — markdown parser, command executor, fuzzy matcher, `node:test` integration. | None | M |
-| **E2** | **Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (clone fixture repo into temp dir) and `repo: owner/repo` (no setup — rally clones it) per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
-| **E3** | **Implement fuzzy matching.** Whitespace normalization, line-by-line comparison, clear diff output on failure. | None | S |
+| **E1** | **✅ Implement `test/e2e/runner.js`** — markdown parser, command executor, fuzzy matcher, `node:test` integration. | None | M |
+| **E2** | **✅ Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (clone fixture repo into temp dir) and `repo: owner/repo` (no setup — rally clones it) per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
+| **E3** | **✅ Implement fuzzy matching.** Whitespace normalization, line-by-line comparison, clear diff output on failure. | None | S |
 
 ### Phase 2: First Markdown Test File (Proof of Concept)
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E4** | **Write `test/e2e/cli/help.md`** with test cases for `rally --help` and `rally --version`. Validate that `node --test test/e2e/runner.js` discovers and passes them. | E1 | S |
-| **E5** | **Write `test/e2e/cli/status.md`** — first runs `rally onboard .` to create project state, then tests `rally status` and `rally status --json`. Validates sequential test execution model. | E1, E2 | S |
+| **E4** | **✅ Write `test/e2e/cli/help.md`** with test cases for `rally --help` and `rally --version`. Validate that `node --test test/e2e/runner.js` discovers and passes them. | E1 | S |
+| **E5** | **✅ Write `test/e2e/cli/status.md`** — first runs `rally onboard .` to create project state, then tests `rally status` and `rally status --json`. Validates sequential test execution model. | E1, E2 | S |
 
 ### Phase 3: Convert Existing CLI Tests to Markdown
 

@@ -407,15 +407,27 @@ if (!existsSync(CLI_DIR)) {
             let output;
 
             if (expected === null) {
-              // Smoke test - command should exit 0
-              output = executeCommand(command, rallyHome, repoSetup.cwd);
+              // Smoke test - no expected output block
+              let exitCode = 0;
+              try {
+                output = executeCommand(command, rallyHome, repoSetup.cwd);
+              } catch (err) {
+                output = err.output || '';
+                exitCode = err.status || err.code || 1;
+              }
               if (VERBOSE) {
                 console.log(`\n── ${command} ──`);
+                if (exitCode !== 0) {
+                  console.log(`⚠️  Command exited with code ${exitCode}`);
+                }
                 console.log(`ACTUAL:\n${output}`);
                 console.log('(no expected block — smoke test)');
                 console.log('MATCH ✓');
               }
-              assert.ok(output !== undefined, 'command should succeed');
+              if (exitCode !== expectedExitCode) {
+                assert.fail(`Command exited with code ${exitCode} (expected exit ${expectedExitCode}).`);
+              }
+              assert.ok(output !== undefined, 'command should run');
             } else {
               // Match against expected output
               let exitCode = 0;

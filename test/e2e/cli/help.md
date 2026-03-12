@@ -30,3 +30,7 @@ Prints the installed version number.
 ```expected
 0.1.0
 ```
+
+## `rally bad-command` (exit 1)
+
+Smoke test for non-zero exits without an expected output block.

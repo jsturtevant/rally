@@ -188,7 +188,7 @@ function fuzzyMatch(actual, expected, vars = {}) {
  * @param {object} vars - variable substitutions
  */
 function assertFuzzyMatch(actual, expected, vars = {}) {
-  const { results } = fuzzyMatch(actual, expected, vars);
+  const { results, actualLines } = fuzzyMatch(actual, expected, vars);
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
     if (!r.found) {
@@ -198,6 +198,58 @@ function assertFuzzyMatch(actual, expected, vars = {}) {
         `  near:     "${r.context}..."`
       );
     }
+  }
+
+  // Check for unmatched trailing actual lines
+  // Find where the last expected line matched in actual
+  let lastMatchPos = 0;
+  let aPtr = 0;
+  const processedExpected = expected;
+  // Re-run matching to find the actual pointer position after all matches
+  // We know all results found=true at this point, so re-derive pointer position
+  const { results: r2 } = fuzzyMatch(actual, expected, vars);
+  // Count matched actual lines by re-scanning
+  let matchedUpTo = 0;
+  const normActual = actual.split(/\r?\n/).map(normalizeLine).filter(l => l.length > 0);
+  // Apply same var substitutions and normalization to expected
+  let procExp = expected;
+  for (const [key, value] of Object.entries(vars)) {
+    procExp = procExp.replaceAll(key, value);
+  }
+  const normalizePaths2 = (str) => str.replace(/\\\\/g, '/').replace(/\\/g, '/');
+  procExp = normalizePaths2(procExp);
+  const normExpLines = procExp.split(/\r?\n/).map(normalizeLine).filter(l => l.length > 0);
+
+  // Walk through actual lines to find where last expected line matched
+  let ap = 0;
+  for (const eLine of normExpLines) {
+    while (ap < normActual.length) {
+      if (normActual[ap] === eLine) {
+        ap++;
+        break;
+      }
+      // Try wrapping
+      let wrapped = false;
+      for (let n = 2; n <= 3 && ap + n - 1 < normActual.length; n++) {
+        const seg = normActual.slice(ap, ap + n);
+        if (seg.join(' ') === eLine || seg.join('') === eLine) {
+          ap += n;
+          wrapped = true;
+          break;
+        }
+      }
+      if (wrapped) break;
+      ap++;
+    }
+  }
+
+  // ap now points past the last matched actual line
+  const trailing = normActual.slice(ap).filter(l => l.length > 0);
+  if (trailing.length > 0) {
+    assert.fail(
+      `Actual output has ${trailing.length} unmatched trailing line(s) after last expected line:\n` +
+      trailing.map(l => `  + "${l}"`).join('\n')
+    );
   }
 }
 

@@ -29,3 +29,7 @@ Invalid fork format — must be owner/repo.
 ```expected
 Error: Invalid --fork format: "badformat". Expected owner/repo (e.g. myuser/myrepo).
 ```
+
+## `rally onboard nonexistent-user-abc123/nonexistent-repo-xyz789 --team default` (exit 2)
+
+Cloning a repo that doesn't exist should fail with a clone error.

@@ -534,7 +534,21 @@ if (!existsSync(CLI_DIR)) {
     });
   });
 } else {
-  const mdFiles = readdirSync(CLI_DIR).filter(f => f.endsWith('.md'));
+  // Recursively find all .md files in CLI_DIR
+  function findMdFiles(dir, base = '') {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    let files = [];
+    for (const entry of entries) {
+      const rel = base ? join(base, entry.name) : entry.name;
+      if (entry.isDirectory()) {
+        files = files.concat(findMdFiles(join(dir, entry.name), rel));
+      } else if (entry.name.endsWith('.md')) {
+        files.push(rel);
+      }
+    }
+    return files.sort();
+  }
+  const mdFiles = findMdFiles(CLI_DIR);
 
   if (mdFiles.length === 0) {
     describe('markdown-driven E2E tests', () => {

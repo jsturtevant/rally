@@ -561,6 +561,31 @@ if (!existsSync(CLI_DIR)) {
           // Create isolated XDG_CONFIG_HOME so squad creation doesn't affect real config
           xdgConfigHome = mkdtempSync(join(tmpdir(), 'rally-test-xdg-'));
 
+          // Run setup command if specified in frontmatter
+          if (frontmatter && frontmatter.setup) {
+            try {
+              const setupOutput = execFileSync(process.execPath, [frontmatter.setup], {
+                encoding: 'utf8',
+                cwd: import.meta.dirname,
+                timeout: DEFAULT_TIMEOUT,
+                env: {
+                  ...process.env,
+                  RALLY_HOME: rallyHome,
+                  XDG_CONFIG_HOME: xdgConfigHome,
+                  NO_COLOR: '1',
+                  FORCE_COLOR: undefined,
+                },
+              });
+              if (VERBOSE) {
+                console.error(`Setup (${frontmatter.setup}): ${setupOutput.trim()}`);
+              }
+            } catch (err) {
+              rmSync(rallyHome, { recursive: true, force: true });
+              rmSync(xdgConfigHome, { recursive: true, force: true });
+              throw new Error(`Setup command failed: ${frontmatter.setup}\n${err.message}`);
+            }
+          }
+
           // Setup repo if needed
           try {
             repoSetup = setupRepo(frontmatter);

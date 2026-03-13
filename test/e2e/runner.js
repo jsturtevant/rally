@@ -275,6 +275,7 @@ function setupRepo(frontmatter) {
           ...process.env,
           GIT_TERMINAL_PROMPT: '0',
           NO_COLOR: '1',
+          FORCE_COLOR: undefined,
         },
       });
     } catch (err) {
@@ -326,6 +327,7 @@ function executeCommand(command, rallyHome, cwd) {
         ...process.env,
         RALLY_HOME: rallyHome,
         NO_COLOR: '1',
+        FORCE_COLOR: undefined,
         GIT_TERMINAL_PROMPT: '0',
       },
     });

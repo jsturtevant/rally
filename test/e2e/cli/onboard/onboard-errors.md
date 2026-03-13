@@ -21,3 +21,11 @@ Removing a project when no projects are onboarded at all.
 ```expected
 Error: No onboarded projects found.
 ```
+
+## `rally onboard --fork badformat .` (exit 2)
+
+Invalid fork format — must be owner/repo.
+
+```expected
+Error: Invalid --fork format: "badformat". Expected owner/repo (e.g. myuser/myrepo).
+```

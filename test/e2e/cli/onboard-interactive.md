@@ -48,3 +48,45 @@ Onboarded Projects (1):
 Active Dispatches (0):
   (none)
 ```
+
+## `rally onboard . --team default`
+
+Re-onboarding the same repo should be idempotent.
+
+```expected
+✓ Updated .git/info/exclude
+  Project already registered — skipping
+```
+
+## `rally onboard remove $PROJECT_NAME --yes`
+
+Removes the project without interactive prompt.
+
+```expected
+✓ Removed project: $PROJECT_NAME (jsturtevant/rally-test-fixtures)
+```
+
+## `rally status`
+
+After removing, status should show 0 projects.
+
+```expected
+Rally Status
+============
+
+Config Paths:
+  ✓ config: $RALLY_HOME/config.yaml
+  ✓ projects: $RALLY_HOME/projects.yaml
+  ✗ active: $RALLY_HOME/active.yaml
+
+Directories:
+  configDir:     $RALLY_HOME
+  personalSquad: $XDG_CONFIG_HOME/squad/.squad
+  projectsDir:   $RALLY_HOME/projects
+
+Onboarded Projects (0):
+  (none)
+
+Active Dispatches (0):
+  (none)
+```

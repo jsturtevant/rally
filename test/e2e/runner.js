@@ -635,7 +635,7 @@ if (!existsSync(CLI_DIR)) {
             if (expected === null) {
               // Smoke test - no expected output block
               if (VERBOSE) {
-                console.log(`\n── ${command} ──`);
+                console.log(`\n── ${rawCommand} (${file}) ──`);
                 if (exitCode !== 0) {
                   console.log(`⚠️  Command exited with code ${exitCode}`);
                 }
@@ -658,7 +658,7 @@ if (!existsSync(CLI_DIR)) {
               };
 
               if (VERBOSE) {
-                console.log(`\n── ${command} ──`);
+                console.log(`\n── ${rawCommand} (${file}) ──`);
                 if (exitCode !== 0) {
                   console.log(`⚠️  Command exited with code ${exitCode}`);
                 }
@@ -687,7 +687,12 @@ if (!existsSync(CLI_DIR)) {
               } catch (err) {
                 hasFailures = true;
                 if (VERBOSE) {
-                  console.log(`MISMATCH ✗\n${err.message}`);
+                  console.log(`\n${'━'.repeat(60)}`);
+                  console.log(`❌ FAIL: ${rawCommand}`);
+                  console.log(`   File: ${file}`);
+                  console.log(`${'━'.repeat(60)}`);
+                  console.log(err.message);
+                  console.log(`${'━'.repeat(60)}\n`);
                 } else {
                   console.log(`\n── ${command} ──`);
                   console.log(`ACTUAL:\n${output}`);

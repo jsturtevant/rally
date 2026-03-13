@@ -23,3 +23,28 @@ send: {enter}
 ✓ Updated .git/info/exclude
 ✓ Registered project: $PROJECT_NAME
 ```
+
+## `rally status`
+
+After interactive onboard, status should show 1 project and the squad.
+
+```expected
+Rally Status
+============
+
+Config Paths:
+  ✓ config: $RALLY_HOME/config.yaml
+  ✓ projects: $RALLY_HOME/projects.yaml
+  ✗ active: $RALLY_HOME/active.yaml
+
+Directories:
+  configDir:     $RALLY_HOME
+  personalSquad: $XDG_CONFIG_HOME/squad/.squad
+  projectsDir:   $RALLY_HOME/projects
+
+Onboarded Projects (1):
+  - $PROJECT_NAME: $REPO_ROOT
+
+Active Dispatches (0):
+  (none)
+```

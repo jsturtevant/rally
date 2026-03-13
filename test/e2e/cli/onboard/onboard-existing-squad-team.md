@@ -51,6 +51,14 @@ Re-onboarding the same repo should be idempotent.
   Project already registered — skipping
 ```
 
+## `rally onboard remove nonexistent --yes` (exit 1)
+
+Removing a project name that doesn't match any onboarded project.
+
+```expected
+Error: Project "nonexistent" not found. Run rally onboard remove to see available projects.
+```
+
 ## `rally onboard remove $PROJECT_NAME --yes`
 
 Removes the project without interactive prompt.

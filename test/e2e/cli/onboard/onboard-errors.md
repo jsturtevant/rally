@@ -16,7 +16,7 @@ Error: Not a git repository. Run from inside a repo or provide a path to one.
 
 ## `rally onboard remove nonexistent --yes` (exit 1)
 
-Removing a project that was never onboarded should fail.
+Removing a project when no projects are onboarded at all.
 
 ```expected
 Error: No onboarded projects found.

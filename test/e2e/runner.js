@@ -396,13 +396,7 @@ function setupRepo(frontmatter) {
  * @returns {string} - stdout
  */
 function executeCommand(command, rallyHome, cwd, opts = {}) {
-  // Extract args after "rally"
   const parts = command.trim().split(/\s+/);
-  if (parts[0] !== 'rally') {
-    throw new Error(`Command must start with "rally", got: ${command}`);
-  }
-
-  const args = parts.slice(1);
   const env = {
     ...process.env,
     RALLY_HOME: rallyHome,
@@ -423,12 +417,16 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   if (opts.stdinInput) {
     execOpts.input = opts.stdinInput;
   }
+
+  // Rally commands go through node + rally bin; other commands run directly
+  const isRally = parts[0] === 'rally';
+  const execFile = isRally ? process.execPath : parts[0];
+  const args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
+
   try {
-    return execFileSync(process.execPath, [RALLY_BIN, ...args], execOpts);
+    return execFileSync(execFile, args, execOpts);
   } catch (err) {
-    // If the command is expected to fail (exit non-zero), capture the output
     const output = (err.stdout || '') + (err.stderr || '');
-    // Re-throw with output attached so tests can still match against it
     err.output = output;
     throw err;
   }
@@ -516,11 +514,12 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
     ptyProcess.onExit(({ exitCode }) => {
       clearTimeout(timeout);
-      // Strip ANSI escape sequences
-      const clean = output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
-      // Extract output after the last interactive prompt
-      const cleanAfterPrompts = clean.slice(lastPromptEnd)
-        .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+      // Strip ANSI escape sequences (CSI sequences including private modes like ?25h)
+      const stripAnsi = (s) => s
+        .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
+        .replace(/\x1b\][^\x07]*\x07/g, '');
+      const clean = stripAnsi(output);
+      const cleanAfterPrompts = stripAnsi(clean.slice(lastPromptEnd));
       resolve({ output: clean, outputAfterPrompts: cleanAfterPrompts, exitCode });
     });
   });

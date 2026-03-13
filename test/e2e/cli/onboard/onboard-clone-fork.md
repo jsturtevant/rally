@@ -21,6 +21,22 @@ origin renamed to upstream, new origin set to fork URL.
 ✓ Registered project: rally-test-fixtures
 ```
 
+## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url origin`
+
+Verify origin was set to the fork URL.
+
+```expected
+https://github.com/jsturtevant/rally-test-fixtures.git
+```
+
+## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url upstream`
+
+Verify upstream was set to the original repo.
+
+```expected
+https://github.com/jsturtevant/rally-test-fixtures.git
+```
+
 ## `rally onboard remove rally-test-fixtures --yes`
 
 Clean up.

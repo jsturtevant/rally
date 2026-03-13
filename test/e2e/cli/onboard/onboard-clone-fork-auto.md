@@ -23,6 +23,22 @@ GitHub username to configure fork remotes.
 ✓ Registered project: rally-test-fixtures
 ```
 
+## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url origin`
+
+Verify origin points to the auto-discovered fork.
+
+```expected
+https://github.com/jsturtevant/rally-test-fixtures.git
+```
+
+## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url upstream`
+
+Verify upstream points to the original repo.
+
+```expected
+https://github.com/jsturtevant/rally-test-fixtures.git
+```
+
 ## `rally onboard remove rally-test-fixtures --yes`
 
 Clean up.

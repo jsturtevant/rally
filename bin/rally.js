@@ -433,3 +433,13 @@ try {
   }
   throw err;
 }
+
+// Catch async RallyErrors (from action handlers) that escape program.parse()
+process.on('unhandledRejection', (err) => {
+  if (err instanceof RallyError) {
+    console.error(`Error: ${err.message}`);
+    process.exit(err.exitCode);
+  }
+  console.error(err);
+  process.exit(1);
+});

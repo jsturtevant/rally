@@ -17,6 +17,10 @@ const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
 const CLI_DIR = join(import.meta.dirname, 'cli');
 const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
 const DEFAULT_TIMEOUT = 30_000;
+// Preserve gh CLI config dir so XDG_CONFIG_HOME overrides don't break gh auth.
+// gh uses XDG_CONFIG_HOME/gh for its config by default, but GH_CONFIG_DIR takes precedence.
+// See: https://cli.github.com/manual/gh_help_environment
+const GH_CONFIG_DIR = process.env.GH_CONFIG_DIR || join(process.env.XDG_CONFIG_HOME || join(process.env.HOME, '.config'), 'gh');
 
 /**
  * Parse YAML frontmatter from markdown content
@@ -382,6 +386,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
     NO_COLOR: '1',
     FORCE_COLOR: undefined,
     GIT_TERMINAL_PROMPT: '0',
+    GH_CONFIG_DIR,
   };
   if (opts.xdgConfigHome) {
     env.XDG_CONFIG_HOME = opts.xdgConfigHome;
@@ -438,6 +443,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
     NO_COLOR: '1',
     FORCE_COLOR: undefined,
     GIT_TERMINAL_PROMPT: '0',
+    GH_CONFIG_DIR,
   };
   if (opts.xdgConfigHome) {
     env.XDG_CONFIG_HOME = opts.xdgConfigHome;

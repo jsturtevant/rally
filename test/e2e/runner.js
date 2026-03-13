@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
@@ -55,8 +55,9 @@ function parseTestCases(body) {
       const expectedExitCode = headingMatch[2] ? parseInt(headingMatch[2], 10) : 0;
       i++;
 
-      // Skip prose until we find ```expected or another heading
+      // Skip prose until we find ```expected, ```stdin, or another heading
       let expected = null;
+      let stdinInput = null;
       while (i < lines.length) {
         const currentLine = lines[i];
 
@@ -75,13 +76,26 @@ function parseTestCases(body) {
           }
           expected = expectedLines.join('\n');
           i++; // skip closing ```
-          break;
+          continue;
+        }
+
+        // Look for ```stdin
+        if (currentLine.match(/^```stdin/)) {
+          i++;
+          const stdinLines = [];
+          while (i < lines.length && !lines[i].match(/^```\s*$/)) {
+            stdinLines.push(lines[i]);
+            i++;
+          }
+          stdinInput = stdinLines.join('\n') + '\n';
+          i++; // skip closing ```
+          continue;
         }
 
         i++;
       }
 
-      testCases.push({ command, expected, expectedExitCode });
+      testCases.push({ command, expected, expectedExitCode, stdinInput });
     } else {
       i++;
     }
@@ -305,9 +319,12 @@ function setupRepo(frontmatter) {
  * @param {string} command - full command string (e.g., "rally --help")
  * @param {string} rallyHome - RALLY_HOME path
  * @param {string} cwd - working directory
+ * @param {object} [opts] - options
+ * @param {string} [opts.xdgConfigHome] - XDG_CONFIG_HOME override for personal squad
+ * @param {string} [opts.stdinInput] - stdin input to pipe to the command
  * @returns {string} - stdout
  */
-function executeCommand(command, rallyHome, cwd) {
+function executeCommand(command, rallyHome, cwd, opts = {}) {
   // Extract args after "rally"
   const parts = command.trim().split(/\s+/);
   if (parts[0] !== 'rally') {
@@ -315,20 +332,28 @@ function executeCommand(command, rallyHome, cwd) {
   }
 
   const args = parts.slice(1);
+  const env = {
+    ...process.env,
+    RALLY_HOME: rallyHome,
+    NO_COLOR: '1',
+    FORCE_COLOR: undefined,
+    GIT_TERMINAL_PROMPT: '0',
+  };
+  if (opts.xdgConfigHome) {
+    env.XDG_CONFIG_HOME = opts.xdgConfigHome;
+  }
 
+  const execOpts = {
+    encoding: 'utf8',
+    cwd,
+    timeout: DEFAULT_TIMEOUT,
+    env,
+  };
+  if (opts.stdinInput) {
+    execOpts.input = opts.stdinInput;
+  }
   try {
-    return execFileSync(process.execPath, [RALLY_BIN, ...args], {
-      encoding: 'utf8',
-      cwd,
-      timeout: DEFAULT_TIMEOUT,
-      env: {
-        ...process.env,
-        RALLY_HOME: rallyHome,
-        NO_COLOR: '1',
-        FORCE_COLOR: undefined,
-        GIT_TERMINAL_PROMPT: '0',
-      },
-    });
+    return execFileSync(process.execPath, [RALLY_BIN, ...args], execOpts);
   } catch (err) {
     // If the command is expected to fail (exit non-zero), capture the output
     const output = (err.stdout || '') + (err.stderr || '');
@@ -366,16 +391,21 @@ if (!existsSync(CLI_DIR)) {
       describe(file, () => {
         let rallyHome;
         let repoSetup;
+        let xdgConfigHome;
 
-        before(() => {
+        before(async () => {
           // Create temp RALLY_HOME
           rallyHome = mkdtempSync(join(tmpdir(), 'rally-test-home-'));
+
+          // Create isolated XDG_CONFIG_HOME so squad creation doesn't affect real config
+          xdgConfigHome = mkdtempSync(join(tmpdir(), 'rally-test-xdg-'));
 
           // Setup repo if needed
           try {
             repoSetup = setupRepo(frontmatter);
           } catch (err) {
             rmSync(rallyHome, { recursive: true, force: true });
+            rmSync(xdgConfigHome, { recursive: true, force: true });
             throw err;
           }
         });
@@ -386,9 +416,12 @@ if (!existsSync(CLI_DIR)) {
             repoSetup.cleanup();
           }
 
-          // Cleanup RALLY_HOME
+          // Cleanup RALLY_HOME and XDG_CONFIG_HOME
           if (rallyHome) {
             rmSync(rallyHome, { recursive: true, force: true });
+          }
+          if (xdgConfigHome) {
+            rmSync(xdgConfigHome, { recursive: true, force: true });
           }
         });
 
@@ -401,16 +434,29 @@ if (!existsSync(CLI_DIR)) {
 
         // Execute tests sequentially
         for (const testCase of testCases) {
-          const { command, expected, expectedExitCode } = testCase;
+          const { command: rawCommand, expected, expectedExitCode, stdinInput } = testCase;
 
-          it(command, () => {
+          it(rawCommand, () => {
+            // Substitute variables in command (must be inside it() — repoSetup is set in before())
+            const commandVars = {
+              '$RALLY_HOME': rallyHome,
+              '$REPO_ROOT': repoSetup.cwd,
+              '$PROJECT_NAME': basename(repoSetup.cwd),
+              '$XDG_CONFIG_HOME': xdgConfigHome || '',
+            };
+            let command = rawCommand;
+            for (const [key, value] of Object.entries(commandVars)) {
+              command = command.replaceAll(key, value);
+            }
+
+            const execOpts = { xdgConfigHome, stdinInput };
             let output;
 
             if (expected === null) {
               // Smoke test - no expected output block
               let exitCode = 0;
               try {
-                output = executeCommand(command, rallyHome, repoSetup.cwd);
+                output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {
                 output = err.output || '';
                 exitCode = err.status || err.code || 1;
@@ -432,7 +478,7 @@ if (!existsSync(CLI_DIR)) {
               // Match against expected output
               let exitCode = 0;
               try {
-                output = executeCommand(command, rallyHome, repoSetup.cwd);
+                output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {
                 // Command exited non-zero - capture output and exit code
                 output = err.output || '';
@@ -445,7 +491,7 @@ if (!existsSync(CLI_DIR)) {
                 '$RALLY_HOME': rallyHome,
                 '$REPO_ROOT': repoSetup.cwd,
                 '$PROJECT_NAME': basename(repoSetup.cwd),
-                '$HOME': process.env.HOME || process.env.USERPROFILE || '',
+                '$XDG_CONFIG_HOME': xdgConfigHome || '',
               };
 
               if (VERBOSE) {

@@ -31,7 +31,7 @@ Config Paths:
 
 Directories:
   configDir:     $RALLY_HOME
-  personalSquad: $HOME/.config/squad/.squad
+  personalSquad: (not configured)
   projectsDir:   $RALLY_HOME/projects
 
 Onboarded Projects (0):
@@ -62,7 +62,7 @@ Outputs full config state as JSON. Setup already ran so no setup output here.
       "exists": false
     }
   },
-  "personalSquad": "$HOME/.config/squad/.squad",
+  "personalSquad": null,
   "projectsDir": "$RALLY_HOME/projects",
   "projects": [],
   "dispatches": []

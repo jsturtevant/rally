@@ -275,6 +275,15 @@ function assertContainsLines(actual, expected, vars = {}) {
       );
     }
   }
+
+  // Check for unmatched trailing actual lines after last expected match
+  const trailing = actualLines.slice(a);
+  if (trailing.length > 0) {
+    assert.fail(
+      `Actual output has ${trailing.length} unmatched trailing line(s) after last expected line:\n` +
+      trailing.map(l => `  + "${l}"`).join('\n')
+    );
+  }
 }
 
 /**
@@ -469,6 +478,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
   return new Promise((resolve, reject) => {
     let output = '';
     let stepIndex = 0;
+    let lastPromptEnd = 0;
     const timeout = setTimeout(() => {
       ptyProcess.kill();
       reject(new Error(
@@ -502,6 +512,8 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
           .replace(/\{space\}/gi, ' ');
 
         if (output.includes(match)) {
+          // Track where this prompt appeared so we can split output later
+          lastPromptEnd = output.length;
           setTimeout(() => {
             const send = resolvedInput.includes('\r') ? resolvedInput : resolvedInput + '\r';
             ptyProcess.write(send);
@@ -513,9 +525,12 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
     ptyProcess.onExit(({ exitCode }) => {
       clearTimeout(timeout);
-      // Strip ANSI escape sequences from PTY output
+      // Strip ANSI escape sequences
       const clean = output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
-      resolve({ output: clean, exitCode });
+      // Extract output after the last interactive prompt
+      const cleanAfterPrompts = clean.slice(lastPromptEnd)
+        .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+      resolve({ output: clean, outputAfterPrompts: cleanAfterPrompts, exitCode });
     });
   });
 }
@@ -708,3 +723,6 @@ if (!existsSync(CLI_DIR)) {
     }
   }
 }
+
+// Exports for unit testing
+export { prepareLines, assertExactMatch, assertContainsLines, normalizeLine, parseTestCases, parseFrontmatter };

@@ -1,41 +1,92 @@
-# Onboard Tests
+---
+repo: local
+---
 
-Tests for `rally onboard` commands. Help tests only — no network or filesystem needed.
+# Interactive Onboard Tests
 
-## `rally onboard --help`
+Tests for `rally onboard .` without `--team` flag — exercises the interactive squad creation flow via PTY.
 
-Shows onboard usage, arguments, options, and subcommands.
+## `rally onboard .`
 
-```expected
-Usage: rally onboard [options] [command] [path]
+Onboards the current directory. Without `--team`, triggers interactive squad creation
+(since no personal squad exists yet). The PTY steps answer the prompts automatically.
 
-Onboard a repo to Rally (local path, GitHub URL, or owner/repo)
+```pty
+match: Would you like to create one now?
+send: y
 
-Arguments:
-  path                        Path, GitHub URL, or owner/repo (defaults to current directory)
-
-Options:
-  --team <name>               Use a named team (skips interactive prompt)
-  --fork <owner/repo>         Set origin to your fork and upstream to the main repo
-  -h, --help                  display help for command
-
-Commands:
-  remove [options] [project]  Remove an onboarded project from Rally
+match: What kind of team do you need?
+send: {enter}
 ```
 
-## `rally onboard remove --help`
+```expected
+✓ Updated .git/info/exclude
+✓ Registered project: $PROJECT_NAME
+```
 
-Shows remove subcommand usage.
+## `rally status`
+
+After interactive onboard, status should show 1 project and the squad.
 
 ```expected
-Usage: rally onboard remove [options] [project]
+Rally Status
+============
 
-Remove an onboarded project from Rally
+Config Paths:
+  ✓ config: $RALLY_HOME/config.yaml
+  ✓ projects: $RALLY_HOME/projects.yaml
+  ✗ active: $RALLY_HOME/active.yaml
 
-Arguments:
-  project     Project name to remove (interactive picker if omitted)
+Directories:
+  configDir:     $RALLY_HOME
+  personalSquad: $XDG_CONFIG_HOME/squad/.squad
+  projectsDir:   $RALLY_HOME/projects
 
-Options:
-  --yes       Skip confirmation prompt
-  -h, --help  display help for command
+Onboarded Projects (1):
+  - $PROJECT_NAME: $REPO_ROOT
+
+Active Dispatches (0):
+  (none)
+```
+
+## `rally onboard . --team default`
+
+Re-onboarding the same repo should be idempotent.
+
+```expected
+✓ Updated .git/info/exclude
+  Project already registered — skipping
+```
+
+## `rally onboard remove $PROJECT_NAME --yes`
+
+Removes the project without interactive prompt.
+
+```expected
+✓ Removed project: $PROJECT_NAME (jsturtevant/rally-test-fixtures)
+```
+
+## `rally status`
+
+After removing, status should show 0 projects.
+
+```expected
+Rally Status
+============
+
+Config Paths:
+  ✓ config: $RALLY_HOME/config.yaml
+  ✓ projects: $RALLY_HOME/projects.yaml
+  ✗ active: $RALLY_HOME/active.yaml
+
+Directories:
+  configDir:     $RALLY_HOME
+  personalSquad: $XDG_CONFIG_HOME/squad/.squad
+  projectsDir:   $RALLY_HOME/projects
+
+Onboarded Projects (0):
+  (none)
+
+Active Dispatches (0):
+  (none)
 ```

@@ -31,7 +31,4 @@ https://github.com/jsturtevant/rally-test-fixtures.git
 ## `git -C $REPO_ROOT remote get-url upstream`
 
 Upstream should point to the original repo (preserved from original clone).
-
-```expected
-git@github.com:jsturtevant/rally-test-fixtures.git
-```
+URL protocol depends on gh config (SSH locally, HTTPS in CI).

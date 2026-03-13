@@ -4,7 +4,7 @@ setup: setup-squad.js
 
 # Onboard via Clone
 
-Tests `rally onboard owner/repo` where Rally itself clones the repository.
+Tests `rally onboard owner/repo` and URL forms where Rally itself clones the repository.
 Squad is pre-created by setup script. No `repo: local` — Rally does the cloning.
 
 ## `rally onboard jsturtevant/rally-test-fixtures --team default`
@@ -55,7 +55,25 @@ Re-onboard same repo — clone target exists, project already registered.
 
 ## `rally onboard remove rally-test-fixtures --yes`
 
-Clean up the cloned project.
+Clean up the owner/repo onboard.
+
+```expected
+✓ Removed project: rally-test-fixtures (jsturtevant/rally-test-fixtures)
+```
+
+## `rally onboard https://github.com/jsturtevant/rally-test-fixtures --team default`
+
+Onboards via full HTTPS URL. Clone target still exists on disk, so clone is skipped.
+
+```expected
+  Clone target already exists — skipping clone: $RALLY_HOME/projects/rally-test-fixtures
+✓ Updated .git/info/exclude
+✓ Registered project: rally-test-fixtures
+```
+
+## `rally onboard remove rally-test-fixtures --yes`
+
+Clean up after URL onboard.
 
 ```expected
 ✓ Removed project: rally-test-fixtures (jsturtevant/rally-test-fixtures)

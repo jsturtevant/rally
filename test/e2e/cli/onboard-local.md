@@ -24,6 +24,17 @@ Rally Status
 ============
 
 Config Paths:
+  ✓ config: $RALLY_HOME/config.yaml
+  ✓ projects: $RALLY_HOME/projects.yaml
+  ✗ active: $RALLY_HOME/active.yaml
+
+Directories:
+  configDir:     $RALLY_HOME
+  projectsDir:   $RALLY_HOME/projects
 
 Onboarded Projects (1):
+  - $PROJECT_NAME: $REPO_ROOT
+
+Active Dispatches (0):
+  (none)
 ```

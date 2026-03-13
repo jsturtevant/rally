@@ -66,7 +66,6 @@ function parseTestCases(body) {
       let expected = null;
       let stdinInput = null;
       let ptySteps = null;
-      let matchMode = 'exact';
       while (i < lines.length) {
         const currentLine = lines[i];
 
@@ -75,11 +74,8 @@ function parseTestCases(body) {
           break;
         }
 
-        // Look for ```expected or ```contains
-        if (currentLine.match(/^```(expected|contains)/)) {
-          if (currentLine.match(/^```contains/)) {
-            matchMode = 'contains';
-          }
+        // Look for ```expected
+        if (currentLine.match(/^```expected/)) {
           i++;
           const expectedLines = [];
           while (i < lines.length && !lines[i].match(/^```\s*$/)) {
@@ -129,7 +125,7 @@ function parseTestCases(body) {
         i++;
       }
 
-      testCases.push({ command, expected, expectedExitCode, stdinInput, ptySteps, matchMode });
+      testCases.push({ command, expected, expectedExitCode, stdinInput, ptySteps });
     } else {
       i++;
     }
@@ -639,7 +635,7 @@ if (!existsSync(CLI_DIR)) {
 
         // Execute tests sequentially
         for (const testCase of testCases) {
-          const { command: rawCommand, expected, expectedExitCode, stdinInput, ptySteps, matchMode } = testCase;
+          const { command: rawCommand, expected, expectedExitCode, stdinInput, ptySteps } = testCase;
 
           // PTY tests need async; skip if node-pty unavailable
           if (ptySteps && !pty) {
@@ -717,10 +713,9 @@ if (!existsSync(CLI_DIR)) {
               }
 
               try {
-                // Select matching strategy:
-                // - PTY tests or ```contains blocks use contains matching
-                // - standard tests use exact matching
-                if (ptySteps || matchMode === 'contains') {
+                // PTY tests use contains matching (output includes prompt noise);
+                // standard tests use exact matching
+                if (ptySteps) {
                   assertContainsLines(output, expected, vars);
                 } else {
                   assertExactMatch(output, expected, vars);

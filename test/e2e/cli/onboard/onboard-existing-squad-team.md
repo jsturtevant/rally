@@ -42,6 +42,15 @@ Active Dispatches (0):
   (none)
 ```
 
+## `rally onboard . --team customteam`
+
+Using a non-default team name currently behaves the same — the --team flag is ignored.
+
+```expected
+✓ Updated .git/info/exclude
+  Project already registered — skipping
+```
+
 ## `rally onboard . --team default`
 
 Re-onboarding the same repo should be idempotent.

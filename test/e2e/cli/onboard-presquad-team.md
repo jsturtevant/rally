@@ -1,6 +1,6 @@
 ---
 repo: local
-setup: setup-squad.mjs
+setup: setup-squad.js
 ---
 
 # Onboard with Pre-existing Squad

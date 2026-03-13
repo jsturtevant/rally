@@ -9,6 +9,7 @@ Reusable patterns and heuristics learned through work. NOT transcripts — each 
 ## Patterns
 
 <!-- Append entries below. Format: **Pattern:** description. **Context:** when it applies. -->
+When we are working on features together don't do a commit until I tell you, leave them as staged.
 
 ## Anti-Patterns
 

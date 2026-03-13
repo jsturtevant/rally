@@ -32,6 +32,15 @@ send: n
 Cancelled.
 ```
 
+## `grep $PROJECT_NAME $RALLY_HOME/projects.yaml`
+
+After declining removal, the project should still be in projects.yaml.
+
+```expected
+  - name: $PROJECT_NAME
+    path: $REPO_ROOT
+```
+
 ## `rally onboard . --team default`
 
 Re-onboard should show the project is still there (not removed).

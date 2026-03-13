@@ -24,6 +24,15 @@ send: {enter}
 ✓ Registered project: $PROJECT_NAME
 ```
 
+## `grep $PROJECT_NAME $RALLY_HOME/projects.yaml`
+
+Verify the project was actually written to projects.yaml.
+
+```expected
+  - name: $PROJECT_NAME
+    path: $REPO_ROOT
+```
+
 ## `rally status`
 
 After onboarding, status should show 1 project.
@@ -65,6 +74,10 @@ Removes the project without interactive prompt.
 ```expected
 ✓ Removed project: $PROJECT_NAME (jsturtevant/rally-test-fixtures)
 ```
+
+## `grep $PROJECT_NAME $RALLY_HOME/projects.yaml` (exit 1)
+
+After removal, the project should no longer appear in projects.yaml.
 
 ## `rally status`
 

@@ -18,6 +18,14 @@ Onboards by cloning via owner/repo shorthand. Rally clones to projects dir.
 ✓ Registered project: rally-test-fixtures
 ```
 
+## `ls $RALLY_HOME/projects/rally-test-fixtures/.git/info/exclude`
+
+Verify the cloned project directory actually exists and has a git repo.
+
+```expected
+$RALLY_HOME/projects/rally-test-fixtures/.git/info/exclude
+```
+
 ## `rally status`
 
 After clone-onboard, status should show the project.

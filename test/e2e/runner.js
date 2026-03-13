@@ -13,15 +13,6 @@ try {
   // node-pty not available — PTY tests will be skipped
 }
 
-// Workaround: node --test --test-name-pattern exits 0 even with failures.
-// Track failures and force exit code 1 if any test failed.
-let hasFailures = false;
-process.on('exit', () => {
-  if (hasFailures) {
-    process.exit(1);
-  }
-});
-
 const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
 const CLI_DIR = join(import.meta.dirname, 'cli');
 const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
@@ -659,7 +650,6 @@ if (!existsSync(CLI_DIR)) {
                 console.log('MATCH ✓');
               }
               if (exitCode !== expectedExitCode) {
-                hasFailures = true;
                 assert.fail(`Command exited with code ${exitCode} (expected exit ${expectedExitCode}).`);
               }
               assert.ok(output !== undefined, 'command should run');
@@ -700,7 +690,6 @@ if (!existsSync(CLI_DIR)) {
                   );
                 }
               } catch (err) {
-                hasFailures = true;
                 if (VERBOSE) {
                   console.log(`\n${'━'.repeat(60)}`);
                   console.log(`❌ FAIL: ${rawCommand}`);

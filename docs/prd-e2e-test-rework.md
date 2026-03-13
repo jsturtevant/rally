@@ -2,7 +2,7 @@
 
 **Author:** Mal (Lead)
 **Date:** 2026-03-10
-**Status:** Draft
+**Status:** In Progress — Phase 3 complete, E7–E9 remaining
 
 ---
 
@@ -229,11 +229,14 @@ Commands:
 | Element | Meaning |
 |---------|---------|
 | `## \`command\`` heading | The exact CLI command to execute. Runner extracts text inside backticks. |
+| `## \`command\` (exit N)` | Command expected to exit with code N (non-zero). Without this, exit 0 is expected. |
 | Prose between heading and code block | Human-readable description. Ignored by runner. |
 | `` ```expected `` code block | Expected stdout. Exact-matched against actual output after whitespace normalization and terminal line-wrap unwrapping. |
+| `` ```pty `` code block | Interactive PTY steps. Lines are `match: <text>` (wait for output) and `send: <keys>` (type input). Supports `{enter}`, `{up}`, `{down}`, `{backspace}`. |
+| Non-rally commands | Headings like `## \`git ...\``, `## \`grep ...\``, `## \`ls ...\`` run directly (not through rally). Used for filesystem state verification. |
 
 - Multiple test cases per file, grouped by feature.
-- Files live in `test/e2e/cli/` with `.md` extension.
+- Files live in `test/e2e/cli/` (with subdirectories like `onboard/`).
 - A test case without an `` ```expected `` block is treated as "command should exit 0" (smoke test).
 
 ### 4.3 Directory Structure
@@ -241,22 +244,30 @@ Commands:
 ```
 test/e2e/
 ├── runner.js              ← Parses .md files, extracts commands, runs them, exact-compares output
+├── runner.test.js         ← Unit tests for the runner's matchers and parsers
+├── README.md              ← Documentation for the markdown test format
 ├── cli/
 │   ├── help.md            ← --help, --version
-│   ├── onboard.md         ← onboard commands
-│   ├── status.md          ← status, status --json
-│   ├── dispatch.md        ← dispatch issue, dispatch clean, etc.
-│   ├── dashboard.md       ← dashboard --json
+│   ├── status.md          ← status in fresh environment
+│   ├── onboard/
+│   │   ├── setup-squad.js ← Setup script: pre-creates squad config
+│   │   ├── onboard.md     ← PTY interactive onboard (first-time squad creation)
+│   │   ├── onboard-team.md         ← --team default, status, idempotency, remove + verification
+│   │   ├── onboard-existing-squad.md     ← pre-created squad, no flag
+│   │   ├── onboard-existing-squad-team.md ← pre-created squad, --team + errors
+│   │   ├── onboard-help.md              ← help text
+│   │   ├── onboard-errors.md            ← error cases (bad path, no projects, bad fork, bad clone)
+│   │   ├── onboard-clone.md             ← owner/repo + HTTPS URL clone
+│   │   ├── onboard-clone-fork.md        ← explicit --fork + remote verification
+│   │   ├── onboard-clone-fork-auto.md   ← --fork auto-discovery + remote verification
+│   │   ├── onboard-fork-auto-local.md   ← --fork auto on local path + remote verification
+│   │   ├── onboard-remove-interactive.md ← PTY picker + confirm removal
+│   │   └── onboard-remove-decline.md    ← PTY picker + decline + verification
 │   ├── help.test.js       ← (existing PTY tests remain)
 │   ├── onboard.test.js
 │   ├── sessions.test.js
 │   └── status.test.js
 ├── journeys/              ← (existing journey tests remain as .test.js for now)
-│   ├── actions/
-│   ├── dispatch/
-│   ├── display/
-│   ├── lifecycle/
-│   └── navigation/
 └── harness/               ← (shared test utilities)
 ```
 
@@ -271,17 +282,18 @@ The runner is the **only JavaScript file** involved in markdown-driven tests. It
 
    ```markdown
    ---
-   repo: jsturtevant/rally-test-fixtures
+   clone: jsturtevant/rally-test-fixtures
+   setup: setup-squad.js
    ---
    ```
 
-   Supported `repo:` values:
+   Supported frontmatter fields:
 
-   | `repo:` value | Runner behavior |
-   |---------------|-----------------|
-   | `local` | Clones `jsturtevant/rally-test-fixtures` into a temp directory via `gh repo clone`. Tests run with `cwd` set to that clone. Used for `rally onboard .` tests. |
-   | `jsturtevant/rally-test-fixtures` (or any `owner/repo`) | Clones the fixture repo into a temp directory. Requires network. |
-   | *(not specified)* | No repo setup — just creates a temp `RALLY_HOME` dir. For `--help`/`--version` tests. |
+   | Field | Value | Runner behavior |
+   |-------|-------|-----------------|
+   | `clone:` | `owner/repo` | Clones the repo into a temp directory via `gh repo clone`. Tests run with `cwd` set to that clone. Used for `rally onboard .` tests. |
+   | `setup:` | `script.js` | Runs the JS script (resolved relative to the `.md` file) after clone but before tests. Used to pre-create squad config, seed state, etc. |
+   | *(neither)* | — | No repo setup — just creates a temp `RALLY_HOME` dir. For `--help`/`--version` tests. |
 
    The runner ALWAYS creates a temp directory to use as `RALLY_HOME` (to isolate from real config). No pre-seeding of any files — all config state is built by running real CLI commands within the test file.
 
@@ -381,10 +393,27 @@ The `assertExactMatch(actual, expected)` function:
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E6** | **✅ Write `test/e2e/cli/onboard.md`** — help tests for onboard and onboard remove. **`test/e2e/cli/onboard-local.md`** — integration tests with `repo: local` (onboard + status verification). | E4 | S |
+| **E6** | **✅ Write onboard e2e tests** — 12 markdown test files in `test/e2e/cli/onboard/` covering: help, errors, local onboard (PTY + non-PTY), clone (owner/repo + HTTPS URL), fork (explicit, auto-discovery, local path), interactive remove (confirm + decline), --team flag, filesystem verification (grep projects.yaml, ls cloned dirs, git remote URLs). Runner enhanced with PTY support, non-rally commands, `clone:` + `setup:` frontmatter, `(exit N)` syntax, GH_CONFIG_DIR preservation, ANSI stripping. | E4 | L |
 | **E7** | **Write `test/e2e/cli/dashboard.md`** — `dashboard --json` and related tests from `e2e.test.js`. | E4 | S |
 | **E8** | **Write `test/e2e/cli/dispatch.md`** — convert dispatch tests from `e2e.test.js` (dispatch issue, dispatch clean, dispatch sessions). | E4, E2 | M |
 | **E9** | **Retire `e2e.test.js` monolith.** Once all its CLI-stdout tests are covered by markdown files, remove it. Keep any library-level dispatch tests that need real GitHub API calls as separate integration tests. | E6, E7, E8 | S |
+
+#### Phase 3 Summary
+
+**14 test files, 59 individual test cases, all passing.** The markdown-driven test framework now covers the entire `rally onboard` surface including interactive PTY flows, clone/fork variants, error cases, and filesystem state verification.
+
+**Runner enhancements beyond original PRD scope:**
+- PTY/interactive support via `node-pty` (```pty blocks with match:/send: steps)
+- Non-rally command execution (git, grep, ls) for post-mutation state verification
+- `clone: owner/repo` frontmatter (replaces `repo: local`) for pre-cloning test repos
+- `setup: script.js` frontmatter for running setup scripts before tests
+- `(exit N)` syntax in headings for expected non-zero exit codes
+- GH_CONFIG_DIR preservation (fixes gh auth when XDG_CONFIG_HOME is overridden for test isolation)
+- ANSI stripping for PTY output including private mode sequences (`\x1b[?25h`)
+
+**Issues filed:**
+- [#415](https://github.com/jsturtevant/rally/issues/415) — Multi-team support (--team flag currently ignored)
+- [#416](https://github.com/jsturtevant/rally/issues/416) — Add git_protocol config option (ssh/https) for deterministic remote URLs
 
 ### Phase 4: Wire into CI
 

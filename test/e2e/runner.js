@@ -6,6 +6,13 @@ import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 
+let pty;
+try {
+  pty = (await import('node-pty')).default;
+} catch {
+  // node-pty not available — PTY tests will be skipped
+}
+
 const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
 const CLI_DIR = join(import.meta.dirname, 'cli');
 const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
@@ -55,9 +62,10 @@ function parseTestCases(body) {
       const expectedExitCode = headingMatch[2] ? parseInt(headingMatch[2], 10) : 0;
       i++;
 
-      // Skip prose until we find ```expected, ```stdin, or another heading
+      // Skip prose until we find ```expected, ```stdin, ```pty, or another heading
       let expected = null;
       let stdinInput = null;
+      let ptySteps = null;
       while (i < lines.length) {
         const currentLine = lines[i];
 
@@ -92,10 +100,32 @@ function parseTestCases(body) {
           continue;
         }
 
+        // Look for ```pty — interactive prompt steps
+        if (currentLine.match(/^```pty/)) {
+          i++;
+          ptySteps = [];
+          let currentMatch = null;
+          while (i < lines.length && !lines[i].match(/^```\s*$/)) {
+            const ptyLine = lines[i].trim();
+            if (ptyLine.startsWith('match:')) {
+              currentMatch = ptyLine.slice(6).trim();
+            } else if (ptyLine.startsWith('send:')) {
+              const rawInput = ptyLine.slice(5).trim();
+              ptySteps.push({ match: currentMatch || '', input: rawInput });
+              currentMatch = null;
+            } else if (ptyLine === '' && currentMatch === null) {
+              // blank line between steps — ignore
+            }
+            i++;
+          }
+          i++; // skip closing ```
+          continue;
+        }
+
         i++;
       }
 
-      testCases.push({ command, expected, expectedExitCode, stdinInput });
+      testCases.push({ command, expected, expectedExitCode, stdinInput, ptySteps });
     } else {
       i++;
     }
@@ -201,6 +231,38 @@ function assertExactMatch(actual, expected, vars = {}) {
         `Line ${i + 1} mismatch:\n` +
         `  expected: "${exp}"\n` +
         `  actual:   "${act}"`
+      );
+    }
+  }
+}
+
+/**
+ * Assert that each expected line appears in actual output, in order.
+ * Used for PTY tests where output includes interactive prompt noise.
+ *
+ * @param {string} actual
+ * @param {string} expected
+ * @param {object} vars - variable substitutions
+ */
+function assertContainsLines(actual, expected, vars = {}) {
+  const { actualLines, expectedLines } = prepareLines(actual, expected, vars);
+  let a = 0;
+
+  for (let e = 0; e < expectedLines.length; e++) {
+    let found = false;
+    while (a < actualLines.length) {
+      if (actualLines[a] === expectedLines[e]) {
+        found = true;
+        a++;
+        break;
+      }
+      a++;
+    }
+    if (!found) {
+      assert.fail(
+        `Expected line ${e + 1} not found in output:\n` +
+        `  expected: "${expectedLines[e]}"\n` +
+        `  searched ${actualLines.length} actual lines`
       );
     }
   }
@@ -363,7 +425,91 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   }
 }
 
-// Discover and run tests
+/**
+ * Execute a rally command in a PTY with scripted interactive input.
+ * @param {string} command - full command string (e.g., "rally onboard .")
+ * @param {string} rallyHome - RALLY_HOME path
+ * @param {string} cwd - working directory
+ * @param {Array<{match: string, input: string}>} steps - prompt match/response pairs
+ * @param {object} [opts] - options
+ * @param {string} [opts.xdgConfigHome] - XDG_CONFIG_HOME override
+ * @returns {Promise<{output: string, exitCode: number}>}
+ */
+function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
+  if (!pty) {
+    throw new Error('node-pty not available — cannot run PTY tests');
+  }
+
+  const parts = command.trim().split(/\s+/);
+  if (parts[0] !== 'rally') {
+    throw new Error(`Command must start with "rally", got: ${command}`);
+  }
+  const args = [RALLY_BIN, ...parts.slice(1)];
+
+  const env = {
+    ...process.env,
+    RALLY_HOME: rallyHome,
+    NO_COLOR: '1',
+    FORCE_COLOR: undefined,
+    GIT_TERMINAL_PROMPT: '0',
+  };
+  if (opts.xdgConfigHome) {
+    env.XDG_CONFIG_HOME = opts.xdgConfigHome;
+  }
+
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let stepIndex = 0;
+    const timeout = setTimeout(() => {
+      ptyProcess.kill();
+      reject(new Error(
+        `PTY command timed out after ${DEFAULT_TIMEOUT}ms.\n` +
+        `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"\n` +
+        `Output so far:\n${output}`
+      ));
+    }, DEFAULT_TIMEOUT);
+
+    const ptyProcess = pty.spawn(process.execPath, args, {
+      name: 'xterm-color',
+      cols: 120,
+      rows: 30,
+      cwd,
+      env,
+    });
+
+    ptyProcess.onData((data) => {
+      output += data;
+      if (VERBOSE) {
+        process.stdout.write(data);
+      }
+
+      if (stepIndex < steps.length) {
+        const { match, input } = steps[stepIndex];
+        // Resolve special keys
+        const resolvedInput = input
+          .replace(/\{enter\}/gi, '\r')
+          .replace(/\{up\}/gi, '\x1b[A')
+          .replace(/\{down\}/gi, '\x1b[B')
+          .replace(/\{space\}/gi, ' ');
+
+        if (output.includes(match)) {
+          setTimeout(() => {
+            const send = resolvedInput.includes('\r') ? resolvedInput : resolvedInput + '\r';
+            ptyProcess.write(send);
+            stepIndex++;
+          }, 200);
+        }
+      }
+    });
+
+    ptyProcess.onExit(({ exitCode }) => {
+      clearTimeout(timeout);
+      // Strip ANSI escape sequences from PTY output
+      const clean = output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+      resolve({ output: clean, exitCode });
+    });
+  });
+}
 if (!existsSync(CLI_DIR)) {
   console.log('No test/e2e/cli/ directory found — skipping markdown tests');
   // Directory doesn't exist yet - no tests to run
@@ -434,9 +580,15 @@ if (!existsSync(CLI_DIR)) {
 
         // Execute tests sequentially
         for (const testCase of testCases) {
-          const { command: rawCommand, expected, expectedExitCode, stdinInput } = testCase;
+          const { command: rawCommand, expected, expectedExitCode, stdinInput, ptySteps } = testCase;
 
-          it(rawCommand, () => {
+          // PTY tests need async; skip if node-pty unavailable
+          if (ptySteps && !pty) {
+            it(rawCommand, { skip: 'node-pty not available' }, () => {});
+            continue;
+          }
+
+          it(rawCommand, async () => {
             // Substitute variables in command (must be inside it() — repoSetup is set in before())
             const commandVars = {
               '$RALLY_HOME': rallyHome,
@@ -449,18 +601,30 @@ if (!existsSync(CLI_DIR)) {
               command = command.replaceAll(key, value);
             }
 
-            const execOpts = { xdgConfigHome, stdinInput };
             let output;
+            let exitCode = 0;
 
-            if (expected === null) {
-              // Smoke test - no expected output block
-              let exitCode = 0;
+            if (ptySteps) {
+              // PTY execution for interactive commands
+              const result = await executePtyCommand(
+                command, rallyHome, repoSetup.cwd, ptySteps,
+                { xdgConfigHome }
+              );
+              output = result.output;
+              exitCode = result.exitCode;
+            } else {
+              // Standard execution
+              const execOpts = { xdgConfigHome, stdinInput };
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {
                 output = err.output || '';
                 exitCode = err.status || err.code || 1;
               }
+            }
+
+            if (expected === null) {
+              // Smoke test - no expected output block
               if (VERBOSE) {
                 console.log(`\n── ${command} ──`);
                 if (exitCode !== 0) {
@@ -475,17 +639,6 @@ if (!existsSync(CLI_DIR)) {
               }
               assert.ok(output !== undefined, 'command should run');
             } else {
-              // Match against expected output
-              let exitCode = 0;
-              try {
-                output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
-              } catch (err) {
-                // Command exited non-zero - capture output and exit code
-                output = err.output || '';
-                exitCode = err.status || err.code || 1;
-                // Don't throw yet - let exact match run against the output
-              }
-
               // Variable substitutions
               const vars = {
                 '$RALLY_HOME': rallyHome,
@@ -505,7 +658,13 @@ if (!existsSync(CLI_DIR)) {
               }
 
               try {
-                assertExactMatch(output, expected, vars);
+                // PTY tests use contains matching (output includes prompt noise);
+                // standard tests use exact matching
+                if (ptySteps) {
+                  assertContainsLines(output, expected, vars);
+                } else {
+                  assertExactMatch(output, expected, vars);
+                }
                 if (VERBOSE) console.log('MATCH ✓');
                 
                 // Check exit code after output matching

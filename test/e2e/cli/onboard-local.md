@@ -5,15 +5,21 @@ repo: local
 # Onboard Integration Tests
 
 Tests for `rally onboard` commands that require a real git repository.
-The first onboard creates the personal squad automatically (non-interactive).
+The first onboard creates the personal squad via interactive prompts (PTY).
 
 ## `rally onboard . --team default`
 
 Onboards the current directory with explicit team name. Creates personal squad on first run.
 
+```pty
+match: Would you like to create one now?
+send: y
+
+match: What kind of team do you need?
+send: {enter}
+```
+
 ```expected
-No personal squad found — creating with defaults (non-interactive)...
-✓ Personal squad created.
 ✓ Updated .git/info/exclude
 ✓ Registered project: $PROJECT_NAME
 ```

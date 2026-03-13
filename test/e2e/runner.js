@@ -351,6 +351,7 @@ function setupRepo(frontmatter) {
       env: {
         ...process.env,
         GIT_TERMINAL_PROMPT: '0',
+    GH_PROMPT_DISABLED: '1',
         NO_COLOR: '1',
         FORCE_COLOR: undefined,
       },
@@ -386,6 +387,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
     NO_COLOR: '1',
     FORCE_COLOR: undefined,
     GIT_TERMINAL_PROMPT: '0',
+    GH_PROMPT_DISABLED: '1',
     GH_CONFIG_DIR,
   };
   if (opts.xdgConfigHome) {
@@ -443,6 +445,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
     NO_COLOR: '1',
     FORCE_COLOR: undefined,
     GIT_TERMINAL_PROMPT: '0',
+    GH_PROMPT_DISABLED: '1',
     GH_CONFIG_DIR,
   };
   if (opts.xdgConfigHome) {

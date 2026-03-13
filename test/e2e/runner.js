@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 
@@ -446,6 +446,7 @@ if (!existsSync(CLI_DIR)) {
               const vars = {
                 '$RALLY_HOME': rallyHome,
                 '$REPO_ROOT': repoSetup.cwd,
+                '$PROJECT_NAME': basename(repoSetup.cwd),
               };
 
               if (VERBOSE) {

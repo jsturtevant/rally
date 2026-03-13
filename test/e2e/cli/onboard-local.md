@@ -12,6 +12,7 @@ Onboards the current directory with explicit team name.
 
 ```expected
 ✓ Updated .git/info/exclude
+✓ Registered project: $PROJECT_NAME
 ```
 
 ## `rally status`

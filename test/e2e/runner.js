@@ -577,10 +577,11 @@ if (!existsSync(CLI_DIR)) {
 
           // Run setup command if specified in frontmatter
           if (frontmatter && frontmatter.setup) {
+            const mdDir = join(CLI_DIR, file, '..');
+            const setupScript = join(mdDir, frontmatter.setup);
             try {
-              const setupOutput = execFileSync(process.execPath, [frontmatter.setup], {
+              const setupOutput = execFileSync(process.execPath, [setupScript], {
                 encoding: 'utf8',
-                cwd: import.meta.dirname,
                 timeout: DEFAULT_TIMEOUT,
                 env: {
                   ...process.env,

@@ -30,6 +30,7 @@ Config Paths:
 
 Directories:
   configDir:     $RALLY_HOME
+  personalSquad: $HOME/.config/squad/.squad
   projectsDir:   $RALLY_HOME/projects
 
 Onboarded Projects (1):

@@ -91,7 +91,7 @@ function parseTestCases(body) {
 }
 
 /**
- * Normalize a line for fuzzy matching
+ * Normalize a line for matching
  * @param {string} line
  * @returns {string}
  */
@@ -100,162 +100,101 @@ function normalizeLine(line) {
 }
 
 /**
- * Fuzzy match actual output against expected, returning per-line results.
- *
- * Uses a two-pointer scan: walks through actual lines to find each expected
- * line in order using equality after normalization (trim + collapse whitespace).
- * Handles terminal line wrapping by joining 2–3 consecutive actual lines.
- * Extra actual lines (preamble, decorations) are skipped automatically.
+ * Prepare actual and expected lines for comparison.
+ * Applies variable substitutions, normalizes paths and whitespace,
+ * and unwraps terminal-wrapped lines by greedily joining short actual
+ * lines that together match the next expected line.
  *
  * @param {string} actual
  * @param {string} expected
  * @param {object} vars - variable substitutions
- * @returns {{ results: Array<{ line: string, found: boolean, context: string }>, actualLines: string[] }}
+ * @returns {{ actualLines: string[], expectedLines: string[] }}
  */
-function fuzzyMatch(actual, expected, vars = {}) {
-  // Apply variable substitutions to expected
+function prepareLines(actual, expected, vars = {}) {
   let processedExpected = expected;
   for (const [key, value] of Object.entries(vars)) {
     processedExpected = processedExpected.replaceAll(key, value);
   }
 
-  // Normalize path separators for cross-platform comparison
-  // Normalize path separators: replace escaped backslashes (\\) and single backslashes (\) with forward slashes
   const normalizePaths = (str) => str.replace(/\\\\/g, '/').replace(/\\/g, '/');
   processedExpected = normalizePaths(processedExpected);
   actual = normalizePaths(actual);
 
-  const actualLines = actual
-    .split(/\r?\n/)
-    .map(normalizeLine)
-    .filter(line => line.length > 0);
+  const rawActual = actual.split(/\r?\n/).map(normalizeLine).filter(l => l.length > 0);
+  const expectedLines = processedExpected.split('\n').map(normalizeLine).filter(l => l.length > 0);
 
-  const expectedLines = processedExpected
-    .split('\n')
-    .map(normalizeLine)
-    .filter(line => line.length > 0);
-
-  const results = [];
-  let a = 0; // actual line pointer
-
-  for (const expectedLine of expectedLines) {
-    let found = false;
-    const searchStart = a;
-
-    while (a < actualLines.length) {
-      // Direct line equality
-      if (actualLines[a] === expectedLine) {
-        results.push({ line: expectedLine, found: true, context: '' });
-        a++;
-        found = true;
-        break;
-      }
-
-      // Try joining consecutive actual lines to handle terminal wrapping
-      for (let n = 2; n <= 3 && a + n - 1 < actualLines.length; n++) {
-        const segment = actualLines.slice(a, a + n);
-        if (segment.join(' ') === expectedLine || segment.join('') === expectedLine) {
-          results.push({ line: expectedLine, found: true, context: '' });
+  // Unwrap terminal-wrapped lines: greedily join consecutive actual lines
+  // when they match the next expected line
+  const actualLines = [];
+  let a = 0;
+  let e = 0;
+  while (a < rawActual.length) {
+    let wrapped = false;
+    if (e < expectedLines.length) {
+      for (let n = 2; n <= 3 && a + n - 1 < rawActual.length; n++) {
+        const joined = rawActual.slice(a, a + n).join(' ');
+        const joinedNoSpace = rawActual.slice(a, a + n).join('');
+        if (joined === expectedLines[e] || joinedNoSpace === expectedLines[e]) {
+          actualLines.push(joined === expectedLines[e] ? joined : joinedNoSpace);
           a += n;
-          found = true;
+          e++;
+          wrapped = true;
           break;
         }
       }
-
-      if (found) break;
-
-      // This actual line doesn't match — skip it (preamble/extra output)
-      a++;
     }
-
-    if (!found) {
-      // Show nearby actual lines for context
-      const contextStart = Math.max(0, searchStart);
-      const contextEnd = Math.min(actualLines.length, searchStart + 5);
-      const context = actualLines.slice(contextStart, contextEnd).join(' | ');
-      results.push({ line: expectedLine, found: false, context });
+    if (wrapped) continue;
+    // No wrap match — take the line as-is
+    if (e < expectedLines.length && rawActual[a] === expectedLines[e]) {
+      e++;
     }
+    actualLines.push(rawActual[a]);
+    a++;
   }
 
-  return { results, actualLines };
+  return { actualLines, expectedLines };
 }
 
 /**
- * Assert fuzzy match — throws on first missing line.
+ * Assert exact match — every expected line must match the corresponding actual line.
+ * Handles terminal line wrapping via prepareLines unwrapping.
  *
  * @param {string} actual
  * @param {string} expected
  * @param {object} vars - variable substitutions
  */
-function assertFuzzyMatch(actual, expected, vars = {}) {
-  const { results, actualLines } = fuzzyMatch(actual, expected, vars);
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    if (!r.found) {
+function assertExactMatch(actual, expected, vars = {}) {
+  const { actualLines, expectedLines } = prepareLines(actual, expected, vars);
+  const max = Math.max(actualLines.length, expectedLines.length);
+
+  for (let i = 0; i < max; i++) {
+    const exp = expectedLines[i];
+    const act = actualLines[i];
+    if (exp === undefined) {
       assert.fail(
-        `Expected line ${i + 1} not found in actual output:\n` +
-        `  expected: "${r.line}"\n` +
-        `  near:     "${r.context}..."`
+        `Extra actual line ${i + 1}:\n` +
+        `  + "${act}"`
       );
     }
-  }
-
-  // Check for unmatched trailing actual lines
-  // Find where the last expected line matched in actual
-  let lastMatchPos = 0;
-  let aPtr = 0;
-  const processedExpected = expected;
-  // Re-run matching to find the actual pointer position after all matches
-  // We know all results found=true at this point, so re-derive pointer position
-  const { results: r2 } = fuzzyMatch(actual, expected, vars);
-  // Count matched actual lines by re-scanning
-  let matchedUpTo = 0;
-  const normActual = actual.split(/\r?\n/).map(normalizeLine).filter(l => l.length > 0);
-  // Apply same var substitutions and normalization to expected
-  let procExp = expected;
-  for (const [key, value] of Object.entries(vars)) {
-    procExp = procExp.replaceAll(key, value);
-  }
-  const normalizePaths2 = (str) => str.replace(/\\\\/g, '/').replace(/\\/g, '/');
-  procExp = normalizePaths2(procExp);
-  const normExpLines = procExp.split(/\r?\n/).map(normalizeLine).filter(l => l.length > 0);
-
-  // Walk through actual lines to find where last expected line matched
-  let ap = 0;
-  for (const eLine of normExpLines) {
-    while (ap < normActual.length) {
-      if (normActual[ap] === eLine) {
-        ap++;
-        break;
-      }
-      // Try wrapping
-      let wrapped = false;
-      for (let n = 2; n <= 3 && ap + n - 1 < normActual.length; n++) {
-        const seg = normActual.slice(ap, ap + n);
-        if (seg.join(' ') === eLine || seg.join('') === eLine) {
-          ap += n;
-          wrapped = true;
-          break;
-        }
-      }
-      if (wrapped) break;
-      ap++;
+    if (act === undefined) {
+      assert.fail(
+        `Missing expected line ${i + 1}:\n` +
+        `  - "${exp}"`
+      );
     }
-  }
-
-  // ap now points past the last matched actual line
-  const trailing = normActual.slice(ap).filter(l => l.length > 0);
-  if (trailing.length > 0) {
-    assert.fail(
-      `Actual output has ${trailing.length} unmatched trailing line(s) after last expected line:\n` +
-      trailing.map(l => `  + "${l}"`).join('\n')
-    );
+    if (act !== exp) {
+      assert.fail(
+        `Line ${i + 1} mismatch:\n` +
+        `  expected: "${exp}"\n` +
+        `  actual:   "${act}"`
+      );
+    }
   }
 }
 
 /**
  * Format a compact diff between expected and actual output.
- * Shows each expected line with ✓ (found) or ✗ (missing), plus context for misses.
+ * Shows each line with ✓ (match) or ✗ (mismatch/missing/extra).
  *
  * @param {string} actual
  * @param {string} expected
@@ -263,15 +202,22 @@ function assertFuzzyMatch(actual, expected, vars = {}) {
  * @returns {string}
  */
 function formatDiff(actual, expected, vars = {}) {
-  const { results } = fuzzyMatch(actual, expected, vars);
+  const { actualLines, expectedLines } = prepareLines(actual, expected, vars);
+  const max = Math.max(actualLines.length, expectedLines.length);
   const lines = [];
 
-  for (const r of results) {
-    if (r.found) {
-      lines.push(`  ✓ ${r.line}`);
+  for (let i = 0; i < max; i++) {
+    const exp = expectedLines[i];
+    const act = actualLines[i];
+    if (exp === undefined) {
+      lines.push(`  + "${act}"`);
+    } else if (act === undefined) {
+      lines.push(`  ✗ "${exp}" (missing)`);
+    } else if (act === exp) {
+      lines.push(`  ✓ ${exp}`);
     } else {
-      lines.push(`  ✗ ${r.line}`);
-      lines.push(`    actual near: "${r.context}..."`);
+      lines.push(`  ✗ "${exp}"`);
+      lines.push(`    actual: "${act}"`);
     }
   }
 
@@ -491,7 +437,7 @@ if (!existsSync(CLI_DIR)) {
                 // Command exited non-zero - capture output and exit code
                 output = err.output || '';
                 exitCode = err.status || err.code || 1;
-                // Don't throw yet - let fuzzy match run against the output
+                // Don't throw yet - let exact match run against the output
               }
 
               // Variable substitutions
@@ -499,6 +445,7 @@ if (!existsSync(CLI_DIR)) {
                 '$RALLY_HOME': rallyHome,
                 '$REPO_ROOT': repoSetup.cwd,
                 '$PROJECT_NAME': basename(repoSetup.cwd),
+                '$HOME': process.env.HOME || process.env.USERPROFILE || '',
               };
 
               if (VERBOSE) {
@@ -512,7 +459,7 @@ if (!existsSync(CLI_DIR)) {
               }
 
               try {
-                assertFuzzyMatch(output, expected, vars);
+                assertExactMatch(output, expected, vars);
                 if (VERBOSE) console.log('MATCH ✓');
                 
                 // Check exit code after output matching

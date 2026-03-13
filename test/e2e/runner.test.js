@@ -142,8 +142,8 @@ describe('assertContainsLines', () => {
 
 describe('parseFrontmatter', () => {
   it('parses yaml frontmatter', () => {
-    const { frontmatter, body } = parseFrontmatter('---\nrepo: local\n---\n# Title');
-    assert.equal(frontmatter.repo, 'local');
+    const { frontmatter, body } = parseFrontmatter('---\nclone: jsturtevant/rally-test-fixtures\n---\n# Title');
+    assert.equal(frontmatter.clone, 'jsturtevant/rally-test-fixtures');
     assert.equal(body.trim(), '# Title');
   });
 

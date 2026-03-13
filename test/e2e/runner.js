@@ -315,67 +315,46 @@ function formatDiff(actual, expected, vars = {}) {
  * @returns {{ cwd: string, cleanup: Function }}
  */
 function setupRepo(frontmatter) {
-  if (!frontmatter || !frontmatter.repo) {
+  if (!frontmatter || !frontmatter.clone) {
     // No repo setup needed
     return { cwd: process.cwd(), cleanup: () => {} };
   }
 
-  const repoValue = frontmatter.repo;
-  let ownerRepo;
-
-  if (repoValue === 'local') {
-    // Use RALLY_TEST_OWNER env var or default to jsturtevant
-    const owner = process.env.RALLY_TEST_OWNER || 'jsturtevant';
-    ownerRepo = `${owner}/rally-test-fixtures`;
-  } else {
-    ownerRepo = repoValue;
-  }
+  const ownerRepo = frontmatter.clone;
 
   // Check gh auth status before attempting to clone
-  if (repoValue === 'local') {
-    try {
-      execFileSync('gh', ['auth', 'status'], {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 30_000,
-      });
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        throw new Error(`gh not installed. Install GitHub CLI from https://cli.github.com`);
-      }
-      throw new Error(`gh not authenticated. Run 'gh auth login' to authenticate.`);
+  try {
+    execFileSync('gh', ['auth', 'status'], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 30_000,
+    });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new Error(`gh not installed. Install GitHub CLI from https://cli.github.com`);
     }
-
-    // Clone repo into temp directory
-    const repoDir = mkdtempSync(join(tmpdir(), 'rally-test-repo-'));
-
-    try {
-      execFileSync('gh', ['repo', 'clone', ownerRepo, repoDir], {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 30_000,
-        env: {
-          ...process.env,
-          GIT_TERMINAL_PROMPT: '0',
-          NO_COLOR: '1',
-          FORCE_COLOR: undefined,
-        },
-      });
-    } catch (err) {
-      rmSync(repoDir, { recursive: true, force: true });
-      throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
-    }
-
-    return {
-      cwd: repoDir,
-      cleanup: () => {
-        rmSync(repoDir, { recursive: true, force: true });
-      },
-    };
+    throw new Error(`gh not authenticated. Run 'gh auth login' to authenticate.`);
   }
 
-  // For owner/repo format, create temp dir but don't clone (rally handles cloning)
+  // Clone repo into temp directory
   const repoDir = mkdtempSync(join(tmpdir(), 'rally-test-repo-'));
+
+  try {
+    execFileSync('gh', ['repo', 'clone', ownerRepo, repoDir], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 30_000,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: '0',
+        NO_COLOR: '1',
+        FORCE_COLOR: undefined,
+      },
+    });
+  } catch (err) {
+    rmSync(repoDir, { recursive: true, force: true });
+    throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
+  }
 
   return {
     cwd: repoDir,

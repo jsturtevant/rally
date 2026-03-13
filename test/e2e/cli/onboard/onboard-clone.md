@@ -5,7 +5,7 @@ setup: setup-squad.js
 # Onboard via Clone
 
 Tests `rally onboard owner/repo` and URL forms where Rally itself clones the repository.
-Squad is pre-created by setup script. No `repo: local` — Rally does the cloning.
+Squad is pre-created by setup script. No `clone:` — Rally does the cloning.
 
 ## `rally onboard jsturtevant/rally-test-fixtures --team default`
 

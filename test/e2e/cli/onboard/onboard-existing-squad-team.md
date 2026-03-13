@@ -1,5 +1,5 @@
 ---
-repo: local
+clone: jsturtevant/rally-test-fixtures
 setup: setup-squad.js
 ---
 

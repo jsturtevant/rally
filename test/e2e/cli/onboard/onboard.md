@@ -1,5 +1,5 @@
 ---
-repo: local
+clone: jsturtevant/rally-test-fixtures
 ---
 
 # Interactive Onboard Tests

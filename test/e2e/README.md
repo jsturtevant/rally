@@ -64,7 +64,7 @@ exact expected output line 2
 | Stdin input | `` ```stdin `` block | Piped input (non-TTY) |
 | PTY interactive | `` ```pty `` block with match/send | Inquirer prompts (needs node-pty) |
 | Variables | `$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME` | Dynamic paths |
-| Repo setup | `repo: local` in frontmatter | Clones test fixtures repo |
+| Repo setup | `clone: owner/repo` in frontmatter | Clones test fixtures repo via `gh repo clone` |
 | Smoke test | Heading with no `` ```expected `` block | Just checks exit code 0 |
 
 ### PTY tests (interactive prompts)

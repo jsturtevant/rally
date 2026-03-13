@@ -380,7 +380,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E6** | **Write `test/e2e/cli/onboard.md`** — convert onboard CLI tests from `cli/onboard.test.js`. | E4 | S |
+| **E6** | **✅ Write `test/e2e/cli/onboard.md`** — help tests for onboard and onboard remove. **`test/e2e/cli/onboard-local.md`** — integration tests with `repo: local` (onboard + status verification). | E4 | S |
 | **E7** | **Write `test/e2e/cli/dashboard.md`** — `dashboard --json` and related tests from `e2e.test.js`. | E4 | S |
 | **E8** | **Write `test/e2e/cli/dispatch.md`** — convert dispatch tests from `e2e.test.js` (dispatch issue, dispatch clean, dispatch sessions). | E4, E2 | M |
 | **E9** | **Retire `e2e.test.js` monolith.** Once all its CLI-stdout tests are covered by markdown files, remove it. Keep any library-level dispatch tests that need real GitHub API calls as separate integration tests. | E6, E7, E8 | S |

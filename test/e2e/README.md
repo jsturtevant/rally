@@ -36,6 +36,8 @@ The runner registers each `.md` file as a `describe()` suite and each `## \`comm
 | `--test-name-pattern="status"` | Matches `rally status` in **both** `status.md` and `onboard-local.md` — the onboard-local ones fail because `rally onboard` was skipped |
 | `--test-name-pattern="rally onboard remove"` | Runs the remove test without the onboard that creates the project |
 
+**⚠️ Exit code caveat:** When using `--test-name-pattern`, Node's test runner may exit with code 0 even when filtered tests fail. Always check the `ℹ fail` count in the output, not just the exit code. Running the full suite without `--test-name-pattern` correctly exits with code 1 on failure.
+
 ## Writing Tests
 
 See the [PRD](../../docs/prd-e2e-test-rework.md) for full spec. Quick reference:
@@ -57,12 +59,38 @@ exact expected output line 2
 
 | Feature | Syntax | Example |
 |---------|--------|---------|
-| Expected output | `` ```expected `` block | See above |
+| Expected output | `` ```expected `` block | Exact line-by-line match |
 | Non-zero exit | `## \`command\` (exit 1)` | Bad command tests |
-| Stdin input | `` ```stdin `` block | Interactive prompts |
+| Stdin input | `` ```stdin `` block | Piped input (non-TTY) |
+| PTY interactive | `` ```pty `` block with match/send | Inquirer prompts (needs node-pty) |
 | Variables | `$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME` | Dynamic paths |
 | Repo setup | `repo: local` in frontmatter | Clones test fixtures repo |
 | Smoke test | Heading with no `` ```expected `` block | Just checks exit code 0 |
+
+### PTY tests (interactive prompts)
+
+For commands that trigger `@inquirer/prompts` (like `rally onboard .` without `--team`), use a `` ```pty `` block to script the prompt interactions:
+
+````markdown
+## `rally onboard .`
+
+```pty
+match: Would you like to create one now?
+send: y
+
+match: What kind of team do you need?
+send: {enter}
+```
+
+```expected
+✓ Updated .git/info/exclude
+✓ Registered project: $PROJECT_NAME
+```
+````
+
+PTY tests use **contains matching** (each expected line must appear in order, extra lines OK) because PTY output includes prompt text, ANSI codes, and menu decorations. Non-PTY tests in the same file still use exact matching.
+
+Special keys: `{enter}`, `{up}`, `{down}`, `{space}`. Requires `node-pty` — tests are skipped if unavailable.
 
 ### Variables in commands
 

@@ -2,7 +2,7 @@
 
 **Author:** Mal (Lead)
 **Date:** 2026-03-10
-**Status:** Draft
+**Status:** In Progress — Phase 3 complete, E7–E9 remaining
 
 ---
 
@@ -145,7 +145,7 @@ The PTY harness requires `node-pty` and `canvas` (native compilation). These can
 1. **Tests are documentation.** Anyone should be able to open a `.md` file in `test/e2e/cli/` and immediately understand what command is being tested and what output is expected — no JavaScript knowledge required.
 2. **No JavaScript in test files.** All test execution logic lives in a single `runner.js`. The `.md` files are pure data: command + expected output.
 3. **All CLI-stdout tests run in CI.** Fix the glob issue (22 of 23 files not running) and wire the new markdown tests into the CI pipeline.
-4. **Fuzzy matching, not exact.** Whitespace differences, trailing newlines, and minor formatting variance should not break tests. But expected output should be close to real output.
+4. **Exact matching with line-wrap handling.** Expected output must match actual output line-for-line after whitespace normalization. Terminal line wrapping is automatically unwrapped. Trailing newlines are ignored.
 
 ### Should Have
 5. **One runner, many test files.** Adding a new test = adding a `## \`command\`` heading to a markdown file. Zero boilerplate.
@@ -229,34 +229,45 @@ Commands:
 | Element | Meaning |
 |---------|---------|
 | `## \`command\`` heading | The exact CLI command to execute. Runner extracts text inside backticks. |
+| `## \`command\` (exit N)` | Command expected to exit with code N (non-zero). Without this, exit 0 is expected. |
 | Prose between heading and code block | Human-readable description. Ignored by runner. |
-| `` ```expected `` code block | Expected stdout. Fuzzy-matched against actual output (whitespace-tolerant). |
+| `` ```expected `` code block | Expected stdout. Exact-matched against actual output after whitespace normalization and terminal line-wrap unwrapping. |
+| `` ```pty `` code block | Interactive PTY steps. Lines are `match: <text>` (wait for output) and `send: <keys>` (type input). Supports `{enter}`, `{up}`, `{down}`, `{backspace}`. |
+| Non-rally commands | Headings like `## \`git ...\``, `## \`grep ...\``, `## \`ls ...\`` run directly (not through rally). Used for filesystem state verification. |
 
 - Multiple test cases per file, grouped by feature.
-- Files live in `test/e2e/cli/` with `.md` extension.
+- Files live in `test/e2e/cli/` (with subdirectories like `onboard/`).
 - A test case without an `` ```expected `` block is treated as "command should exit 0" (smoke test).
 
 ### 4.3 Directory Structure
 
 ```
 test/e2e/
-├── runner.js              ← Parses .md files, extracts commands, runs them, fuzzy-compares output
+├── runner.js              ← Parses .md files, extracts commands, runs them, exact-compares output
+├── runner.test.js         ← Unit tests for the runner's matchers and parsers
+├── README.md              ← Documentation for the markdown test format
 ├── cli/
 │   ├── help.md            ← --help, --version
-│   ├── onboard.md         ← onboard commands
-│   ├── status.md          ← status, status --json
-│   ├── dispatch.md        ← dispatch issue, dispatch clean, etc.
-│   ├── dashboard.md       ← dashboard --json
+│   ├── status.md          ← status in fresh environment
+│   ├── onboard/
+│   │   ├── setup-squad.js ← Setup script: pre-creates squad config
+│   │   ├── onboard.md     ← PTY interactive onboard (first-time squad creation)
+│   │   ├── onboard-team.md         ← --team default, status, idempotency, remove + verification
+│   │   ├── onboard-existing-squad.md     ← pre-created squad, no flag
+│   │   ├── onboard-existing-squad-team.md ← pre-created squad, --team + errors
+│   │   ├── onboard-help.md              ← help text
+│   │   ├── onboard-errors.md            ← error cases (bad path, no projects, bad fork, bad clone)
+│   │   ├── onboard-clone.md             ← owner/repo + HTTPS URL clone
+│   │   ├── onboard-clone-fork.md        ← explicit --fork + remote verification
+│   │   ├── onboard-clone-fork-auto.md   ← --fork auto-discovery + remote verification
+│   │   ├── onboard-fork-auto-local.md   ← --fork auto on local path + remote verification
+│   │   ├── onboard-remove-interactive.md ← PTY picker + confirm removal
+│   │   └── onboard-remove-decline.md    ← PTY picker + decline + verification
 │   ├── help.test.js       ← (existing PTY tests remain)
 │   ├── onboard.test.js
 │   ├── sessions.test.js
 │   └── status.test.js
 ├── journeys/              ← (existing journey tests remain as .test.js for now)
-│   ├── actions/
-│   ├── dispatch/
-│   ├── display/
-│   ├── lifecycle/
-│   └── navigation/
 └── harness/               ← (shared test utilities)
 ```
 
@@ -271,17 +282,18 @@ The runner is the **only JavaScript file** involved in markdown-driven tests. It
 
    ```markdown
    ---
-   repo: jsturtevant/rally-test-fixtures
+   clone: jsturtevant/rally-test-fixtures
+   setup: setup-squad.js
    ---
    ```
 
-   Supported `repo:` values:
+   Supported frontmatter fields:
 
-   | `repo:` value | Runner behavior |
-   |---------------|-----------------|
-   | `local` | Clones `jsturtevant/rally-test-fixtures` into a temp directory via `gh repo clone`. Tests run with `cwd` set to that clone. Used for `rally onboard .` tests. |
-   | `jsturtevant/rally-test-fixtures` (or any `owner/repo`) | Clones the fixture repo into a temp directory. Requires network. |
-   | *(not specified)* | No repo setup — just creates a temp `RALLY_HOME` dir. For `--help`/`--version` tests. |
+   | Field | Value | Runner behavior |
+   |-------|-------|-----------------|
+   | `clone:` | `owner/repo` | Clones the repo into a temp directory via `gh repo clone`. Tests run with `cwd` set to that clone. Used for `rally onboard .` tests. |
+   | `setup:` | `script.js` | Runs the JS script (resolved relative to the `.md` file) after clone but before tests. Used to pre-create squad config, seed state, etc. |
+   | *(neither)* | — | No repo setup — just creates a temp `RALLY_HOME` dir. For `--help`/`--version` tests. |
 
    The runner ALWAYS creates a temp directory to use as `RALLY_HOME` (to isolate from real config). No pre-seeding of any files — all config state is built by running real CLI commands within the test file.
 
@@ -295,12 +307,13 @@ The runner is the **only JavaScript file** involved in markdown-driven tests. It
    This is the key insight: **tests are ordered steps, not independent units.** If a test needs an onboarded project, a prior test in the same file runs `rally onboard` — no fake config, no pre-seeding.
 
 4. **Parse test cases** — extract `## \`command\`` headings and their following `` ```expected `` blocks.
-5. **Setup** environment per the frontmatter `repo:` value (see above).
+5. **Setup** environment per the frontmatter `clone:` and `setup:` values (see above).
 6. **Execute** each command via `execSync` **in order**, capturing stdout. Each test sees the state left by previous tests.
-7. **Fuzzy-compare** actual output against expected:
+7. **Exact-compare** actual output against expected:
    - Normalize whitespace (collapse runs, trim lines).
    - Ignore trailing newlines.
-   - Comparison is line-by-line after normalization — not a raw string equality check.
+   - Unwrap terminal-wrapped lines by joining consecutive actual lines that match expected.
+   - Compare line-by-line after normalization — every expected line must match the corresponding actual line.
 8. **Report** results using Node's built-in test runner (`node:test`) so it integrates with `node --test`.
 9. **Cleanup** temp dirs after each file.
 
@@ -319,24 +332,24 @@ for (const file of mdFiles) {
     for (const { command, expected } of tests) {
       it(command, () => {
         const actual = execSync(command, { env: { ...process.env, RALLY_HOME: tmpDir } });
-        assertFuzzyMatch(actual.toString(), expected);
+        assertExactMatch(actual.toString(), expected);
       });
     }
   });
 }
 ```
 
-### 4.5 Fuzzy Matching Spec
+### 4.5 Exact Matching Spec
 
-The `assertFuzzyMatch(actual, expected)` function:
+The `assertExactMatch(actual, expected)` function:
 
-1. Split both strings into lines.
-2. Trim each line and collapse internal whitespace runs to a single space.
-3. Remove empty lines from both sides.
-4. Compare line-by-line. Each actual line must contain the corresponding expected line (substring match after normalization).
-5. On mismatch, report the first divergent line with both actual and expected text for easy debugging.
-
-This ensures tests don't break on trivial formatting changes (extra spaces, tab vs spaces) while still catching real output regressions.
+1. Apply variable substitutions (`$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME`) to expected.
+2. Normalize path separators (backslashes → forward slashes) for cross-platform comparison.
+3. Split both strings into lines, trim each line, collapse internal whitespace.
+4. Remove empty lines from both sides.
+5. Unwrap terminal-wrapped lines: greedily join 2–3 consecutive actual lines when they match the next expected line.
+6. Compare line-by-line with strict equality. Extra actual lines, missing expected lines, and mismatches all fail.
+7. On mismatch, report the divergent line number with both actual and expected text for easy debugging.
 
 ### 4.6 Test Script Integration
 
@@ -365,9 +378,9 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E1** | **✅ Implement `test/e2e/runner.js`** — markdown parser, command executor, fuzzy matcher, `node:test` integration. | None | M |
-| **E2** | **✅ Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (clone fixture repo into temp dir) and `repo: owner/repo` (no setup — rally clones it) per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
-| **E3** | **✅ Implement fuzzy matching.** Whitespace normalization, line-by-line comparison, clear diff output on failure. | None | S |
+| **E1** | **✅ Implement `test/e2e/runner.js`** — markdown parser, command executor, exact matcher, `node:test` integration. | None | M |
+| **E2** | **✅ Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `clone:` frontmatter (clone fixture repo into temp dir) and `setup:` (run setup scripts after clone). No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
+| **E3** | **✅ Implement exact matching.** Whitespace normalization, terminal line-wrap unwrapping, line-by-line exact comparison, clear diff output on failure. Variable substitution for dynamic values (`$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME`). | None | S |
 
 ### Phase 2: First Markdown Test File (Proof of Concept)
 
@@ -380,10 +393,27 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E6** | **Write `test/e2e/cli/onboard.md`** — convert onboard CLI tests from `cli/onboard.test.js`. | E4 | S |
+| **E6** | **✅ Write onboard e2e tests** — 12 markdown test files in `test/e2e/cli/onboard/` covering: help, errors, local onboard (PTY + non-PTY), clone (owner/repo + HTTPS URL), fork (explicit, auto-discovery, local path), interactive remove (confirm + decline), --team flag, filesystem verification (grep projects.yaml, ls cloned dirs, git remote URLs). Runner enhanced with PTY support, non-rally commands, `clone:` + `setup:` frontmatter, `(exit N)` syntax, GH_CONFIG_DIR preservation, ANSI stripping. | E4 | L |
 | **E7** | **Write `test/e2e/cli/dashboard.md`** — `dashboard --json` and related tests from `e2e.test.js`. | E4 | S |
 | **E8** | **Write `test/e2e/cli/dispatch.md`** — convert dispatch tests from `e2e.test.js` (dispatch issue, dispatch clean, dispatch sessions). | E4, E2 | M |
 | **E9** | **Retire `e2e.test.js` monolith.** Once all its CLI-stdout tests are covered by markdown files, remove it. Keep any library-level dispatch tests that need real GitHub API calls as separate integration tests. | E6, E7, E8 | S |
+
+#### Phase 3 Summary
+
+**14 test files, 59 individual test cases, all passing.** The markdown-driven test framework now covers the entire `rally onboard` surface including interactive PTY flows, clone/fork variants, error cases, and filesystem state verification.
+
+**Runner enhancements beyond original PRD scope:**
+- PTY/interactive support via `node-pty` (```pty blocks with match:/send: steps)
+- Non-rally command execution (git, grep, ls) for post-mutation state verification
+- `clone: owner/repo` frontmatter (replaces `repo: local`) for pre-cloning test repos
+- `setup: script.js` frontmatter for running setup scripts before tests
+- `(exit N)` syntax in headings for expected non-zero exit codes
+- GH_CONFIG_DIR preservation (fixes gh auth when XDG_CONFIG_HOME is overridden for test isolation)
+- ANSI stripping for PTY output including private mode sequences (`\x1b[?25h`)
+
+**Issues filed:**
+- [#415](https://github.com/jsturtevant/rally/issues/415) — Multi-team support (--team flag currently ignored)
+- [#416](https://github.com/jsturtevant/rally/issues/416) — Add git_protocol config option (ssh/https) for deterministic remote URLs
 
 ### Phase 4: Wire into CI
 
@@ -446,7 +476,7 @@ This ensures tests don't break on trivial formatting changes (extra spaces, tab 
 |---|----------|-----------|
 | 1 | **Tests are documentation.** `.md` files should be readable on GitHub as command reference. | Lowers the barrier to contributing tests. Anyone who can read markdown can review or write a test. |
 | 2 | **No JavaScript in test files.** All logic lives in `runner.js`. | Eliminates boilerplate duplication. Test files can't drift in style or approach. |
-| 3 | **Fuzzy matching, not exact.** Whitespace-tolerant, line-by-line substring comparison. | CLI output has minor formatting differences across platforms and versions. Tests should catch real regressions, not whitespace noise. |
+| 3 | **Exact matching with line-wrap handling.** Whitespace-normalized, line-by-line equality after terminal line unwrapping. | Exact matching catches real regressions (extra/missing output lines). Terminal wrapping is the only legitimate formatting variance — handled by joining consecutive actual lines. Variable substitutions handle machine-specific paths. |
 | 4 | **One runner, many `.md` files.** Adding a test = adding a heading. | Maximally low friction for test authors. No imports, no setup, no teardown code to write. |
 | 5 | **PTY/interactive tests stay as JS.** Markdown format covers CLI-stdout tests only. | Interactive terminal tests need `node-pty`, keyboard input simulation, and frame-based assertions — fundamentally different from "run command, check output". |
 

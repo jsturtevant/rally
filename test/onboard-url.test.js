@@ -181,7 +181,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['clone', barePath, join(projectsDir, 'my-project')], { stdio: 'ignore' });
 
     // Now onboard with a "shorthand" — it should detect the existing clone and skip
-    await onboard({ path: 'octocat/my-project', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
+    await onboard({ path: 'octocat/my-project', _selectTeam: () => ({ teamDir, teamType: 'shared' }), _ensurePersonalSquad: async () => true });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
@@ -199,7 +199,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['clone', barePath, join(projectsDir, 'existing-repo')], { stdio: 'ignore' });
 
     // Should not throw or attempt a second clone
-    await onboard({ path: 'someone/existing-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
+    await onboard({ path: 'someone/existing-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }), _ensurePersonalSquad: async () => true });
 
     assert.ok(existsSync(join(projectsDir, 'existing-repo', '.squad')), '.squad symlink should exist');
   });
@@ -213,7 +213,7 @@ describe('onboard URL cloning', () => {
     mkdirSync(projectsDir, { recursive: true });
     execFileSync('git', ['clone', barePath, join(projectsDir, 'flow-test')], { stdio: 'ignore' });
 
-    await onboard({ path: 'user/flow-test', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
+    await onboard({ path: 'user/flow-test', _selectTeam: () => ({ teamDir, teamType: 'shared' }), _ensurePersonalSquad: async () => true });
 
     const clonedPath = join(projectsDir, 'flow-test');
     // Verify symlinks created
@@ -260,7 +260,7 @@ describe('onboard URL cloning', () => {
 
     // Now try to onboard ownerB/my-repo — should throw collision error
     await assert.rejects(
-      () => onboard({ path: 'ownerB/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) }),
+      () => onboard({ path: 'ownerB/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }), _ensurePersonalSquad: async () => true }),
       (err) => {
         assert.ok(
           err.message.includes('already exists but belongs to a different repository'),
@@ -287,7 +287,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'https://github.com/octocat/my-repo.git'], { stdio: 'ignore' });
 
     // Try to onboard octocat/my-repo — should succeed (reuse existing directory)
-    await onboard({ path: 'octocat/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
+    await onboard({ path: 'octocat/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }), _ensurePersonalSquad: async () => true });
 
     assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
   });
@@ -306,7 +306,7 @@ describe('onboard URL cloning', () => {
     execFileSync('git', ['-C', targetDir, 'remote', 'add', 'origin', 'git@github.com:octocat/my-repo.git'], { stdio: 'ignore' });
 
     // Try to onboard octocat/my-repo — should succeed (reuse existing directory)
-    await onboard({ path: 'octocat/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
+    await onboard({ path: 'octocat/my-repo', _selectTeam: () => ({ teamDir, teamType: 'shared' }), _ensurePersonalSquad: async () => true });
 
     assert.ok(existsSync(join(targetDir, '.squad')), '.squad symlink should exist after onboard');
   });
@@ -317,7 +317,7 @@ describe('onboard URL cloning', () => {
     mkdirSync(repoPath, { recursive: true });
     execFileSync('git', ['init', repoPath], { stdio: 'ignore' });
 
-    await onboard({ path: repoPath, _selectTeam: () => ({ teamDir, teamType: 'shared' }) });
+    await onboard({ path: repoPath, _selectTeam: () => ({ teamDir, teamType: 'shared' }), _ensurePersonalSquad: async () => true });
 
     assert.ok(existsSync(join(repoPath, '.squad')), '.squad should exist for local path');
   });

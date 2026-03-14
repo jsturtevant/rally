@@ -37,7 +37,8 @@ const onboardCmd = program
   .hook('preAction', () => { ensureSetup(); assertTools(); })
   .action(async (pathArg, opts) => {
     try {
-      await onboard({ path: pathArg, team: opts.team, fork: opts.fork });
+      const { ensurePersonalSquad } = await import('../lib/squad-sdk.js');
+      await onboard({ path: pathArg, team: opts.team, fork: opts.fork, _ensurePersonalSquad: ensurePersonalSquad });
     } catch (err) {
       handleError(err);
     }
@@ -115,7 +116,7 @@ const dashboard = program
         const onAddProject = (opts) => {
           // opts: { path, fork } where fork is 'auto' | 'owner/repo' | undefined
           // When fork === 'auto', pass it through — onboard() handles auto-discovery
-          return onboard({ path: opts.path, fork: opts.fork });
+          return onboard({ path: opts.path, fork: opts.fork, _ensurePersonalSquad: dashboardEnsureSquad });
         };
 
         // Non-prompting squad check for dispatch calls (squad already verified above)
@@ -433,3 +434,13 @@ try {
   }
   throw err;
 }
+
+// Catch async RallyErrors (from action handlers) that escape program.parse()
+process.on('unhandledRejection', (err) => {
+  if (err instanceof RallyError) {
+    console.error(`Error: ${err.message}`);
+    process.exit(err.exitCode);
+  }
+  console.error(err);
+  process.exit(1);
+});

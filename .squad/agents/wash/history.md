@@ -393,3 +393,10 @@ See GitHub issues for full specs. Blockers resolved—proceed with implementatio
 - Org membership check returns `null` (indeterminate) for non-org repos or API errors — only warns on definitive `false`
 
 **PR:** #228 on branch `squad/218-dispatch-warning`
+
+### 2025-07-24 — PR #411: Markdown-Driven E2E Test Runner
+
+- Marked E1-E5 complete in `docs/prd-e2e-test-rework.md` and pushed 5 commits on `feat/e2e-test-rework`
+- Opened PR #411 targeting main: "feat: markdown-driven e2e test runner (Phase 1-2)"
+- PR covers runner.js, help.md, status.md — the full Phase 1-2 deliverable
+- Used `--body-file` with `gh pr create` to avoid shell escaping issues with complex PR descriptions

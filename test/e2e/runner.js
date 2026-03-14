@@ -2,229 +2,38 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import yaml from 'js-yaml';
+import { join, basename } from 'node:path';
+import { tmpdir, homedir } from 'node:os';
+import {
+  parseFrontmatter,
+  parseTestCases,
+  formatDiff,
+  assertContainsLines,
+  assertExactMatch,
+} from './runner-lib.js';
+
+let pty;
+try {
+  pty = (await import('node-pty')).default;
+} catch {
+  // node-pty not available — PTY tests will be skipped
+}
 
 const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
 const CLI_DIR = join(import.meta.dirname, 'cli');
 const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
 const DEFAULT_TIMEOUT = 30_000;
-
-/**
- * Parse YAML frontmatter from markdown content
- * @param {string} content - markdown file content
- * @returns {{ frontmatter: object | null, body: string }}
- */
-function parseFrontmatter(content) {
-  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/;
-  const match = content.match(frontmatterRegex);
-
-  if (!match) {
-    return { frontmatter: null, body: content };
-  }
-
-  const frontmatter = yaml.load(match[1], { schema: yaml.CORE_SCHEMA });
-  const body = content.slice(match[0].length);
-  
-  // Validate frontmatter is an object
-  if (frontmatter !== null && (typeof frontmatter !== 'object' || Array.isArray(frontmatter))) {
-    throw new Error(`Frontmatter must be a YAML object (got ${typeof frontmatter}${Array.isArray(frontmatter) ? ' array' : ''})`);
-  }
-  
-  return { frontmatter, body };
+// Preserve gh CLI config dir so XDG_CONFIG_HOME overrides don't break gh auth.
+// gh uses XDG_CONFIG_HOME/gh (Linux), %APPDATA%/GitHub CLI (Windows) by default,
+// but GH_CONFIG_DIR takes precedence.
+// See: https://cli.github.com/manual/gh_help_environment
+function resolveGhConfigDir() {
+  if (process.env.GH_CONFIG_DIR) return process.env.GH_CONFIG_DIR;
+  if (process.env.XDG_CONFIG_HOME) return join(process.env.XDG_CONFIG_HOME, 'gh');
+  if (process.platform === 'win32' && process.env.APPDATA) return join(process.env.APPDATA, 'GitHub CLI');
+  return join(homedir(), '.config', 'gh');
 }
-
-/**
- * Parse test cases from markdown body
- * @param {string} body - markdown content after frontmatter
- * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number }>}
- */
-function parseTestCases(body) {
-  const testCases = [];
-  const lines = body.split(/\r?\n/);
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    // Look for heading: ## `command` or ## `command` (exit N)
-    const headingMatch = line.match(/^##\s+`([^`]+)`(?:\s+\(exit\s+(\d+)\))?/);
-    if (headingMatch) {
-      const command = headingMatch[1];
-      const expectedExitCode = headingMatch[2] ? parseInt(headingMatch[2], 10) : 0;
-      i++;
-
-      // Skip prose until we find ```expected or another heading
-      let expected = null;
-      while (i < lines.length) {
-        const currentLine = lines[i];
-
-        // Another heading means we're done with this test case
-        if (currentLine.match(/^##\s+`/)) {
-          break;
-        }
-
-        // Look for ```expected
-        if (currentLine.match(/^```expected/)) {
-          i++;
-          const expectedLines = [];
-          while (i < lines.length && !lines[i].match(/^```\s*$/)) {
-            expectedLines.push(lines[i]);
-            i++;
-          }
-          expected = expectedLines.join('\n');
-          i++; // skip closing ```
-          break;
-        }
-
-        i++;
-      }
-
-      testCases.push({ command, expected, expectedExitCode });
-    } else {
-      i++;
-    }
-  }
-
-  return testCases;
-}
-
-/**
- * Normalize a line for fuzzy matching
- * @param {string} line
- * @returns {string}
- */
-function normalizeLine(line) {
-  return line.trim().replace(/\s+/g, ' ');
-}
-
-/**
- * Fuzzy match actual output against expected, returning per-line results.
- *
- * Uses a two-pointer scan: walks through actual lines to find each expected
- * line in order using equality after normalization (trim + collapse whitespace).
- * Handles terminal line wrapping by joining 2–3 consecutive actual lines.
- * Extra actual lines (preamble, decorations) are skipped automatically.
- *
- * @param {string} actual
- * @param {string} expected
- * @param {object} vars - variable substitutions
- * @returns {{ results: Array<{ line: string, found: boolean, context: string }>, actualLines: string[] }}
- */
-function fuzzyMatch(actual, expected, vars = {}) {
-  // Apply variable substitutions to expected
-  let processedExpected = expected;
-  for (const [key, value] of Object.entries(vars)) {
-    processedExpected = processedExpected.replaceAll(key, value);
-  }
-
-  // Normalize path separators for cross-platform comparison
-  // Normalize path separators: replace escaped backslashes (\\) and single backslashes (\) with forward slashes
-  const normalizePaths = (str) => str.replace(/\\\\/g, '/').replace(/\\/g, '/');
-  processedExpected = normalizePaths(processedExpected);
-  actual = normalizePaths(actual);
-
-  const actualLines = actual
-    .split(/\r?\n/)
-    .map(normalizeLine)
-    .filter(line => line.length > 0);
-
-  const expectedLines = processedExpected
-    .split('\n')
-    .map(normalizeLine)
-    .filter(line => line.length > 0);
-
-  const results = [];
-  let a = 0; // actual line pointer
-
-  for (const expectedLine of expectedLines) {
-    let found = false;
-    const searchStart = a;
-
-    while (a < actualLines.length) {
-      // Direct line equality
-      if (actualLines[a] === expectedLine) {
-        results.push({ line: expectedLine, found: true, context: '' });
-        a++;
-        found = true;
-        break;
-      }
-
-      // Try joining consecutive actual lines to handle terminal wrapping
-      for (let n = 2; n <= 3 && a + n - 1 < actualLines.length; n++) {
-        const segment = actualLines.slice(a, a + n);
-        if (segment.join(' ') === expectedLine || segment.join('') === expectedLine) {
-          results.push({ line: expectedLine, found: true, context: '' });
-          a += n;
-          found = true;
-          break;
-        }
-      }
-
-      if (found) break;
-
-      // This actual line doesn't match — skip it (preamble/extra output)
-      a++;
-    }
-
-    if (!found) {
-      // Show nearby actual lines for context
-      const contextStart = Math.max(0, searchStart);
-      const contextEnd = Math.min(actualLines.length, searchStart + 5);
-      const context = actualLines.slice(contextStart, contextEnd).join(' | ');
-      results.push({ line: expectedLine, found: false, context });
-    }
-  }
-
-  return { results, actualLines };
-}
-
-/**
- * Assert fuzzy match — throws on first missing line.
- *
- * @param {string} actual
- * @param {string} expected
- * @param {object} vars - variable substitutions
- */
-function assertFuzzyMatch(actual, expected, vars = {}) {
-  const { results } = fuzzyMatch(actual, expected, vars);
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    if (!r.found) {
-      assert.fail(
-        `Expected line ${i + 1} not found in actual output:\n` +
-        `  expected: "${r.line}"\n` +
-        `  near:     "${r.context}..."`
-      );
-    }
-  }
-}
-
-/**
- * Format a compact diff between expected and actual output.
- * Shows each expected line with ✓ (found) or ✗ (missing), plus context for misses.
- *
- * @param {string} actual
- * @param {string} expected
- * @param {object} vars - variable substitutions
- * @returns {string}
- */
-function formatDiff(actual, expected, vars = {}) {
-  const { results } = fuzzyMatch(actual, expected, vars);
-  const lines = [];
-
-  for (const r of results) {
-    if (r.found) {
-      lines.push(`  ✓ ${r.line}`);
-    } else {
-      lines.push(`  ✗ ${r.line}`);
-      lines.push(`    actual near: "${r.context}..."`);
-    }
-  }
-
-  return lines.join('\n');
-}
+const GH_CONFIG_DIR = resolveGhConfigDir();
 
 /**
  * Setup repo environment based on frontmatter
@@ -232,66 +41,47 @@ function formatDiff(actual, expected, vars = {}) {
  * @returns {{ cwd: string, cleanup: Function }}
  */
 function setupRepo(frontmatter) {
-  if (!frontmatter || !frontmatter.repo) {
+  if (!frontmatter || !frontmatter.clone) {
     // No repo setup needed
     return { cwd: process.cwd(), cleanup: () => {} };
   }
 
-  const repoValue = frontmatter.repo;
-  let ownerRepo;
-
-  if (repoValue === 'local') {
-    // Use RALLY_TEST_OWNER env var or default to jsturtevant
-    const owner = process.env.RALLY_TEST_OWNER || 'jsturtevant';
-    ownerRepo = `${owner}/rally-test-fixtures`;
-  } else {
-    ownerRepo = repoValue;
-  }
+  const ownerRepo = frontmatter.clone;
 
   // Check gh auth status before attempting to clone
-  if (repoValue === 'local') {
-    try {
-      execFileSync('gh', ['auth', 'status'], {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 30_000,
-      });
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        throw new Error(`gh not installed. Install GitHub CLI from https://cli.github.com`);
-      }
-      throw new Error(`gh not authenticated. Run 'gh auth login' to authenticate.`);
+  try {
+    execFileSync('gh', ['auth', 'status'], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 30_000,
+    });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new Error(`gh not installed. Install GitHub CLI from https://cli.github.com`);
     }
-
-    // Clone repo into temp directory
-    const repoDir = mkdtempSync(join(tmpdir(), 'rally-test-repo-'));
-
-    try {
-      execFileSync('gh', ['repo', 'clone', ownerRepo, repoDir], {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 30_000,
-        env: {
-          ...process.env,
-          GIT_TERMINAL_PROMPT: '0',
-          NO_COLOR: '1',
-        },
-      });
-    } catch (err) {
-      rmSync(repoDir, { recursive: true, force: true });
-      throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
-    }
-
-    return {
-      cwd: repoDir,
-      cleanup: () => {
-        rmSync(repoDir, { recursive: true, force: true });
-      },
-    };
+    throw new Error(`gh not authenticated. Run 'gh auth login' to authenticate.`);
   }
 
-  // For owner/repo format, create temp dir but don't clone (rally handles cloning)
+  // Clone repo into temp directory
   const repoDir = mkdtempSync(join(tmpdir(), 'rally-test-repo-'));
+
+  try {
+    execFileSync('gh', ['repo', 'clone', ownerRepo, repoDir], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 30_000,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: '0',
+        GH_PROMPT_DISABLED: '1',
+        NO_COLOR: '1',
+        FORCE_COLOR: '0',
+      },
+    });
+  } catch (err) {
+    rmSync(repoDir, { recursive: true, force: true });
+    throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
+  }
 
   return {
     cwd: repoDir,
@@ -306,39 +96,153 @@ function setupRepo(frontmatter) {
  * @param {string} command - full command string (e.g., "rally --help")
  * @param {string} rallyHome - RALLY_HOME path
  * @param {string} cwd - working directory
+ * @param {object} [opts] - options
+ * @param {string} [opts.xdgConfigHome] - XDG_CONFIG_HOME override for personal squad
+ * @param {string} [opts.stdinInput] - stdin input to pipe to the command
  * @returns {string} - stdout
  */
-function executeCommand(command, rallyHome, cwd) {
-  // Extract args after "rally"
+function executeCommand(command, rallyHome, cwd, opts = {}) {
   const parts = command.trim().split(/\s+/);
-  if (parts[0] !== 'rally') {
-    throw new Error(`Command must start with "rally", got: ${command}`);
+  const env = {
+    ...process.env,
+    RALLY_HOME: rallyHome,
+    NO_COLOR: '1',
+    FORCE_COLOR: '0',
+    GIT_TERMINAL_PROMPT: '0',
+    GH_PROMPT_DISABLED: '1',
+    GH_CONFIG_DIR,
+  };
+  if (opts.xdgConfigHome) {
+    env.XDG_CONFIG_HOME = opts.xdgConfigHome;
+    if (process.platform === 'win32') {
+      env.APPDATA = opts.xdgConfigHome;
+      env.LOCALAPPDATA = opts.xdgConfigHome;
+    }
   }
 
-  const args = parts.slice(1);
+  const execOpts = {
+    encoding: 'utf8',
+    cwd,
+    timeout: DEFAULT_TIMEOUT,
+    env,
+  };
+  if (opts.stdinInput) {
+    execOpts.input = opts.stdinInput;
+  }
+
+  // Rally commands go through node + rally bin; other commands run directly
+  const isRally = parts[0] === 'rally';
+  const execFile = isRally ? process.execPath : parts[0];
+  const args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
 
   try {
-    return execFileSync(process.execPath, [RALLY_BIN, ...args], {
-      encoding: 'utf8',
-      cwd,
-      timeout: DEFAULT_TIMEOUT,
-      env: {
-        ...process.env,
-        RALLY_HOME: rallyHome,
-        NO_COLOR: '1',
-        GIT_TERMINAL_PROMPT: '0',
-      },
-    });
+    return execFileSync(execFile, args, execOpts);
   } catch (err) {
-    // If the command is expected to fail (exit non-zero), capture the output
     const output = (err.stdout || '') + (err.stderr || '');
-    // Re-throw with output attached so tests can still match against it
     err.output = output;
     throw err;
   }
 }
 
-// Discover and run tests
+/**
+ * Execute a rally command in a PTY with scripted interactive input.
+ * @param {string} command - full command string (e.g., "rally onboard .")
+ * @param {string} rallyHome - RALLY_HOME path
+ * @param {string} cwd - working directory
+ * @param {Array<{match: string, input: string}>} steps - prompt match/response pairs
+ * @param {object} [opts] - options
+ * @param {string} [opts.xdgConfigHome] - XDG_CONFIG_HOME override
+ * @returns {Promise<{output: string, exitCode: number}>}
+ */
+function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
+  if (!pty) {
+    throw new Error('node-pty not available — cannot run PTY tests');
+  }
+
+  const parts = command.trim().split(/\s+/);
+  if (parts[0] !== 'rally') {
+    throw new Error(`Command must start with "rally", got: ${command}`);
+  }
+  const args = [RALLY_BIN, ...parts.slice(1)];
+
+  const env = {
+    ...process.env,
+    RALLY_HOME: rallyHome,
+    NO_COLOR: '1',
+    FORCE_COLOR: '0',
+    GIT_TERMINAL_PROMPT: '0',
+    GH_PROMPT_DISABLED: '1',
+    GH_CONFIG_DIR,
+  };
+  if (opts.xdgConfigHome) {
+    env.XDG_CONFIG_HOME = opts.xdgConfigHome;
+    if (process.platform === 'win32') {
+      env.APPDATA = opts.xdgConfigHome;
+      env.LOCALAPPDATA = opts.xdgConfigHome;
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let stepIndex = 0;
+    let searchCursor = 0;
+    let ptyProcess;
+    const timeout = setTimeout(() => {
+      if (ptyProcess) ptyProcess.kill();
+      reject(new Error(
+        `PTY command timed out after ${DEFAULT_TIMEOUT}ms.\n` +
+        `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"\n` +
+        `Output so far:\n${output}`
+      ));
+    }, DEFAULT_TIMEOUT);
+
+    ptyProcess = pty.spawn(process.execPath, args, {
+      name: 'xterm-color',
+      cols: 120,
+      rows: 30,
+      cwd,
+      env,
+    });
+
+    ptyProcess.onData((data) => {
+      output += data;
+      if (VERBOSE) {
+        process.stdout.write(data);
+      }
+
+      if (stepIndex < steps.length) {
+        const { match, input } = steps[stepIndex];
+        // Resolve special keys
+        const resolvedInput = input
+          .replace(/\{enter\}/gi, '\r')
+          .replace(/\{up\}/gi, '\x1b[A')
+          .replace(/\{down\}/gi, '\x1b[B')
+          .replace(/\{space\}/gi, ' ')
+          .replace(/\{backspace\}/gi, '\x7f');
+
+        const matchPos = output.indexOf(match, searchCursor);
+        if (matchPos !== -1) {
+          searchCursor = matchPos + match.length;
+          setTimeout(() => {
+            const send = resolvedInput.includes('\r') ? resolvedInput : resolvedInput + '\r';
+            ptyProcess.write(send);
+            stepIndex++;
+          }, 200);
+        }
+      }
+    });
+
+    ptyProcess.onExit(({ exitCode }) => {
+      clearTimeout(timeout);
+      // Strip ANSI escape sequences (CSI sequences including private modes like ?25h)
+      const stripAnsi = (s) => s
+        .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
+        .replace(/\x1b\][^\x07]*\x07/g, '');
+      const clean = stripAnsi(output);
+      resolve({ output: clean, exitCode });
+    });
+  });
+}
 if (!existsSync(CLI_DIR)) {
   console.log('No test/e2e/cli/ directory found — skipping markdown tests');
   // Directory doesn't exist yet - no tests to run
@@ -348,7 +252,21 @@ if (!existsSync(CLI_DIR)) {
     });
   });
 } else {
-  const mdFiles = readdirSync(CLI_DIR).filter(f => f.endsWith('.md'));
+  // Recursively find all .md files in CLI_DIR
+  function findMdFiles(dir, base = '') {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    let files = [];
+    for (const entry of entries) {
+      const rel = base ? join(base, entry.name) : entry.name;
+      if (entry.isDirectory()) {
+        files = files.concat(findMdFiles(join(dir, entry.name), rel));
+      } else if (entry.name.endsWith('.md')) {
+        files.push(rel);
+      }
+    }
+    return files.sort();
+  }
+  const mdFiles = findMdFiles(CLI_DIR);
 
   if (mdFiles.length === 0) {
     describe('markdown-driven E2E tests', () => {
@@ -366,17 +284,51 @@ if (!existsSync(CLI_DIR)) {
       describe(file, () => {
         let rallyHome;
         let repoSetup;
+        let xdgConfigHome;
 
-        before(() => {
+        before(async () => {
           // Create temp RALLY_HOME
           rallyHome = mkdtempSync(join(tmpdir(), 'rally-test-home-'));
 
-          // Setup repo if needed
+          // Create isolated XDG_CONFIG_HOME so squad creation doesn't affect real config
+          xdgConfigHome = mkdtempSync(join(tmpdir(), 'rally-test-xdg-'));
+
+          // Setup repo first (clone if needed) so setup scripts can access it
           try {
             repoSetup = setupRepo(frontmatter);
           } catch (err) {
             rmSync(rallyHome, { recursive: true, force: true });
+            rmSync(xdgConfigHome, { recursive: true, force: true });
             throw err;
+          }
+
+          // Run setup command after repo is available
+          if (frontmatter && frontmatter.setup) {
+            const mdDir = join(CLI_DIR, file, '..');
+            const setupScript = join(mdDir, frontmatter.setup);
+            try {
+              const setupOutput = execFileSync(process.execPath, [setupScript], {
+                encoding: 'utf8',
+                timeout: DEFAULT_TIMEOUT,
+                env: {
+                  ...process.env,
+                  RALLY_HOME: rallyHome,
+                  XDG_CONFIG_HOME: xdgConfigHome,
+                  ...(process.platform === 'win32' ? { APPDATA: xdgConfigHome, LOCALAPPDATA: xdgConfigHome } : {}),
+                  NO_COLOR: '1',
+                  FORCE_COLOR: '0',
+                },
+              });
+              if (VERBOSE) {
+                console.error(`Setup (${frontmatter.setup}): ${setupOutput.trim()}`);
+              }
+            } catch (err) {
+              // Cleanup both repo and temp dirs on setup failure
+              if (repoSetup && repoSetup.cleanup) repoSetup.cleanup();
+              rmSync(rallyHome, { recursive: true, force: true });
+              rmSync(xdgConfigHome, { recursive: true, force: true });
+              throw new Error(`Setup command failed: ${frontmatter.setup}\n${err.message}`);
+            }
           }
         });
 
@@ -386,9 +338,12 @@ if (!existsSync(CLI_DIR)) {
             repoSetup.cleanup();
           }
 
-          // Cleanup RALLY_HOME
+          // Cleanup RALLY_HOME and XDG_CONFIG_HOME
           if (rallyHome) {
             rmSync(rallyHome, { recursive: true, force: true });
+          }
+          if (xdgConfigHome) {
+            rmSync(xdgConfigHome, { recursive: true, force: true });
           }
         });
 
@@ -401,22 +356,53 @@ if (!existsSync(CLI_DIR)) {
 
         // Execute tests sequentially
         for (const testCase of testCases) {
-          const { command, expected, expectedExitCode } = testCase;
+          const { command: rawCommand, expected, expectedExitCode, stdinInput, ptySteps } = testCase;
 
-          it(command, () => {
+          // PTY tests need async; skip if node-pty unavailable
+          if (ptySteps && !pty) {
+            it(rawCommand, { skip: 'node-pty not available' }, () => {});
+            continue;
+          }
+
+          it(rawCommand, async () => {
+            // Substitute variables in command (must be inside it() — repoSetup is set in before())
+            const commandVars = {
+              '$RALLY_HOME': rallyHome,
+              '$REPO_ROOT': repoSetup.cwd,
+              '$PROJECT_NAME': basename(repoSetup.cwd),
+              '$XDG_CONFIG_HOME': xdgConfigHome || '',
+            };
+            let command = rawCommand;
+            for (const [key, value] of Object.entries(commandVars)) {
+              command = command.replaceAll(key, value);
+            }
+
             let output;
+            let exitCode = 0;
+
+            if (ptySteps) {
+              // PTY execution for interactive commands
+              const result = await executePtyCommand(
+                command, rallyHome, repoSetup.cwd, ptySteps,
+                { xdgConfigHome }
+              );
+              output = result.output;
+              exitCode = result.exitCode;
+            } else {
+              // Standard execution
+              const execOpts = { xdgConfigHome, stdinInput };
+              try {
+                output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
+              } catch (err) {
+                output = err.output || '';
+                exitCode = typeof err.status === 'number' ? err.status : 1;
+              }
+            }
 
             if (expected === null) {
               // Smoke test - no expected output block
-              let exitCode = 0;
-              try {
-                output = executeCommand(command, rallyHome, repoSetup.cwd);
-              } catch (err) {
-                output = err.output || '';
-                exitCode = err.status || err.code || 1;
-              }
               if (VERBOSE) {
-                console.log(`\n── ${command} ──`);
+                console.log(`\n── ${rawCommand} (${file}) ──`);
                 if (exitCode !== 0) {
                   console.log(`⚠️  Command exited with code ${exitCode}`);
                 }
@@ -429,25 +415,16 @@ if (!existsSync(CLI_DIR)) {
               }
               assert.ok(output !== undefined, 'command should run');
             } else {
-              // Match against expected output
-              let exitCode = 0;
-              try {
-                output = executeCommand(command, rallyHome, repoSetup.cwd);
-              } catch (err) {
-                // Command exited non-zero - capture output and exit code
-                output = err.output || '';
-                exitCode = err.status || err.code || 1;
-                // Don't throw yet - let fuzzy match run against the output
-              }
-
               // Variable substitutions
               const vars = {
                 '$RALLY_HOME': rallyHome,
                 '$REPO_ROOT': repoSetup.cwd,
+                '$PROJECT_NAME': basename(repoSetup.cwd),
+                '$XDG_CONFIG_HOME': xdgConfigHome || '',
               };
 
               if (VERBOSE) {
-                console.log(`\n── ${command} ──`);
+                console.log(`\n── ${rawCommand} (${file}) ──`);
                 if (exitCode !== 0) {
                   console.log(`⚠️  Command exited with code ${exitCode}`);
                 }
@@ -457,7 +434,13 @@ if (!existsSync(CLI_DIR)) {
               }
 
               try {
-                assertFuzzyMatch(output, expected, vars);
+                // PTY tests use contains matching (output includes prompt noise);
+                // standard tests use exact matching
+                if (ptySteps) {
+                  assertContainsLines(output, expected, vars);
+                } else {
+                  assertExactMatch(output, expected, vars);
+                }
                 if (VERBOSE) console.log('MATCH ✓');
                 
                 // Check exit code after output matching
@@ -469,7 +452,12 @@ if (!existsSync(CLI_DIR)) {
                 }
               } catch (err) {
                 if (VERBOSE) {
-                  console.log(`MISMATCH ✗\n${err.message}`);
+                  console.log(`\n${'━'.repeat(60)}`);
+                  console.log(`❌ FAIL: ${rawCommand}`);
+                  console.log(`   File: ${file}`);
+                  console.log(`${'━'.repeat(60)}`);
+                  console.log(err.message);
+                  console.log(`${'━'.repeat(60)}\n`);
                 } else {
                   console.log(`\n── ${command} ──`);
                   console.log(`ACTUAL:\n${output}`);
@@ -485,3 +473,4 @@ if (!existsSync(CLI_DIR)) {
     }
   }
 }
+

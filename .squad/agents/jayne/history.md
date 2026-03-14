@@ -693,3 +693,16 @@ Wrote the first two markdown test files for the new E2E test format (PRD: docs/p
 2. JSON output includes more fields than PRD showed (`personalSquad`, `onboarded` timestamp). Used actual output.
 3. RALLY_HOME env var must be set explicitly to create isolated test environment (otherwise picks up user's real config).
 4. Markdown test files are documentation first — they should be readable by humans browsing the repo.
+
+### 2026-02-22 — Fixed Windows APPDATA Isolation in E2E Test Runner
+
+**Problem:** On Windows CI, `rally status` tests failed because `personalSquad` showed a real path instead of `(not configured)`. Root cause: the test runner created isolated `XDG_CONFIG_HOME` temp dirs, but the `@bradygaster/squad-sdk` uses `APPDATA` (not `XDG_CONFIG_HOME`) on Windows to resolve the personal squad path. This caused the Windows CI runner's real `APPDATA` to leak through.
+
+**Fix:** Modified `test/e2e/runner.js` in THREE locations to add Windows-specific environment overrides:
+1. `executeCommand()` function (~line 395) — set `env.APPDATA` and `env.LOCALAPPDATA` to `opts.xdgConfigHome` when `process.platform === 'win32'`
+2. `executePtyCommand()` function (~line 457) — same pattern
+3. `before()` hook setup script execution (~line 581) — spread operator pattern: `...(process.platform === 'win32' ? { APPDATA: xdgConfigHome, LOCALAPPDATA: xdgConfigHome } : {})`
+
+**Why it works:** On Windows, the squad-sdk's `resolveGlobalSquadPath()` now uses the isolated temp dir as `APPDATA`, so the personal squad path becomes `{xdgConfigHome}/squad/.squad` — fully isolated. When the test's `after()` hook cleans up `xdgConfigHome`, it also cleans up the personal squad dir.
+
+**Testing:** Verified locally on Linux — tests run successfully (Windows fix doesn't change Linux behavior due to `process.platform === 'win32'` guard).

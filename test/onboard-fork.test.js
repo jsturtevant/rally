@@ -202,7 +202,7 @@ describe('onboard --fork integration', () => {
       return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
-    await onboard({ path: repoPath, fork: 'myuser/my-repo', _selectTeam: mockSelectTeam, _exec });
+    await onboard({ path: repoPath, fork: 'myuser/my-repo', _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true, _exec });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
@@ -219,7 +219,7 @@ describe('onboard --fork integration', () => {
       return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
-    await onboard({ path: repoPath, fork: 'myuser/fork-remotes', _selectTeam: mockSelectTeam, _exec });
+    await onboard({ path: repoPath, fork: 'myuser/fork-remotes', _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true, _exec });
 
     const upstream = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', 'upstream'], { encoding: 'utf8' }).trim();
     assert.strictEqual(upstream, 'https://github.com/upstream-org/fork-remotes.git');
@@ -232,7 +232,7 @@ describe('onboard --fork integration', () => {
     setupTeam();
     const repoPath = createRepoWithOrigin('no-fork', 'https://github.com/upstream-org/no-fork.git');
 
-    await onboard({ path: repoPath, _selectTeam: mockSelectTeam });
+    await onboard({ path: repoPath, _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true });
 
     const origin = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).trim();
     assert.strictEqual(origin, 'https://github.com/upstream-org/no-fork.git');
@@ -247,7 +247,7 @@ describe('onboard --fork integration', () => {
     const { rallyHome } = setupTeam();
     const repoPath = createRepoWithOrigin('no-fork-field', 'https://github.com/upstream-org/no-fork-field.git');
 
-    await onboard({ path: repoPath, _selectTeam: mockSelectTeam });
+    await onboard({ path: repoPath, _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true });
 
     const projectsPath = join(rallyHome, 'projects.yaml');
     const projects = yaml.load(readFileSync(projectsPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
@@ -259,7 +259,7 @@ describe('onboard --fork integration', () => {
     const repoPath = createRepoWithOrigin('bad-fork', 'https://github.com/upstream-org/bad-fork.git');
 
     await assert.rejects(
-      () => onboard({ path: repoPath, fork: 'not-valid', _selectTeam: mockSelectTeam }),
+      () => onboard({ path: repoPath, fork: 'not-valid', _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true }),
       /Invalid --fork format/
     );
   });
@@ -275,7 +275,7 @@ describe('onboard --fork integration', () => {
       return execFileSync(cmd, args, { ...opts, cwd: repoPath, encoding: 'utf8', stdio: 'pipe' });
     };
 
-    await onboard({ path: repoPath, fork: 'myuser/has-upstream', _selectTeam: mockSelectTeam, _exec });
+    await onboard({ path: repoPath, fork: 'myuser/has-upstream', _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true, _exec });
 
     const upstream = execFileSync('git', ['-C', repoPath, 'remote', 'get-url', 'upstream'], { encoding: 'utf8' }).trim();
     assert.strictEqual(upstream, 'https://github.com/upstream-org/has-upstream.git');
@@ -317,7 +317,7 @@ describe('onboard --fork integration', () => {
       fork: 'upstream-org/my-project',
       _clone,
       _exec,
-      _selectTeam: mockSelectTeam,
+      _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true,
     });
 
     // Should have cloned the upstream repo
@@ -367,7 +367,7 @@ describe('onboard --fork integration', () => {
       fork: 'hyperlight-dev/hyperlight-wasm',
       _clone,
       _exec,
-      _selectTeam: mockSelectTeam,
+      _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true,
     });
 
     assert.strictEqual(clonedUrl, 'https://github.com/hyperlight-dev/hyperlight-wasm.git');
@@ -391,7 +391,7 @@ describe('onboard --fork integration', () => {
       path: repoPath,
       fork: 'auto',  // This is the UI "auto-detect" scenario
       _exec,
-      _selectTeam: mockSelectTeam,
+      _selectTeam: mockSelectTeam, _ensurePersonalSquad: async () => true,
     });
 
     // origin should be user's fork, NOT the same as upstream

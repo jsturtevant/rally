@@ -104,6 +104,9 @@ function parseTestCases(body) {
             }
             i++;
           }
+          if (currentMatch !== null) {
+            throw new Error(`PTY parse error: trailing "match: ${currentMatch}" without a following "send:" line`);
+          }
           i++; // skip closing ```
           continue;
         }

@@ -186,7 +186,6 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
     let output = '';
     let stepIndex = 0;
     let searchCursor = 0;
-    let lastPromptEnd = 0;
     let ptyProcess;
     const timeout = setTimeout(() => {
       if (ptyProcess) ptyProcess.kill();
@@ -223,9 +222,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
         const matchPos = output.indexOf(match, searchCursor);
         if (matchPos !== -1) {
-          // Track where this prompt appeared so we can split output later
           searchCursor = matchPos + match.length;
-          lastPromptEnd = output.length;
           setTimeout(() => {
             const send = resolvedInput.includes('\r') ? resolvedInput : resolvedInput + '\r';
             ptyProcess.write(send);
@@ -398,7 +395,7 @@ if (!existsSync(CLI_DIR)) {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {
                 output = err.output || '';
-                exitCode = err.status || err.code || 1;
+                exitCode = typeof err.status === 'number' ? err.status : 1;
               }
             }
 

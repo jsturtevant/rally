@@ -49,7 +49,7 @@ function parseFrontmatter(content) {
 /**
  * Parse test cases from markdown body
  * @param {string} body - markdown content after frontmatter
- * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number }>}
+ * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number, stdinInput: string | null, ptySteps: Array<{ match: string, input: string }> | null }>}
  */
 function parseTestCases(body) {
   const testCases = [];
@@ -114,8 +114,11 @@ function parseTestCases(body) {
             if (ptyLine.startsWith('match:')) {
               currentMatch = ptyLine.slice(6).trim();
             } else if (ptyLine.startsWith('send:')) {
+              if (currentMatch === null) {
+                throw new Error(`PTY parse error: "send:" without preceding "match:" at line: ${ptyLine}`);
+              }
               const rawInput = ptyLine.slice(5).trim();
-              ptySteps.push({ match: currentMatch || '', input: rawInput });
+              ptySteps.push({ match: currentMatch, input: rawInput });
               currentMatch = null;
             } else if (ptyLine === '' && currentMatch === null) {
               // blank line between steps — ignore
@@ -465,8 +468,9 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
     let stepIndex = 0;
     let searchCursor = 0;
     let lastPromptEnd = 0;
+    let ptyProcess;
     const timeout = setTimeout(() => {
-      ptyProcess.kill();
+      if (ptyProcess) ptyProcess.kill();
       reject(new Error(
         `PTY command timed out after ${DEFAULT_TIMEOUT}ms.\n` +
         `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"\n` +
@@ -474,7 +478,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
       ));
     }, DEFAULT_TIMEOUT);
 
-    const ptyProcess = pty.spawn(process.execPath, args, {
+    ptyProcess = pty.spawn(process.execPath, args, {
       name: 'xterm-color',
       cols: 120,
       rows: 30,

@@ -7,7 +7,7 @@ import {
   normalizeLine,
   parseTestCases,
   parseFrontmatter,
-} from './runner.js';
+} from './runner-lib.js';
 
 describe('normalizeLine', () => {
   it('trims and collapses whitespace', () => {

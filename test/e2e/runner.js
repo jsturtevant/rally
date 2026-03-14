@@ -1,9 +1,9 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import yaml from 'js-yaml';
 
 let pty;
@@ -20,7 +20,7 @@ const DEFAULT_TIMEOUT = 30_000;
 // Preserve gh CLI config dir so XDG_CONFIG_HOME overrides don't break gh auth.
 // gh uses XDG_CONFIG_HOME/gh for its config by default, but GH_CONFIG_DIR takes precedence.
 // See: https://cli.github.com/manual/gh_help_environment
-const GH_CONFIG_DIR = process.env.GH_CONFIG_DIR || join(process.env.XDG_CONFIG_HOME || join(process.env.HOME, '.config'), 'gh');
+const GH_CONFIG_DIR = process.env.GH_CONFIG_DIR || join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'gh');
 
 /**
  * Parse YAML frontmatter from markdown content
@@ -494,7 +494,8 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
           .replace(/\{enter\}/gi, '\r')
           .replace(/\{up\}/gi, '\x1b[A')
           .replace(/\{down\}/gi, '\x1b[B')
-          .replace(/\{space\}/gi, ' ');
+          .replace(/\{space\}/gi, ' ')
+          .replace(/\{backspace\}/gi, '\x7f');
 
         if (output.includes(match)) {
           // Track where this prompt appeared so we can split output later
@@ -570,7 +571,16 @@ if (!existsSync(CLI_DIR)) {
           // Create isolated XDG_CONFIG_HOME so squad creation doesn't affect real config
           xdgConfigHome = mkdtempSync(join(tmpdir(), 'rally-test-xdg-'));
 
-          // Run setup command if specified in frontmatter
+          // Setup repo first (clone if needed) so setup scripts can access it
+          try {
+            repoSetup = setupRepo(frontmatter);
+          } catch (err) {
+            rmSync(rallyHome, { recursive: true, force: true });
+            rmSync(xdgConfigHome, { recursive: true, force: true });
+            throw err;
+          }
+
+          // Run setup command after repo is available
           if (frontmatter && frontmatter.setup) {
             const mdDir = join(CLI_DIR, file, '..');
             const setupScript = join(mdDir, frontmatter.setup);
@@ -591,19 +601,12 @@ if (!existsSync(CLI_DIR)) {
                 console.error(`Setup (${frontmatter.setup}): ${setupOutput.trim()}`);
               }
             } catch (err) {
+              // Cleanup both repo and temp dirs on setup failure
+              if (repoSetup && repoSetup.cleanup) repoSetup.cleanup();
               rmSync(rallyHome, { recursive: true, force: true });
               rmSync(xdgConfigHome, { recursive: true, force: true });
               throw new Error(`Setup command failed: ${frontmatter.setup}\n${err.message}`);
             }
-          }
-
-          // Setup repo if needed
-          try {
-            repoSetup = setupRepo(frontmatter);
-          } catch (err) {
-            rmSync(rallyHome, { recursive: true, force: true });
-            rmSync(xdgConfigHome, { recursive: true, force: true });
-            throw err;
           }
         });
 

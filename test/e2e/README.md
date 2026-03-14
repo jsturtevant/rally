@@ -88,7 +88,7 @@ send: {enter}
 ```
 ````
 
-PTY tests use **contains matching** (each expected line must appear in order, extra lines OK) because PTY output includes prompt text, ANSI codes, and menu decorations. Non-PTY tests in the same file still use exact matching.
+PTY tests use **contains matching** (each expected line must appear in order, extra lines between matches are skipped, but no trailing lines allowed after the last match) because PTY output includes prompt text, ANSI codes, and menu decorations. Non-PTY tests in the same file still use exact matching.
 
 Special keys: `{enter}`, `{up}`, `{down}`, `{space}`. Requires `node-pty` — tests are skipped if unavailable.
 

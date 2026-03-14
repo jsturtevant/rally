@@ -731,3 +731,12 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **All E2E tests pass locally** after fixes: 5 tests in 2 files (help.md, status.md), all green.
 
 ## Learnings
+
+### 2026-03-12 — Windows `.cmd` Resolution: shell: true Required
+
+- **Problem:** On Windows, `execFileSync('npx', ['--version'], { stdio: 'pipe' })` fails with `ENOENT` because `npx` is actually `npx.cmd`. The `execFileSync` function without `shell: true` cannot resolve `.cmd` file extensions on Windows.
+- **Root cause:** Windows uses `.cmd`, `.bat`, and `.exe` extensions for executables. Node.js `execFileSync` with `shell: false` (default) only finds the exact filename, not the `.cmd` variant. This breaks `checkTools()` on Windows, causing every Rally command to fail with "Missing required tools: npx."
+- **Fix:** Added `shell: true` to the exec options in `lib/tools.js` line 22: `exec(tool, ['--version'], { stdio: 'pipe', shell: true })`. This is safe because `REQUIRED_TOOLS` is a hardcoded constant (`['git', 'gh', 'npx']`) with zero user input flowing into tool names.
+- **Why `shell: true` is safe:** The tool names are static strings from a trusted constant. No injection risk exists. `shell: true` is the standard Node.js approach for cross-platform tool resolution (Windows requires it, Unix tolerates it).
+- **Test update:** Updated `test/tools.test.js` line 52 to assert `{ stdio: 'pipe', shell: true }` instead of just `{ stdio: 'pipe' }` to match the new behavior.
+- **Verification:** All unit tests pass after the change. This fix enables Rally to work on Windows CI and local Windows development environments.

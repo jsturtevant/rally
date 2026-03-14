@@ -1,6 +1,6 @@
 /**
  * Setup script for e2e tests: creates a personal squad using the SDK.
- * Called by the runner when frontmatter has `setup: squad`.
+ * Called by the runner when frontmatter has `setup: setup-squad.js`.
  *
  * Expects XDG_CONFIG_HOME to be set to an isolated temp directory.
  */

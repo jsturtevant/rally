@@ -307,7 +307,7 @@ The runner is the **only JavaScript file** involved in markdown-driven tests. It
    This is the key insight: **tests are ordered steps, not independent units.** If a test needs an onboarded project, a prior test in the same file runs `rally onboard` — no fake config, no pre-seeding.
 
 4. **Parse test cases** — extract `## \`command\`` headings and their following `` ```expected `` blocks.
-5. **Setup** environment per the frontmatter `repo:` value (see above).
+5. **Setup** environment per the frontmatter `clone:` and `setup:` values (see above).
 6. **Execute** each command via `execSync` **in order**, capturing stdout. Each test sees the state left by previous tests.
 7. **Exact-compare** actual output against expected:
    - Normalize whitespace (collapse runs, trim lines).
@@ -343,7 +343,7 @@ for (const file of mdFiles) {
 
 The `assertExactMatch(actual, expected)` function:
 
-1. Apply variable substitutions (`$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$HOME`) to expected.
+1. Apply variable substitutions (`$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME`) to expected.
 2. Normalize path separators (backslashes → forward slashes) for cross-platform comparison.
 3. Split both strings into lines, trim each line, collapse internal whitespace.
 4. Remove empty lines from both sides.
@@ -379,8 +379,8 @@ The `assertExactMatch(actual, expected)` function:
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E1** | **✅ Implement `test/e2e/runner.js`** — markdown parser, command executor, exact matcher, `node:test` integration. | None | M |
-| **E2** | **✅ Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `repo: local` (clone fixture repo into temp dir) and `repo: owner/repo` (no setup — rally clones it) per frontmatter. No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
-| **E3** | **✅ Implement exact matching.** Whitespace normalization, terminal line-wrap unwrapping, line-by-line exact comparison, clear diff output on failure. Variable substitution for dynamic values (`$RALLY_HOME`, `$HOME`, etc.). | None | S |
+| **E2** | **✅ Implement environment isolation in the runner.** Create temp `RALLY_HOME` for each test file. Handle `clone:` frontmatter (clone fixture repo into temp dir) and `setup:` (run setup scripts after clone). No config pre-seeding — tests build their own state by running real CLI commands. | None | S |
+| **E3** | **✅ Implement exact matching.** Whitespace normalization, terminal line-wrap unwrapping, line-by-line exact comparison, clear diff output on failure. Variable substitution for dynamic values (`$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME`). | None | S |
 
 ### Phase 2: First Markdown Test File (Proof of Concept)
 

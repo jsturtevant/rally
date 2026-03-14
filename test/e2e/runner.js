@@ -353,7 +353,7 @@ function setupRepo(frontmatter) {
         GIT_TERMINAL_PROMPT: '0',
     GH_PROMPT_DISABLED: '1',
         NO_COLOR: '1',
-        FORCE_COLOR: undefined,
+        FORCE_COLOR: '0',
       },
     });
   } catch (err) {
@@ -385,7 +385,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
     ...process.env,
     RALLY_HOME: rallyHome,
     NO_COLOR: '1',
-    FORCE_COLOR: undefined,
+    FORCE_COLOR: '0',
     GIT_TERMINAL_PROMPT: '0',
     GH_PROMPT_DISABLED: '1',
     GH_CONFIG_DIR,
@@ -447,7 +447,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
     ...process.env,
     RALLY_HOME: rallyHome,
     NO_COLOR: '1',
-    FORCE_COLOR: undefined,
+    FORCE_COLOR: '0',
     GIT_TERMINAL_PROMPT: '0',
     GH_PROMPT_DISABLED: '1',
     GH_CONFIG_DIR,
@@ -463,6 +463,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
   return new Promise((resolve, reject) => {
     let output = '';
     let stepIndex = 0;
+    let searchCursor = 0;
     let lastPromptEnd = 0;
     const timeout = setTimeout(() => {
       ptyProcess.kill();
@@ -497,8 +498,10 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
           .replace(/\{space\}/gi, ' ')
           .replace(/\{backspace\}/gi, '\x7f');
 
-        if (output.includes(match)) {
+        const matchPos = output.indexOf(match, searchCursor);
+        if (matchPos !== -1) {
           // Track where this prompt appeared so we can split output later
+          searchCursor = matchPos + match.length;
           lastPromptEnd = output.length;
           setTimeout(() => {
             const send = resolvedInput.includes('\r') ? resolvedInput : resolvedInput + '\r';
@@ -594,7 +597,7 @@ if (!existsSync(CLI_DIR)) {
                   XDG_CONFIG_HOME: xdgConfigHome,
                   ...(process.platform === 'win32' ? { APPDATA: xdgConfigHome, LOCALAPPDATA: xdgConfigHome } : {}),
                   NO_COLOR: '1',
-                  FORCE_COLOR: undefined,
+                  FORCE_COLOR: '0',
                 },
               });
               if (VERBOSE) {

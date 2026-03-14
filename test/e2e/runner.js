@@ -24,9 +24,16 @@ const CLI_DIR = join(import.meta.dirname, 'cli');
 const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
 const DEFAULT_TIMEOUT = 30_000;
 // Preserve gh CLI config dir so XDG_CONFIG_HOME overrides don't break gh auth.
-// gh uses XDG_CONFIG_HOME/gh for its config by default, but GH_CONFIG_DIR takes precedence.
+// gh uses XDG_CONFIG_HOME/gh (Linux), %APPDATA%/GitHub CLI (Windows) by default,
+// but GH_CONFIG_DIR takes precedence.
 // See: https://cli.github.com/manual/gh_help_environment
-const GH_CONFIG_DIR = process.env.GH_CONFIG_DIR || join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'gh');
+function resolveGhConfigDir() {
+  if (process.env.GH_CONFIG_DIR) return process.env.GH_CONFIG_DIR;
+  if (process.env.XDG_CONFIG_HOME) return join(process.env.XDG_CONFIG_HOME, 'gh');
+  if (process.platform === 'win32' && process.env.APPDATA) return join(process.env.APPDATA, 'GitHub CLI');
+  return join(homedir(), '.config', 'gh');
+}
+const GH_CONFIG_DIR = resolveGhConfigDir();
 
 /**
  * Setup repo environment based on frontmatter
@@ -66,7 +73,7 @@ function setupRepo(frontmatter) {
       env: {
         ...process.env,
         GIT_TERMINAL_PROMPT: '0',
-    GH_PROMPT_DISABLED: '1',
+        GH_PROMPT_DISABLED: '1',
         NO_COLOR: '1',
         FORCE_COLOR: '0',
       },
@@ -235,8 +242,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
         .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
         .replace(/\x1b\][^\x07]*\x07/g, '');
       const clean = stripAnsi(output);
-      const cleanAfterPrompts = stripAnsi(clean.slice(lastPromptEnd));
-      resolve({ output: clean, outputAfterPrompts: cleanAfterPrompts, exitCode });
+      resolve({ output: clean, exitCode });
     });
   });
 }

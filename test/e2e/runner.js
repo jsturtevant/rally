@@ -392,6 +392,10 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   };
   if (opts.xdgConfigHome) {
     env.XDG_CONFIG_HOME = opts.xdgConfigHome;
+    if (process.platform === 'win32') {
+      env.APPDATA = opts.xdgConfigHome;
+      env.LOCALAPPDATA = opts.xdgConfigHome;
+    }
   }
 
   const execOpts = {
@@ -450,6 +454,10 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
   };
   if (opts.xdgConfigHome) {
     env.XDG_CONFIG_HOME = opts.xdgConfigHome;
+    if (process.platform === 'win32') {
+      env.APPDATA = opts.xdgConfigHome;
+      env.LOCALAPPDATA = opts.xdgConfigHome;
+    }
   }
 
   return new Promise((resolve, reject) => {
@@ -574,6 +582,7 @@ if (!existsSync(CLI_DIR)) {
                   ...process.env,
                   RALLY_HOME: rallyHome,
                   XDG_CONFIG_HOME: xdgConfigHome,
+                  ...(process.platform === 'win32' ? { APPDATA: xdgConfigHome, LOCALAPPDATA: xdgConfigHome } : {}),
                   NO_COLOR: '1',
                   FORCE_COLOR: undefined,
                 },

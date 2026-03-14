@@ -13,7 +13,7 @@ Onboards the current directory with explicit team name. Creates personal squad o
 
 ```pty
 match: Would you like to create one now?
-send: y
+send: y{enter}
 
 match: What kind of team do you need?
 send: {enter}

@@ -90,7 +90,7 @@ send: {enter}
 
 PTY tests use **contains matching** (each expected line must appear in order, extra lines between matches are skipped, but no trailing lines allowed after the last match) because PTY output includes prompt text, ANSI codes, and menu decorations. Non-PTY tests in the same file still use exact matching.
 
-Special keys: `{enter}`, `{up}`, `{down}`, `{space}`. Requires `node-pty` — tests are skipped if unavailable.
+Special keys: `{enter}`, `{up}`, `{down}`, `{space}`, `{backspace}`. Input is sent exactly as written — no automatic Enter appended. Use `{enter}` explicitly for prompts that need it (e.g., `send: y{enter}`). For raw keypresses like Ink TUI commands, send the key alone (e.g., `send: q`). Requires `node-pty` — tests are skipped if unavailable.
 
 ### Variables in commands
 

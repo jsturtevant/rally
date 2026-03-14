@@ -25,7 +25,7 @@ Interactive remove — select the project from the picker, then decline the conf
 match: Select a project to remove
 send: {enter}
 match: from Rally
-send: n
+send: n{enter}
 ```
 
 ```expected

@@ -184,9 +184,16 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
   return new Promise((resolve, reject) => {
     let output = '';
+    let strippedOutput = '';
     let stepIndex = 0;
     let searchCursor = 0;
     let ptyProcess;
+
+    // Strip ANSI escape sequences for clean text matching
+    const stripAnsi = (s) => s
+      .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
+      .replace(/\x1b\][^\x07]*\x07/g, '');
+
     const timeout = setTimeout(() => {
       if (ptyProcess) ptyProcess.kill();
       reject(new Error(
@@ -206,6 +213,7 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
     ptyProcess.onData((data) => {
       output += data;
+      strippedOutput += stripAnsi(data);
       if (VERBOSE) {
         process.stdout.write(data);
       }
@@ -220,11 +228,11 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
           .replace(/\{space\}/gi, ' ')
           .replace(/\{backspace\}/gi, '\x7f');
 
-        const matchPos = output.indexOf(match, searchCursor);
+        const matchPos = strippedOutput.indexOf(match, searchCursor);
         if (matchPos !== -1) {
           searchCursor = matchPos + match.length;
           setTimeout(() => {
-            const send = resolvedInput.includes('\r') ? resolvedInput : resolvedInput + '\r';
+            const send = resolvedInput;
             ptyProcess.write(send);
             stepIndex++;
           }, 200);
@@ -234,10 +242,6 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
     ptyProcess.onExit(({ exitCode }) => {
       clearTimeout(timeout);
-      // Strip ANSI escape sequences (CSI sequences including private modes like ?25h)
-      const stripAnsi = (s) => s
-        .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
-        .replace(/\x1b\][^\x07]*\x07/g, '');
       const clean = stripAnsi(output);
       resolve({ output: clean, exitCode });
     });

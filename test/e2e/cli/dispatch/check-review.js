@@ -1,20 +1,21 @@
 /**
- * Soft check for REVIEW.md existence.
- * Usage: node check-review.js <path-to-review-md>
+ * Verify a file exists after dispatch completes.
+ * Usage: node check-review.js <path-to-file>
  *
- * Exits 0 always — prints whether the file exists.
- * Copilot may not complete reviews on all platforms (e.g. Windows CI).
+ * Exits 0 and prints the path if the file exists.
+ * Exits 1 with an error if it does not.
  */
 import { existsSync } from 'node:fs';
 
-const reviewPath = process.argv[2];
-if (!reviewPath) {
-  console.error('Usage: node check-review.js <path-to-review-md>');
+const filePath = process.argv[2];
+if (!filePath) {
+  console.error('Usage: node check-review.js <path>');
   process.exit(1);
 }
 
-if (existsSync(reviewPath)) {
-  console.log(`REVIEW.md found: ${reviewPath}`);
+if (existsSync(filePath)) {
+  console.log(filePath);
 } else {
-  console.log(`REVIEW.md not found (Copilot may not have completed review): ${reviewPath}`);
+  console.error(`File not found: ${filePath}`);
+  process.exit(1);
 }

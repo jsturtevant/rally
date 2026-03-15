@@ -56,8 +56,11 @@ Wait for Copilot to complete the review (polls dispatch refresh every 3s, up to 
 
 ## `node ./check-review.js $REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md`
 
-Soft-check that REVIEW.md exists. Copilot may not complete reviews on
-all platforms (e.g. Windows CI), so this is informational — not a hard assertion.
+REVIEW.md must exist after Copilot completes the review.
+
+```expected
+$REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md
+```
 
 ## `rally dispatch clean --all --yes`
 

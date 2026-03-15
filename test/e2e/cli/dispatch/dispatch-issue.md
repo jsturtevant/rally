@@ -23,6 +23,10 @@ Onboard the cloned fixtures repo so dispatch can find it.
 Dispatch to issue #1. Creates worktree, branch, dispatch-context.md, and
 launches Copilot.
 
+```expected
+Dispatched issue #1: [E2E Test] Dispatch issue test → $REPO_ROOT/.worktrees/rally-1
+```
+
 ## `grep rally-test-fixtures-issue-1 $RALLY_HOME/active.yaml`
 
 Verify the dispatch is registered in active.yaml with correct ID.

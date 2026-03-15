@@ -23,6 +23,11 @@ Onboard the cloned fixtures repo.
 Dispatch PR review for PR #3. Creates worktree on PR head, writes
 dispatch-context.md with PR details, launches Copilot for review.
 
+```expected
+Dispatched PR #3: [E2E Test] Sample PR for review dispatch → $REPO_ROOT/.worktrees/rally-pr-3
+Review output → $REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md
+```
+
 ## `grep rally-test-fixtures-pr-3 $RALLY_HOME/active.yaml`
 
 Verify the PR dispatch is registered with correct ID.

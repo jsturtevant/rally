@@ -53,6 +53,14 @@ $REPO_ROOT/.worktrees/rally-1/.squad/dispatch-context.md
 
 Context file should reference the issue.
 
+## `ls $REPO_ROOT/.worktrees/rally-1/.git`
+
+Worktree should be a real git worktree (has .git file).
+
+```expected
+$REPO_ROOT/.worktrees/rally-1/.git
+```
+
 ## `rally dispatch sessions`
 
 Sessions should list the dispatch.

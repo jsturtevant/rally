@@ -123,7 +123,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   const execOpts = {
     encoding: 'utf8',
     cwd,
-    timeout: DEFAULT_TIMEOUT,
+    timeout: opts.timeout || DEFAULT_TIMEOUT,
     env,
   };
   if (opts.stdinInput) {
@@ -133,7 +133,12 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   // Rally commands go through node + rally bin; other commands run directly
   const isRally = parts[0] === 'rally';
   const execFile = isRally ? process.execPath : parts[0];
-  const args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
+  let args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
+
+  // Resolve node script paths starting with ./ relative to the spec's directory
+  if (parts[0] === 'node' && args[0] && args[0].startsWith('./') && opts.specDir) {
+    args[0] = join(opts.specDir, args[0]);
+  }
 
   try {
     return execFileSync(execFile, args, execOpts);
@@ -388,7 +393,8 @@ if (!existsSync(CLI_DIR)) {
             continue;
           }
 
-          it(rawCommand, async () => {
+          const testTimeout = frontmatter && frontmatter.timeout ? frontmatter.timeout * 1000 : DEFAULT_TIMEOUT;
+          it(rawCommand, { timeout: testTimeout }, async () => {
             // Substitute variables in command (must be inside it() — repoSetup is set in before())
             const commandVars = {
               '$RALLY_HOME': rallyHome,
@@ -414,7 +420,8 @@ if (!existsSync(CLI_DIR)) {
               exitCode = result.exitCode;
             } else {
               // Standard execution
-              const execOpts = { xdgConfigHome, stdinInput };
+              const specTimeout = frontmatter && frontmatter.timeout ? frontmatter.timeout * 1000 : undefined;
+              const execOpts = { xdgConfigHome, stdinInput, specDir: join(CLI_DIR, file, '..'), timeout: specTimeout };
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {

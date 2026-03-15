@@ -75,8 +75,12 @@ while (Date.now() < deadline) {
     const dispatch = dispatches.find(d => d.id === dispatchId);
 
     if (!dispatch) {
-      console.log('cleaned');
-      process.exit(0);
+      // Dispatch was cleaned. If --expect-file, still wait for the file
+      // (child process may still be writing even after cleanup).
+      if (!expectFile || existsSync(expectFile)) {
+        console.log('cleaned');
+        process.exit(0);
+      }
     }
 
     // Both issue and PR dispatches start as 'implementing'.

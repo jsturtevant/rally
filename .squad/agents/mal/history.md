@@ -750,7 +750,7 @@ Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-0
 
 ### 2026-03-15 — E8 Complete: Dispatch E2E Tests + PRD Update
 
-**Directive:** Update PRD to reflect E8 completion (PR #419 merged). Mark E8 complete, add E8 summary, update status line, assess remaining work (E9/E11/E14/E15), write decision on next priorities.
+**Directive:** Update PRD to reflect E8 completion (PR #419 merged) and the subsequent E9 monolith retirement. Mark E8 complete, add E8 summary, update status line, assess remaining work (E11/E14/E15), write decision on next priorities.
 
 **E8 deliverables (from PR #419):**
 - 3 markdown test files, 23 test cases total
@@ -758,28 +758,28 @@ Mal's recommendation for `--deny-tool` flags as primary enforcement (from 2026-0
 - `dispatch-issue.md` (10 tests): Full issue dispatch flow including worktree verification, sessions output, clean
 - `dispatch-pr.md` (9 tests): PR review flow with Copilot completion polling, REVIEW.md validation
 - Helper scripts: `wait-for-dispatch.js` (polls dispatch refresh), `check-review.js` (validates review content)
-- Runner enhancements: `exclude:` frontmatter, `timeout:` per-file config, Windows cleanup improvements
+- Runner enhancements: env-var-based file filtering (`RALLY_E2E_FILE_PATTERN` / `RALLY_E2E_FILE_EXCLUDE`), `timeout:` per-file config, Windows cleanup improvements
 - CI split: `test:e2e:fast` + `test:e2e:dispatch` separate jobs (dispatch Ubuntu-only, 15min timeout)
 - Product fix: `lib/dispatch-cleanup.js` array guard for `active.yaml` parsing
 
 **PRD updates made:**
-1. Status line: "E7–E8 complete, E9/E11/E14/E15 remaining"
+1. Status line: "E7–E9 complete, E11/E14/E15 remaining"
 2. E8 work item: Added ✅ prefix
 3. E8 Summary block: Documented 3 files, 23 tests, helper scripts, runner enhancements, CI integration, product fix
 
 **Remaining work assessment:**
-- **E9 (Retire e2e.test.js monolith)**: 413-line file with 16 tests. 10 tests replaced by markdown (CLI basics, onboard, clean CLI). 6 tests are library-level (import `lib/dispatch-issue.js`, `lib/dispatch-clean.js` directly with mocks) — these are unique, not CLI tests. **Recommendation:** Extract library tests to `test/e2e/dispatch-library.test.js`, delete monolith.
+- **E9 (Retire e2e.test.js monolith)**: ✅ Complete. The monolith was retired with 14 redundant tests, all covered by markdown specs, so no library-test extraction was needed per James's confirmation.
 - **E11 (test:e2e:pty script)**: 4 PTY CLI tests (3 replaced by markdown, keep `sessions.test.js`), 18 journey tests (all unique interactive TUI tests). **Recommendation:** Delete 3 replaced files, add script for sessions + journeys, wire Ubuntu-only CI job.
 - **E14 (dispatch refresh tests)**: Command exists, works, used by wait-for-dispatch.js. **Recommendation:** Add `dispatch-refresh.md` with help text + empty env test. Defer active-dispatch testing (already covered by wait-for-dispatch.js).
 - **E15 (dispatch log tests)**: Command exists, works. **Recommendation:** Add `dispatch-log.md` with help text + error case. Defer `--follow` testing (requires PTY).
 
-**Decision filed:** `.squad/decisions/inbox/mal-prd-e8-complete.md` with detailed assessment, recommended order (E9 → E14 → E15 → E11), cuts/deferrals, architecture notes on CLI vs library test layers.
+**Decision filed:** `.squad/decisions/inbox/mal-prd-e8-complete.md` with detailed assessment, recommended order (E14 → E15 → E11), cuts/deferrals, and notes on the remaining CLI-vs-PTY test layers.
 
-**Key insight:** The monolith mixed two test layers — CLI integration tests (replaced by markdown) and library-level API tests (still valuable). Both layers needed. Separate them cleanly.
+**Key insight:** By the time the PRD status was updated, the monolith had become fully redundant with markdown coverage, so retiring it simplified the suite without losing coverage.
 
 **Files modified:**
 - `docs/prd-e2e-test-rework.md` — status line, E8 checkmark, E8 summary block
 - `.squad/decisions/inbox/mal-prd-e8-complete.md` — next steps decision
 
-**Est. remaining work:** 3–4 hours to close out E9/E11/E14/E15 and complete the PRD.
+**Est. remaining work:** 2–3 hours to close out E11/E14/E15 and complete the PRD.
 

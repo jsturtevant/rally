@@ -8,6 +8,8 @@
 
 ## 1. Current State
 
+> **Note:** This section describes the state before the E2E rework. See work items (section 5) for current status.
+
 ### 1.1 File Layout
 
 ```
@@ -442,7 +444,7 @@ The `assertExactMatch(actual, expected)` function:
 - `check-review.js`: Validates that `REVIEW.md` exists and contains substantive review content (not just boilerplate).
 
 **Runner enhancements:**
-- `exclude:` frontmatter filter for splitting fast vs slow tests in CI
+- Env-var-based file filtering via `RALLY_E2E_FILE_PATTERN` / `RALLY_E2E_FILE_EXCLUDE` for splitting fast vs slow tests in CI
 - `timeout:` frontmatter for per-file test timeout configuration (dispatch-pr uses 600s)
 - Improved cleanup error handling for Windows worktree removal
 

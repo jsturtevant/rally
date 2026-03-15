@@ -1,6 +1,6 @@
 ---
 clone: jsturtevant/rally-test-fixtures
-setup: setup-dispatch.js
+setup: ../dashboard/setup-squad.js
 ---
 
 # Dispatch Issue E2E Test

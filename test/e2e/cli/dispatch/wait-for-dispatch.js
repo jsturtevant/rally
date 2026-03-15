@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
+import { isPidAlive } from '../../../../lib/utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RALLY_BIN = join(__dirname, '..', '..', '..', '..', 'bin', 'rally.js');
@@ -50,7 +51,8 @@ while (Date.now() < deadline) {
   try {
     const activeYaml = readFileSync(join(rallyHome, 'active.yaml'), 'utf8');
     const active = yaml.load(activeYaml, { schema: yaml.CORE_SCHEMA });
-    const dispatches = active?.dispatches || active || [];
+    const raw = active?.dispatches || active;
+    const dispatches = Array.isArray(raw) ? raw : [];
     const dispatch = dispatches.find(d => d.id === dispatchId);
 
     if (!dispatch) {
@@ -58,7 +60,15 @@ while (Date.now() < deadline) {
       process.exit(0);
     }
 
+    // Both issue and PR dispatches start as 'implementing'.
+    // dispatch refresh moves them to 'reviewing'/'done' when the Copilot PID exits.
     if (dispatch.status !== 'implementing') {
+      console.log(dispatch.status);
+      process.exit(0);
+    }
+
+    const pid = Number(dispatch.pid ?? dispatch.session_id);
+    if (Number.isFinite(pid) && pid > 0 && !isPidAlive(pid)) {
       console.log(dispatch.status);
       process.exit(0);
     }

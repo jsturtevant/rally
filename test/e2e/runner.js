@@ -204,9 +204,12 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
     const timeoutMs = opts.timeout || DEFAULT_TIMEOUT;
     const timeout = setTimeout(() => {
       if (ptyProcess) ptyProcess.kill();
+      const waitingMsg = stepIndex >= steps.length
+        ? 'Waiting for process to exit (all steps matched)'
+        : `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"`;
       reject(new Error(
         `PTY command timed out after ${timeoutMs}ms.\n` +
-        `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"\n` +
+        `${waitingMsg}\n` +
         `Output so far:\n${output}`
       ));
     }, timeoutMs);

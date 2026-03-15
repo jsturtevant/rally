@@ -361,10 +361,10 @@ if (!existsSync(CLI_DIR)) {
                 console.error(`Setup (${frontmatter.setup}): ${setupOutput.trim()}`);
               }
             } catch (err) {
-              // Cleanup both repo and temp dirs on setup failure
-              if (repoSetup && repoSetup.cleanup) repoSetup.cleanup();
-              rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
-              rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
+              // Cleanup both repo and temp dirs on setup failure (best-effort)
+              try { if (repoSetup && repoSetup.cleanup) repoSetup.cleanup(); } catch { /* best-effort */ }
+              try { rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
+              try { rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
               throw new Error(`Setup command failed: ${frontmatter.setup}\n${err.message}`);
             }
           }

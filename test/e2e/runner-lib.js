@@ -28,7 +28,7 @@ function parseFrontmatter(content) {
 /**
  * Parse test cases from markdown body
  * @param {string} body - markdown content after frontmatter
- * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number, stdinInput: string | null, ptySteps: Array<{ match: string, input: string }> | null }>}
+ * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number, stdinInput: string | null, ptySteps: Array<{ match: string, input: string, raw: boolean }> | null }>}
  */
 function parseTestCases(body) {
   const testCases = [];
@@ -88,24 +88,41 @@ function parseTestCases(body) {
           i++;
           ptySteps = [];
           let currentMatch = null;
+          let currentRaw = false;
+          let currentDirective = null;
           while (i < lines.length && !lines[i].match(/^```\s*$/)) {
             const ptyLine = lines[i].trim();
-            if (ptyLine.startsWith('match:')) {
+            if (ptyLine.startsWith('match-raw:')) {
+              currentMatch = ptyLine
+                .slice(10)
+                .trim()
+                .replace(/\{hide-cursor\}/gi, '\x1b[?25l')
+                .replace(/\{show-cursor\}/gi, '\x1b[?25h')
+                .replace(/\{clear-screen\}/gi, '\x1b[2J')
+                .replace(/\{alt-screen\}/gi, '\x1b[?1049h')
+                .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+              currentRaw = true;
+              currentDirective = 'match-raw';
+            } else if (ptyLine.startsWith('match:')) {
               currentMatch = ptyLine.slice(6).trim();
+              currentRaw = false;
+              currentDirective = 'match';
             } else if (ptyLine.startsWith('send:')) {
               if (currentMatch === null) {
-                throw new Error(`PTY parse error: "send:" without preceding "match:" at line: ${ptyLine}`);
+                throw new Error(`PTY parse error: "send:" without preceding "match:" or "match-raw:" at line: ${ptyLine}`);
               }
               const rawInput = ptyLine.slice(5).trim();
-              ptySteps.push({ match: currentMatch, input: rawInput });
+              ptySteps.push({ match: currentMatch, input: rawInput, raw: currentRaw });
               currentMatch = null;
+              currentRaw = false;
+              currentDirective = null;
             } else if (ptyLine === '' && currentMatch === null) {
               // blank line between steps — ignore
             }
             i++;
           }
           if (currentMatch !== null) {
-            throw new Error(`PTY parse error: trailing "match: ${currentMatch}" without a following "send:" line`);
+            throw new Error(`PTY parse error: trailing "${currentDirective}: ${currentMatch}" without a following "send:" line`);
           }
           i++; // skip closing ```
           continue;

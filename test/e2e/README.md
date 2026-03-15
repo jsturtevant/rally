@@ -63,6 +63,7 @@ exact expected output line 2
 | Non-zero exit | `## \`command\` (exit 1)` | Bad command tests |
 | Stdin input | `` ```stdin `` block | Piped input (non-TTY) |
 | PTY interactive | `` ```pty `` block with match/send | Inquirer prompts (needs node-pty) |
+| Raw PTY match | `match-raw:` in `` ```pty `` block | Match raw output including escape sequences |
 | Variables | `$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME` | Dynamic paths |
 | Repo setup | `clone: owner/repo` in frontmatter | Clones test fixtures repo via `gh repo clone` |
 | Smoke test | Heading with no `` ```expected `` block | Just checks exit code 0 |
@@ -90,7 +91,9 @@ send: {enter}
 
 PTY tests use **contains matching** (each expected line must appear in order, extra lines between matches are skipped, but no trailing lines allowed after the last match) because PTY output includes prompt text, ANSI codes, and menu decorations. Non-PTY tests in the same file still use exact matching.
 
-Special keys: `{enter}`, `{up}`, `{down}`, `{space}`. Requires `node-pty` — tests are skipped if unavailable.
+Special keys: `{enter}`, `{up}`, `{down}`, `{space}`, `{backspace}`. Input is sent exactly as written — no automatic Enter appended. Use `{enter}` explicitly for prompts that need it (e.g., `send: y{enter}`). For raw keypresses like Ink TUI commands, send the key alone (e.g., `send: q`). Requires `node-pty` — tests are skipped if unavailable.
+
+**Raw matching:** Use `match-raw:` instead of `match:` to match against raw PTY output _without_ ANSI stripping. This detects terminal control sequences that get stripped from normal matching. Named placeholders: `{hide-cursor}`, `{show-cursor}`, `{clear-screen}`, `{alt-screen}`. Raw hex escapes also work (e.g., `\x1b[2J`). Example: `match-raw: {hide-cursor}` waits for Ink TUI initialization.
 
 ### Variables in commands
 

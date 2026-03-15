@@ -149,7 +149,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
  * @param {string} command - full command string (e.g., "rally onboard .")
  * @param {string} rallyHome - RALLY_HOME path
  * @param {string} cwd - working directory
- * @param {Array<{match: string, input: string}>} steps - prompt match/response pairs
+ * @param {Array<{match: string, input: string, raw: boolean}>} steps - prompt match/response pairs
  * @param {object} [opts] - options
  * @param {string} [opts.xdgConfigHome] - XDG_CONFIG_HOME override
  * @returns {Promise<{output: string, exitCode: number}>}
@@ -185,8 +185,16 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
   return new Promise((resolve, reject) => {
     let output = '';
     let stepIndex = 0;
-    let searchCursor = 0;
+    let searchCursorRaw = 0;
+    let searchCursorStripped = 0;
+    let pendingInput = false;
     let ptyProcess;
+
+    // Strip ANSI escape sequences for clean text matching
+    const stripAnsi = (s) => s
+      .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
+      .replace(/\x1b\][^\x07]*\x07/g, '');
+
     const timeout = setTimeout(() => {
       if (ptyProcess) ptyProcess.kill();
       reject(new Error(
@@ -195,6 +203,45 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
         `Output so far:\n${output}`
       ));
     }, DEFAULT_TIMEOUT);
+
+    const tryAdvanceStep = () => {
+      if (pendingInput || stepIndex >= steps.length) {
+        return;
+      }
+
+      const step = steps[stepIndex];
+      const resolvedInput = step.input
+        .replace(/\{enter\}/gi, '\r')
+        .replace(/\{up\}/gi, '\x1b[A')
+        .replace(/\{down\}/gi, '\x1b[B')
+        .replace(/\{space\}/gi, ' ')
+        .replace(/\{backspace\}/gi, '\x7f');
+
+      let matchPos = -1;
+      if (step.raw) {
+        matchPos = output.indexOf(step.match, searchCursorRaw);
+        if (matchPos !== -1) {
+          searchCursorRaw = matchPos + step.match.length;
+        }
+      } else {
+        // Strip ANSI from full output at match time to avoid split-sequence bugs
+        const stripped = stripAnsi(output);
+        matchPos = stripped.indexOf(step.match, searchCursorStripped);
+        if (matchPos !== -1) {
+          searchCursorStripped = matchPos + step.match.length;
+        }
+      }
+
+      if (matchPos !== -1) {
+        pendingInput = true;
+        setTimeout(() => {
+          ptyProcess.write(resolvedInput);
+          stepIndex++;
+          pendingInput = false;
+          tryAdvanceStep();
+        }, 200);
+      }
+    };
 
     ptyProcess = pty.spawn(process.execPath, args, {
       name: 'xterm-color',
@@ -210,34 +257,11 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
         process.stdout.write(data);
       }
 
-      if (stepIndex < steps.length) {
-        const { match, input } = steps[stepIndex];
-        // Resolve special keys
-        const resolvedInput = input
-          .replace(/\{enter\}/gi, '\r')
-          .replace(/\{up\}/gi, '\x1b[A')
-          .replace(/\{down\}/gi, '\x1b[B')
-          .replace(/\{space\}/gi, ' ')
-          .replace(/\{backspace\}/gi, '\x7f');
-
-        const matchPos = output.indexOf(match, searchCursor);
-        if (matchPos !== -1) {
-          searchCursor = matchPos + match.length;
-          setTimeout(() => {
-            const send = resolvedInput.includes('\r') ? resolvedInput : resolvedInput + '\r';
-            ptyProcess.write(send);
-            stepIndex++;
-          }, 200);
-        }
-      }
+      tryAdvanceStep();
     });
 
     ptyProcess.onExit(({ exitCode }) => {
       clearTimeout(timeout);
-      // Strip ANSI escape sequences (CSI sequences including private modes like ?25h)
-      const stripAnsi = (s) => s
-        .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
-        .replace(/\x1b\][^\x07]*\x07/g, '');
       const clean = stripAnsi(output);
       resolve({ output: clean, exitCode });
     });

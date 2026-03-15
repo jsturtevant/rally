@@ -196,4 +196,60 @@ describe('parseTestCases', () => {
     assert.equal(cases[1].command, 'rally b');
     assert.equal(cases[1].expected, null);
   });
+
+  it('parses match-raw in pty block', () => {
+    const cases = parseTestCases(
+      '## `rally onboard .`\n\n```pty\nmatch-raw: \\x1b[2J\nsend: q\n```\n```expected\ndone\n```'
+    );
+    assert.equal(cases[0].ptySteps.length, 1);
+    assert.equal(cases[0].ptySteps[0].match, '\x1b[2J');
+    assert.equal(cases[0].ptySteps[0].input, 'q');
+    assert.equal(cases[0].ptySteps[0].raw, true);
+  });
+
+  it('match-raw and match in same pty block', () => {
+    const cases = parseTestCases(
+      '## `rally onboard .`\n\n```pty\nmatch: Create?\nsend: y{enter}\nmatch-raw: \\x1b[2J\nsend: q\n```\n```expected\ndone\n```'
+    );
+    assert.equal(cases[0].ptySteps.length, 2);
+    assert.equal(cases[0].ptySteps[0].raw, false);
+    assert.equal(cases[0].ptySteps[1].raw, true);
+    assert.equal(cases[0].ptySteps[1].match, '\x1b[2J');
+  });
+
+  it('match: sets raw to false', () => {
+    const cases = parseTestCases(
+      '## `rally onboard .`\n\n```pty\nmatch: prompt text\nsend: y\n```\n```expected\ndone\n```'
+    );
+    assert.equal(cases[0].ptySteps[0].raw, false);
+  });
+
+  it('trailing match-raw without send throws', () => {
+    assert.throws(
+      () => parseTestCases('## `rally onboard .`\n\n```pty\nmatch-raw: \\x1b[2J\n```'),
+      /match-raw|match/
+    );
+  });
+
+  it('match-raw resolves named placeholders', () => {
+    const cases = parseTestCases(
+      '## `rally dashboard`\n\n```pty\nmatch-raw: {hide-cursor}\nsend: q\n```'
+    );
+    assert.equal(cases[0].ptySteps[0].match, '\x1b[?25l');
+    assert.equal(cases[0].ptySteps[0].raw, true);
+  });
+
+  it('match-raw resolves {show-cursor}', () => {
+    const cases = parseTestCases(
+      '## `rally dashboard`\n\n```pty\nmatch-raw: {show-cursor}\nsend: q\n```'
+    );
+    assert.equal(cases[0].ptySteps[0].match, '\x1b[?25h');
+  });
+
+  it('match-raw resolves {clear-screen}', () => {
+    const cases = parseTestCases(
+      '## `rally dashboard`\n\n```pty\nmatch-raw: {clear-screen}\nsend: q\n```'
+    );
+    assert.equal(cases[0].ptySteps[0].match, '\x1b[2J');
+  });
 });

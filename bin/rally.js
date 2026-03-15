@@ -192,6 +192,9 @@ const dashboard = program
             keepRunning = false;
           }
         }
+        // Explicit exit — Ink fullScreen on Windows can leave lingering
+        // stdio handles that prevent the event loop from draining.
+        process.exit(0);
       }
     } catch (err) {
       handleError(err);

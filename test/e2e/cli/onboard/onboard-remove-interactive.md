@@ -25,7 +25,7 @@ Interactive remove — select the project from the picker, then confirm.
 match: Select a project to remove
 send: {enter}
 match: from Rally
-send: y
+send: y{enter}
 ```
 
 ```expected

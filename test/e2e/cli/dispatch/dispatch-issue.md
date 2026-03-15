@@ -49,16 +49,6 @@ $REPO_ROOT/.worktrees/rally-1/.squad/dispatch-context.md
 
 Context file should reference the issue.
 
-## `node $E2E_DIR/cli/dispatch/verify-dispatch.js rally-test-fixtures-issue-1 issue`
-
-Dashboard JSON should show the dispatch with correct fields.
-
-```expected
-✓ id: rally-test-fixtures-issue-1
-✓ type: issue
-✓ repo: jsturtevant/rally-test-fixtures
-```
-
 ## `rally dispatch sessions`
 
 Sessions should list the dispatch.

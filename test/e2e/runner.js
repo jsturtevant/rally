@@ -200,14 +200,15 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
       .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
       .replace(/\x1b\][^\x07]*\x07/g, '');
 
+    const timeoutMs = opts.timeout || DEFAULT_TIMEOUT;
     const timeout = setTimeout(() => {
       if (ptyProcess) ptyProcess.kill();
       reject(new Error(
-        `PTY command timed out after ${DEFAULT_TIMEOUT}ms.\n` +
+        `PTY command timed out after ${timeoutMs}ms.\n` +
         `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"\n` +
         `Output so far:\n${output}`
       ));
-    }, DEFAULT_TIMEOUT);
+    }, timeoutMs);
 
     const tryAdvanceStep = () => {
       if (pendingInput || stepIndex >= steps.length) {
@@ -409,18 +410,18 @@ if (!existsSync(CLI_DIR)) {
 
             let output;
             let exitCode = 0;
+            const specTimeout = frontmatter && frontmatter.timeout ? frontmatter.timeout * 1000 : undefined;
 
             if (ptySteps) {
               // PTY execution for interactive commands
               const result = await executePtyCommand(
                 command, rallyHome, repoSetup.cwd, ptySteps,
-                { xdgConfigHome }
+                { xdgConfigHome, timeout: specTimeout }
               );
               output = result.output;
               exitCode = result.exitCode;
             } else {
               // Standard execution
-              const specTimeout = frontmatter && frontmatter.timeout ? frontmatter.timeout * 1000 : undefined;
               const execOpts = { xdgConfigHome, stdinInput, specDir: join(CLI_DIR, file, '..'), timeout: specTimeout };
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);

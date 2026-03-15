@@ -24,8 +24,14 @@ if (!dispatchId || !rallyHome) {
   process.exit(1);
 }
 
+if (!Number.isFinite(timeoutSecs) || timeoutSecs <= 0) {
+  console.error('Invalid timeout: must be a positive number');
+  process.exit(1);
+}
+
 const interval = 3000;
 const deadline = Date.now() + (timeoutSecs * 1000);
+let lastError = null;
 
 while (Date.now() < deadline) {
   // Run rally dispatch refresh to update statuses
@@ -35,7 +41,8 @@ while (Date.now() < deadline) {
       timeout: 10000,
       env: { ...process.env, NO_COLOR: '1' },
     });
-  } catch {
+  } catch (err) {
+    lastError = err;
     // refresh might fail if no dispatches — continue
   }
 
@@ -55,12 +62,14 @@ while (Date.now() < deadline) {
       console.log(dispatch.status);
       process.exit(0);
     }
-  } catch {
+  } catch (err) {
+    lastError = err;
     // active.yaml might not exist yet
   }
 
   await new Promise(r => setTimeout(r, interval));
 }
 
-console.error(`Timed out after ${timeoutSecs}s waiting for ${dispatchId} to finish implementing`);
+console.error(`Timed out after ${timeoutSecs}s waiting for ${dispatchId}`);
+if (lastError) console.error(`Last error: ${lastError.message}`);
 process.exit(1);

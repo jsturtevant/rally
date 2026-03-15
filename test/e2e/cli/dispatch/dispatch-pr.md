@@ -1,13 +1,15 @@
 ---
 clone: jsturtevant/rally-test-fixtures
 setup: setup-dispatch.js
+timeout: 180
 ---
 
 # Dispatch PR Review E2E Test
 
 Real end-to-end dispatch to PR #3 on the test fixtures repo. Onboards the
 cloned repo, dispatches a PR review (creates worktree, fetches PR head,
-writes review context, launches Copilot), verifies via dashboard, then cleans up.
+writes review context, launches Copilot), waits for Copilot to complete
+the review, verifies REVIEW.md exists, then cleans up.
 
 ## `rally onboard . --team default`
 
@@ -47,6 +49,18 @@ $REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md
 ## `grep Sample $REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md`
 
 Context file should reference the PR title.
+
+## `node ./wait-for-dispatch.js rally-test-fixtures-pr-3 120`
+
+Wait for Copilot to complete the review (polls dispatch refresh every 3s).
+
+## `ls $REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md`
+
+REVIEW.md should exist after Copilot completes.
+
+```expected
+$REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md
+```
 
 ## `rally dispatch clean --all --yes`
 

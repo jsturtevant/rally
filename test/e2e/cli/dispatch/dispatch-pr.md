@@ -1,7 +1,7 @@
 ---
 clone: jsturtevant/rally-test-fixtures
 setup: setup-dispatch.js
-timeout: 180
+timeout: 1800
 ---
 
 # Dispatch PR Review E2E Test
@@ -50,9 +50,9 @@ $REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md
 
 Context file should reference the PR title.
 
-## `node ./wait-for-dispatch.js rally-test-fixtures-pr-3 120`
+## `node ./wait-for-dispatch.js rally-test-fixtures-pr-3 1500`
 
-Wait for Copilot to complete the review (polls dispatch refresh every 3s).
+Wait for Copilot to complete the review (polls dispatch refresh every 3s, up to 25 min).
 
 ## `ls $REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md`
 

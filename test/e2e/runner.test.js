@@ -161,6 +161,16 @@ describe('filterSpecFiles', () => {
     assert.throws(() => filterSpecFiles(['help.md'], { includePattern: '(' }), /Invalid RALLY_E2E_FILE_PATTERN regex/);
     assert.throws(() => filterSpecFiles(['help.md'], { excludePattern: '(' }), /Invalid RALLY_E2E_FILE_EXCLUDE regex/);
   });
+
+  it('normalizes backslashes for Windows paths', () => {
+    const files = ['dispatch\\dispatch-help.md', 'dashboard\\dashboard.md', 'help.md'];
+    assert.deepEqual(filterSpecFiles(files, { includePattern: '^dispatch/' }), ['dispatch\\dispatch-help.md']);
+  });
+
+  it('excludes with backslash paths', () => {
+    const files = ['dispatch\\dispatch-help.md', 'dashboard\\dashboard.md', 'help.md'];
+    assert.deepEqual(filterSpecFiles(files, { excludePattern: '^dispatch/' }), ['dashboard\\dashboard.md', 'help.md']);
+  });
 });
 
 describe('parseFrontmatter', () => {

@@ -166,10 +166,12 @@ function filterSpecFiles(files, options = {}) {
   const excludePattern = compilePattern(options.excludePattern, 'RALLY_E2E_FILE_EXCLUDE');
 
   return files.filter((file) => {
-    if (includePattern && !includePattern.test(file)) {
+    // Normalize to forward slashes for cross-platform pattern matching
+    const normalized = file.replace(/\\/g, '/');
+    if (includePattern && !includePattern.test(normalized)) {
       return false;
     }
-    if (excludePattern && excludePattern.test(file)) {
+    if (excludePattern && excludePattern.test(normalized)) {
       return false;
     }
     return true;

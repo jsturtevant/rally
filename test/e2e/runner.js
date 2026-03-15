@@ -7,6 +7,7 @@ import { tmpdir, homedir } from 'node:os';
 import {
   parseFrontmatter,
   parseTestCases,
+  filterSpecFiles,
   formatDiff,
   assertContainsLines,
   assertExactMatch,
@@ -79,14 +80,14 @@ function setupRepo(frontmatter) {
       },
     });
   } catch (err) {
-    rmSync(repoDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true, maxRetries: 3 });
     throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
   }
 
   return {
     cwd: repoDir,
     cleanup: () => {
-      rmSync(repoDir, { recursive: true, force: true });
+      rmSync(repoDir, { recursive: true, force: true, maxRetries: 3 });
     },
   };
 }
@@ -296,7 +297,10 @@ if (!existsSync(CLI_DIR)) {
     }
     return files.sort();
   }
-  const mdFiles = findMdFiles(CLI_DIR);
+  const mdFiles = filterSpecFiles(findMdFiles(CLI_DIR), {
+    includePattern: process.env.RALLY_E2E_FILE_PATTERN,
+    excludePattern: process.env.RALLY_E2E_FILE_EXCLUDE,
+  });
 
   if (mdFiles.length === 0) {
     describe('markdown-driven E2E tests', () => {
@@ -327,8 +331,8 @@ if (!existsSync(CLI_DIR)) {
           try {
             repoSetup = setupRepo(frontmatter);
           } catch (err) {
-            rmSync(rallyHome, { recursive: true, force: true });
-            rmSync(xdgConfigHome, { recursive: true, force: true });
+            rmSync(rallyHome, { recursive: true, force: true, maxRetries: 3 });
+            rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 3 });
             throw err;
           }
 
@@ -355,8 +359,8 @@ if (!existsSync(CLI_DIR)) {
             } catch (err) {
               // Cleanup both repo and temp dirs on setup failure
               if (repoSetup && repoSetup.cleanup) repoSetup.cleanup();
-              rmSync(rallyHome, { recursive: true, force: true });
-              rmSync(xdgConfigHome, { recursive: true, force: true });
+              rmSync(rallyHome, { recursive: true, force: true, maxRetries: 3 });
+              rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 3 });
               throw new Error(`Setup command failed: ${frontmatter.setup}\n${err.message}`);
             }
           }
@@ -370,10 +374,10 @@ if (!existsSync(CLI_DIR)) {
 
           // Cleanup RALLY_HOME and XDG_CONFIG_HOME
           if (rallyHome) {
-            rmSync(rallyHome, { recursive: true, force: true });
+            rmSync(rallyHome, { recursive: true, force: true, maxRetries: 3 });
           }
           if (xdgConfigHome) {
-            rmSync(xdgConfigHome, { recursive: true, force: true });
+            rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 3 });
           }
         });
 

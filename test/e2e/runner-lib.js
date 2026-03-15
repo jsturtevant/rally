@@ -149,6 +149,33 @@ function normalizeLine(line) {
   return line.trim().replace(/\s+/g, ' ');
 }
 
+function compilePattern(pattern, envName) {
+  if (!pattern) {
+    return null;
+  }
+
+  try {
+    return new RegExp(pattern);
+  } catch (error) {
+    throw new Error(`Invalid ${envName} regex: ${error.message}`);
+  }
+}
+
+function filterSpecFiles(files, options = {}) {
+  const includePattern = compilePattern(options.includePattern, 'RALLY_E2E_FILE_PATTERN');
+  const excludePattern = compilePattern(options.excludePattern, 'RALLY_E2E_FILE_EXCLUDE');
+
+  return files.filter((file) => {
+    if (includePattern && !includePattern.test(file)) {
+      return false;
+    }
+    if (excludePattern && excludePattern.test(file)) {
+      return false;
+    }
+    return true;
+  });
+}
+
 /**
  * Prepare actual and expected lines for comparison.
  * Applies variable substitutions, normalizes paths and whitespace,
@@ -320,6 +347,7 @@ export {
   parseTestCases,
   prepareLines,
   normalizeLine,
+  filterSpecFiles,
   assertExactMatch,
   assertContainsLines,
   formatDiff,

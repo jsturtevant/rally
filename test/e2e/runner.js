@@ -238,13 +238,6 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
           ptyProcess.write(resolvedInput);
           stepIndex++;
           pendingInput = false;
-          // After all steps complete, give the process a grace period to exit
-          // before force-killing (handles Ink TUI not exiting on Windows)
-          if (stepIndex >= steps.length) {
-            setTimeout(() => {
-              if (ptyProcess) ptyProcess.kill();
-            }, 3000);
-          }
           tryAdvanceStep();
         }, 200);
       }

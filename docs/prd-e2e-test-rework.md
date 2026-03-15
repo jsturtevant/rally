@@ -2,7 +2,7 @@
 
 **Author:** Mal (Lead)
 **Date:** 2026-03-10
-**Status:** In Progress — E7–E8 complete, E9/E11/E14/E15 remaining
+**Status:** In Progress — E7–E9 complete, E11/E14/E15 remaining
 
 ---
 
@@ -396,7 +396,7 @@ The `assertExactMatch(actual, expected)` function:
 | **E6** | **✅ Write onboard e2e tests** — 12 markdown test files in `test/e2e/cli/onboard/` covering: help, errors, local onboard (PTY + non-PTY), clone (owner/repo + HTTPS URL), fork (explicit, auto-discovery, local path), interactive remove (confirm + decline), --team flag, filesystem verification (grep projects.yaml, ls cloned dirs, git remote URLs). Runner enhanced with PTY support, non-rally commands, `clone:` + `setup:` frontmatter, `(exit N)` syntax, GH_CONFIG_DIR preservation, ANSI stripping. | E4 | L |
 | **E7** | **✅ Write dashboard e2e tests** — 3 markdown files in `test/e2e/cli/dashboard/`: `dashboard.md` (help, empty JSON, filter), `dashboard-onboard.md` (multi-project onboard + filter + cleanup, 9 tests), `dashboard-interactive.md` (PTY squad creation via `rally dashboard`, Ink TUI quit via `match-raw: {hide-cursor}`, onboard + JSON verify, 3 tests). Runner enhanced with `match-raw:` directive for raw PTY output matching with named placeholders (`{hide-cursor}`, `{show-cursor}`, `{clear-screen}`, `{alt-screen}`), dual cursor tracking (raw vs stripped). Product fix: `process.exit(0)` after dashboard loop for Windows Ink ConPTY handle cleanup. | E4 | M |
 | **E8** | **✅ Write dispatch e2e tests** — markdown files in `test/e2e/cli/dispatch/` covering: `dispatch-help.md` (help text for dispatch + subcommands), `dispatch-issue.md` (dispatch to fixture repo issue #1, verify worktree/branch/context creation, dashboard JSON shows dispatch, sessions output after dispatch, clean removes it), `dispatch-pr.md` (dispatch PR review to fixture repo PR #3, verify worktree/branch/REVIEW.md creation, clean removes it). Uses `clone: jsturtevant/rally-test-fixtures` for real GitHub API integration. | E4, E2 | L |
-| **E9** | **Retire `e2e.test.js` monolith.** Once all its CLI-stdout tests are covered by markdown files, remove it. Keep any library-level dispatch tests that need real GitHub API calls as separate integration tests. | E6, E7, E8 | S |
+| **E9** | **✅ Retire `e2e.test.js` monolith.** Deleted `test/e2e/e2e.test.js` after confirming all 14 tests — including the 6 library-level dispatch/clean tests — are now redundant with markdown-driven CLI coverage. No extraction needed. | E6, E7, E8 | S |
 
 #### Phase 3 Summary
 
@@ -454,13 +454,21 @@ The `assertExactMatch(actual, expected)` function:
 **Product fix:**
 - `lib/dispatch-cleanup.js`: Array guard when parsing `active.yaml` to handle edge cases
 
+#### E9 Summary
+
+**Monolith retired.** `test/e2e/e2e.test.js` has been deleted, and the markdown runner is now the sole end-to-end path for CLI coverage.
+
+**Coverage decision:** All 14 monolith tests are covered by markdown specs now, including the 6 former library-level dispatch/clean checks, so no extraction into separate integration files was needed.
+
+**Harness impact:** `test/harness/e2e-dispatch-fixture.js` stays in place for the remaining PTY/journey suite; E9 only removes the redundant monolith.
+
 ### Phase 4: Wire into CI
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E10** | **✅ Fix the `test:e2e` script.** Runs both `test/e2e/runner.js` (markdown tests) and `./test/e2e/e2e.test.js` (existing monolith) until monolith is retired in E9. | E4 | S |
+| **E10** | **✅ Fix the `test:e2e` script.** Wired `test:e2e` to the markdown runner during migration; after E9, the obsolete `./test/e2e/e2e.test.js` reference has been removed and the runner remains the e2e entry point. | E4 | S |
 | **E11** | **Add `test:e2e:pty` script** for existing PTY/journey tests. Run on Ubuntu-only in CI. Fix the glob to actually discover `cli/*.test.js` and `journeys/**/*.test.js`. | None | S |
-| **E12** | **✅ Update CI workflow** to run `test:e2e` (markdown + monolith tests, all platforms). PTY test wiring deferred. | E10 | S |
+| **E12** | **✅ Update CI workflow** to run the e2e npm scripts on all platforms while PTY test wiring remains deferred. CI does not reference `e2e.test.js` directly. | E10 | S |
 
 ### Phase 5: Expand Coverage to Untested Commands
 

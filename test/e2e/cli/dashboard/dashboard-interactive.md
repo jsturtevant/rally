@@ -19,7 +19,7 @@ send: y{enter}
 match: What kind of team do you need?
 send: {enter}
 
-match: q quit
+match: Squad created
 send: q
 ```
 

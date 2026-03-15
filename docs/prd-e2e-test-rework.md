@@ -2,7 +2,7 @@
 
 **Author:** Mal (Lead)
 **Date:** 2026-03-10
-**Status:** In Progress — E7–E9 complete, E11/E14/E15 remaining
+**Status:** In Progress — E7–E9 and E14 complete, E11/E15 remaining
 
 ---
 
@@ -477,7 +477,7 @@ The `assertExactMatch(actual, expected)` function:
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E13** | ~~**Add `dispatch pr` test cases**~~ — absorbed into E8. | E8 | — |
-| **E14** | **Add `dispatch refresh` test cases** to `dispatch.md`. | E8 | S |
+| **E14** | **✅ Add `dispatch refresh` test cases** in `test/e2e/cli/dispatch/dispatch-refresh.md`. | E8 | S |
 | **E15** | **Add `dispatch log` test cases** to `dispatch.md`. | E8 | S |
 
 **Size key:** S = < 1 hour, M = 1–3 hours, L = 3–8 hours.

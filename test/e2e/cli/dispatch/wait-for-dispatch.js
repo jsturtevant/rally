@@ -4,7 +4,7 @@
  *
  * Reads RALLY_HOME from env. Runs rally dispatch refresh, then checks active.yaml.
  * Exits 0 when:
- *   - The dispatch status changes from "implementing" (e.g. to "reviewing" or "done"), OR
+ *   - The dispatch status changes from "implementing" (e.g. to "reviewing" or "upstream"), OR
  *   - The Copilot PID is no longer alive (process exited before status was updated).
  * Exits 1 on timeout.
  */
@@ -62,8 +62,8 @@ while (Date.now() < deadline) {
       process.exit(0);
     }
 
-    // Issue dispatches start as 'implementing'; PR dispatches start as 'reviewing'.
-    // dispatch refresh updates status when the Copilot PID exits.
+    // Both issue and PR dispatches start as 'implementing'.
+    // dispatch refresh moves them to 'reviewing' (then 'upstream') when the Copilot PID exits.
     if (dispatch.status !== 'implementing') {
       console.log(dispatch.status);
       process.exit(0);

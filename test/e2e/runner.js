@@ -20,6 +20,7 @@ try {
 }
 
 const RALLY_BIN = join(import.meta.dirname, '..', '..', 'bin', 'rally.js');
+const E2E_DIR = import.meta.dirname;
 const CLI_DIR = join(import.meta.dirname, 'cli');
 const VERBOSE = typeof process.env.VERBOSE === 'string' && /^(1|true|yes)$/i.test(process.env.VERBOSE.trim());
 const DEFAULT_TIMEOUT = 30_000;
@@ -395,6 +396,7 @@ if (!existsSync(CLI_DIR)) {
               '$REPO_ROOT': repoSetup.cwd,
               '$PROJECT_NAME': basename(repoSetup.cwd),
               '$XDG_CONFIG_HOME': xdgConfigHome || '',
+              '$E2E_DIR': E2E_DIR,
             };
             let command = rawCommand;
             for (const [key, value] of Object.entries(commandVars)) {
@@ -445,6 +447,7 @@ if (!existsSync(CLI_DIR)) {
                 '$REPO_ROOT': repoSetup.cwd,
                 '$PROJECT_NAME': basename(repoSetup.cwd),
                 '$XDG_CONFIG_HOME': xdgConfigHome || '',
+                '$E2E_DIR': E2E_DIR,
               };
 
               if (VERBOSE) {

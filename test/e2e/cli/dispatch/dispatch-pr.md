@@ -43,6 +43,16 @@ $REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md
 
 Context file should reference the PR title.
 
+## `node $E2E_DIR/cli/dispatch/verify-dispatch.js rally-test-fixtures-pr-3 pr`
+
+Dashboard JSON should show the PR dispatch with correct fields.
+
+```expected
+✓ id: rally-test-fixtures-pr-3
+✓ type: pr
+✓ repo: jsturtevant/rally-test-fixtures
+```
+
 ## `rally dispatch clean --all --yes`
 
 Clean up all dispatches.

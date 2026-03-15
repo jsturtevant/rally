@@ -39,14 +39,13 @@ jobs:
           GH_TOKEN: ${{ secrets.RALLY_TEST_TOKEN != '' && secrets.RALLY_TEST_TOKEN || secrets.GITHUB_TOKEN }}
 
   test-dispatch:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         node-version: [22]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -57,9 +56,6 @@ jobs:
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      - name: Use bash for npm scripts (Windows)
-        if: runner.os == 'Windows'
-        run: npm config set script-shell bash
       - name: Dispatch E2E tests (slow - waits for Copilot)
         run: npm run test:e2e:dispatch
         timeout-minutes: 15

@@ -316,6 +316,11 @@ if (!existsSync(CLI_DIR)) {
       const filePath = join(CLI_DIR, file);
       const content = readFileSync(filePath, 'utf8');
       const { frontmatter, body } = parseFrontmatter(content);
+      if (frontmatter && frontmatter.timeout != null) {
+        const t = Number(frontmatter.timeout);
+        if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
+        frontmatter.timeout = t;
+      }
       const testCases = parseTestCases(body);
 
       describe(file, () => {

@@ -80,7 +80,7 @@ function setupRepo(frontmatter) {
       },
     });
   } catch (err) {
-    rmSync(repoDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
+    try { rmSync(repoDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
     throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
   }
 
@@ -334,8 +334,8 @@ if (!existsSync(CLI_DIR)) {
           try {
             repoSetup = setupRepo(frontmatter);
           } catch (err) {
-            rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
-            rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
+            try { rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
+            try { rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
             throw err;
           }
 

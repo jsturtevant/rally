@@ -1,9 +1,11 @@
 /**
- * Poll rally dispatch refresh until a dispatch's status changes from "implementing".
+ * Poll rally dispatch refresh until a dispatch completes.
  * Usage: node wait-for-dispatch.js <dispatch-id> [timeout_secs]
  *
  * Reads RALLY_HOME from env. Runs rally dispatch refresh, then checks active.yaml.
- * Exits 0 when status is no longer "implementing", prints the new status.
+ * Exits 0 when:
+ *   - The dispatch status changes from "implementing" (e.g. to "reviewing" or "done"), OR
+ *   - The Copilot PID is no longer alive (process exited before status was updated).
  * Exits 1 on timeout.
  */
 import { execFileSync } from 'node:child_process';
@@ -60,8 +62,8 @@ while (Date.now() < deadline) {
       process.exit(0);
     }
 
-    // Both issue and PR dispatches start as 'implementing'.
-    // dispatch refresh moves them to 'reviewing'/'done' when the Copilot PID exits.
+    // Issue dispatches start as 'implementing'; PR dispatches start as 'reviewing'.
+    // dispatch refresh updates status when the Copilot PID exits.
     if (dispatch.status !== 'implementing') {
       console.log(dispatch.status);
       process.exit(0);

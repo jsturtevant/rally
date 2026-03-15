@@ -81,6 +81,9 @@ while (Date.now() < deadline) {
         console.log('cleaned');
         process.exit(0);
       }
+      // dispatch is undefined — skip status/PID checks, retry next poll
+      await new Promise(r => setTimeout(r, interval));
+      continue;
     }
 
     // Both issue and PR dispatches start as 'implementing'.

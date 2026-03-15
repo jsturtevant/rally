@@ -184,7 +184,6 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
   return new Promise((resolve, reject) => {
     let output = '';
-    let strippedOutput = '';
     let stepIndex = 0;
     let searchCursor = 0;
     let ptyProcess;
@@ -213,7 +212,6 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
 
     ptyProcess.onData((data) => {
       output += data;
-      strippedOutput += stripAnsi(data);
       if (VERBOSE) {
         process.stdout.write(data);
       }
@@ -228,12 +226,13 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
           .replace(/\{space\}/gi, ' ')
           .replace(/\{backspace\}/gi, '\x7f');
 
-        const matchPos = strippedOutput.indexOf(match, searchCursor);
+        // Strip ANSI from full output at match time to avoid split-sequence bugs
+        const stripped = stripAnsi(output);
+        const matchPos = stripped.indexOf(match, searchCursor);
         if (matchPos !== -1) {
           searchCursor = matchPos + match.length;
           setTimeout(() => {
-            const send = resolvedInput;
-            ptyProcess.write(send);
+            ptyProcess.write(resolvedInput);
             stepIndex++;
           }, 200);
         }

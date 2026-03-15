@@ -50,9 +50,11 @@ $REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md
 
 Context file should reference the PR title.
 
-## `node ./wait-for-dispatch.js rally-test-fixtures-pr-3 540`
+## `node ./wait-for-dispatch.js rally-test-fixtures-pr-3 540 --expect-file $REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md`
 
-Wait for Copilot to complete the review (polls dispatch refresh every 3s, up to 9 min).
+Wait for Copilot to complete the review (polls every 3s, up to 9 min).
+Also waits for REVIEW.md to exist — on Windows, gh.exe exits before the
+copilot child process finishes writing.
 
 ## `node ./check-review.js $REPO_ROOT/.worktrees/rally-pr-3/REVIEW.md`
 

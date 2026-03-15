@@ -23,9 +23,25 @@ Onboard the cloned fixtures repo.
 Dispatch PR review for PR #3. Creates worktree on PR head, writes
 dispatch-context.md with PR details, launches Copilot for review.
 
-## `rally dashboard --json`
+## `grep rally-test-fixtures-pr-3 $RALLY_HOME/active.yaml`
 
-Dashboard JSON should show the PR dispatch.
+Verify the PR dispatch is registered with correct ID.
+
+```expected
+- id: rally-test-fixtures-pr-3
+```
+
+## `ls $REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md`
+
+Dispatch-context.md should exist in the PR worktree.
+
+```expected
+$REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md
+```
+
+## `grep Sample $REPO_ROOT/.worktrees/rally-pr-3/.squad/dispatch-context.md`
+
+Context file should reference the PR title.
 
 ## `rally dispatch clean --all --yes`
 

@@ -23,9 +23,31 @@ Onboard the cloned fixtures repo so dispatch can find it.
 Dispatch to issue #1. Creates worktree, branch, dispatch-context.md, and
 launches Copilot.
 
-## `rally dashboard --json`
+## `grep rally-test-fixtures-issue-1 $RALLY_HOME/active.yaml`
 
-Dashboard JSON should show the dispatch for issue #1.
+Verify the dispatch is registered in active.yaml with correct ID.
+
+```expected
+- id: rally-test-fixtures-issue-1
+```
+
+## `grep implementing $RALLY_HOME/active.yaml`
+
+```expected
+status: implementing
+```
+
+## `ls $REPO_ROOT/.worktrees/rally-1/.squad/dispatch-context.md`
+
+Dispatch-context.md should exist in the worktree.
+
+```expected
+$REPO_ROOT/.worktrees/rally-1/.squad/dispatch-context.md
+```
+
+## `grep Dispatch $REPO_ROOT/.worktrees/rally-1/.squad/dispatch-context.md`
+
+Context file should reference the issue.
 
 ## `rally dispatch sessions`
 

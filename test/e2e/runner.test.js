@@ -5,6 +5,7 @@ import {
   assertExactMatch,
   assertContainsLines,
   normalizeLine,
+  filterSpecFiles,
   parseTestCases,
   parseFrontmatter,
 } from './runner-lib.js';
@@ -137,6 +138,38 @@ describe('assertContainsLines', () => {
       () => assertContainsLines('line2\nline1', 'line1\nline2'),
       /Expected line 2 not found/
     );
+  });
+});
+
+describe('filterSpecFiles', () => {
+  it('returns all files when no filters are set', () => {
+    const files = ['dispatch/dispatch-help.md', 'dashboard/dashboard.md', 'help.md'];
+    assert.deepEqual(filterSpecFiles(files), files);
+  });
+
+  it('includes only files matching the include regex', () => {
+    const files = ['dispatch/dispatch-help.md', 'dashboard/dashboard.md', 'help.md'];
+    assert.deepEqual(filterSpecFiles(files, { includePattern: '^dispatch/' }), ['dispatch/dispatch-help.md']);
+  });
+
+  it('excludes files matching the exclude regex', () => {
+    const files = ['dispatch/dispatch-help.md', 'dashboard/dashboard.md', 'help.md'];
+    assert.deepEqual(filterSpecFiles(files, { excludePattern: '^dispatch/' }), ['dashboard/dashboard.md', 'help.md']);
+  });
+
+  it('throws on invalid regex patterns', () => {
+    assert.throws(() => filterSpecFiles(['help.md'], { includePattern: '(' }), /Invalid RALLY_E2E_FILE_PATTERN regex/);
+    assert.throws(() => filterSpecFiles(['help.md'], { excludePattern: '(' }), /Invalid RALLY_E2E_FILE_EXCLUDE regex/);
+  });
+
+  it('normalizes backslashes for Windows paths', () => {
+    const files = ['dispatch\\dispatch-help.md', 'dashboard\\dashboard.md', 'help.md'];
+    assert.deepEqual(filterSpecFiles(files, { includePattern: '^dispatch/' }), ['dispatch\\dispatch-help.md']);
+  });
+
+  it('excludes with backslash paths', () => {
+    const files = ['dispatch\\dispatch-help.md', 'dashboard\\dashboard.md', 'help.md'];
+    assert.deepEqual(filterSpecFiles(files, { excludePattern: '^dispatch/' }), ['dashboard\\dashboard.md', 'help.md']);
   });
 });
 

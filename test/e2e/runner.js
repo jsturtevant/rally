@@ -7,6 +7,7 @@ import { tmpdir, homedir } from 'node:os';
 import {
   parseFrontmatter,
   parseTestCases,
+  filterSpecFiles,
   formatDiff,
   assertContainsLines,
   assertExactMatch,
@@ -79,14 +80,14 @@ function setupRepo(frontmatter) {
       },
     });
   } catch (err) {
-    rmSync(repoDir, { recursive: true, force: true });
+    try { rmSync(repoDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
     throw new Error(`Failed to clone ${ownerRepo}: ${err.message}`);
   }
 
   return {
     cwd: repoDir,
     cleanup: () => {
-      rmSync(repoDir, { recursive: true, force: true });
+      rmSync(repoDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
     },
   };
 }
@@ -123,7 +124,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   const execOpts = {
     encoding: 'utf8',
     cwd,
-    timeout: DEFAULT_TIMEOUT,
+    timeout: opts.timeout || DEFAULT_TIMEOUT,
     env,
   };
   if (opts.stdinInput) {
@@ -133,7 +134,12 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   // Rally commands go through node + rally bin; other commands run directly
   const isRally = parts[0] === 'rally';
   const execFile = isRally ? process.execPath : parts[0];
-  const args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
+  let args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
+
+  // Resolve node script paths starting with ./ relative to the spec's directory
+  if (parts[0] === 'node' && args[0] && args[0].startsWith('./') && opts.specDir) {
+    args[0] = join(opts.specDir, args[0]);
+  }
 
   try {
     return execFileSync(execFile, args, execOpts);
@@ -195,14 +201,18 @@ function executePtyCommand(command, rallyHome, cwd, steps, opts = {}) {
       .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
       .replace(/\x1b\][^\x07]*\x07/g, '');
 
+    const timeoutMs = opts.timeout || DEFAULT_TIMEOUT;
     const timeout = setTimeout(() => {
       if (ptyProcess) ptyProcess.kill();
+      const waitingMsg = stepIndex >= steps.length
+        ? 'Waiting for process to exit (all steps matched)'
+        : `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"`;
       reject(new Error(
-        `PTY command timed out after ${DEFAULT_TIMEOUT}ms.\n` +
-        `Waiting for step ${stepIndex}: match "${steps[stepIndex]?.match}"\n` +
+        `PTY command timed out after ${timeoutMs}ms.\n` +
+        `${waitingMsg}\n` +
         `Output so far:\n${output}`
       ));
-    }, DEFAULT_TIMEOUT);
+    }, timeoutMs);
 
     const tryAdvanceStep = () => {
       if (pendingInput || stepIndex >= steps.length) {
@@ -290,7 +300,10 @@ if (!existsSync(CLI_DIR)) {
     }
     return files.sort();
   }
-  const mdFiles = findMdFiles(CLI_DIR);
+  const mdFiles = filterSpecFiles(findMdFiles(CLI_DIR), {
+    includePattern: process.env.RALLY_E2E_FILE_PATTERN,
+    excludePattern: process.env.RALLY_E2E_FILE_EXCLUDE,
+  });
 
   if (mdFiles.length === 0) {
     describe('markdown-driven E2E tests', () => {
@@ -303,6 +316,11 @@ if (!existsSync(CLI_DIR)) {
       const filePath = join(CLI_DIR, file);
       const content = readFileSync(filePath, 'utf8');
       const { frontmatter, body } = parseFrontmatter(content);
+      if (frontmatter && frontmatter.timeout != null) {
+        const t = Number(frontmatter.timeout);
+        if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
+        frontmatter.timeout = t;
+      }
       const testCases = parseTestCases(body);
 
       describe(file, () => {
@@ -321,8 +339,8 @@ if (!existsSync(CLI_DIR)) {
           try {
             repoSetup = setupRepo(frontmatter);
           } catch (err) {
-            rmSync(rallyHome, { recursive: true, force: true });
-            rmSync(xdgConfigHome, { recursive: true, force: true });
+            try { rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
+            try { rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
             throw err;
           }
 
@@ -331,9 +349,10 @@ if (!existsSync(CLI_DIR)) {
             const mdDir = join(CLI_DIR, file, '..');
             const setupScript = join(mdDir, frontmatter.setup);
             try {
+              const setupTimeout = frontmatter.timeout ? frontmatter.timeout * 1000 : DEFAULT_TIMEOUT;
               const setupOutput = execFileSync(process.execPath, [setupScript], {
                 encoding: 'utf8',
-                timeout: DEFAULT_TIMEOUT,
+                timeout: setupTimeout,
                 env: {
                   ...process.env,
                   RALLY_HOME: rallyHome,
@@ -347,10 +366,10 @@ if (!existsSync(CLI_DIR)) {
                 console.error(`Setup (${frontmatter.setup}): ${setupOutput.trim()}`);
               }
             } catch (err) {
-              // Cleanup both repo and temp dirs on setup failure
-              if (repoSetup && repoSetup.cleanup) repoSetup.cleanup();
-              rmSync(rallyHome, { recursive: true, force: true });
-              rmSync(xdgConfigHome, { recursive: true, force: true });
+              // Cleanup both repo and temp dirs on setup failure (best-effort)
+              try { if (repoSetup && repoSetup.cleanup) repoSetup.cleanup(); } catch { /* best-effort */ }
+              try { rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
+              try { rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }); } catch { /* best-effort */ }
               throw new Error(`Setup command failed: ${frontmatter.setup}\n${err.message}`);
             }
           }
@@ -364,10 +383,10 @@ if (!existsSync(CLI_DIR)) {
 
           // Cleanup RALLY_HOME and XDG_CONFIG_HOME
           if (rallyHome) {
-            rmSync(rallyHome, { recursive: true, force: true });
+            rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
           }
           if (xdgConfigHome) {
-            rmSync(xdgConfigHome, { recursive: true, force: true });
+            rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
           }
         });
 
@@ -388,7 +407,8 @@ if (!existsSync(CLI_DIR)) {
             continue;
           }
 
-          it(rawCommand, async () => {
+          const testTimeout = frontmatter && frontmatter.timeout ? frontmatter.timeout * 1000 : DEFAULT_TIMEOUT;
+          it(rawCommand, { timeout: testTimeout }, async () => {
             // Substitute variables in command (must be inside it() — repoSetup is set in before())
             const commandVars = {
               '$RALLY_HOME': rallyHome,
@@ -403,18 +423,19 @@ if (!existsSync(CLI_DIR)) {
 
             let output;
             let exitCode = 0;
+            const specTimeout = frontmatter && frontmatter.timeout ? frontmatter.timeout * 1000 : undefined;
 
             if (ptySteps) {
               // PTY execution for interactive commands
               const result = await executePtyCommand(
                 command, rallyHome, repoSetup.cwd, ptySteps,
-                { xdgConfigHome }
+                { xdgConfigHome, timeout: specTimeout }
               );
               output = result.output;
               exitCode = result.exitCode;
             } else {
               // Standard execution
-              const execOpts = { xdgConfigHome, stdinInput };
+              const execOpts = { xdgConfigHome, stdinInput, specDir: join(CLI_DIR, file, '..'), timeout: specTimeout };
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {

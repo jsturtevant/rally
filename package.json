@@ -12,7 +12,9 @@
   },
   "scripts": {
     "test": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test ./test/*.test.js && node --test --test-force-exit ./test/ui/*.test.js",
-    "test:e2e": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test --test-force-exit --test-timeout 120000 test/e2e/runner.js ./test/e2e/runner.test.js ./test/e2e/e2e.test.js",
+    "test:e2e": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && node --test --test-force-exit --test-timeout 900000 test/e2e/runner.js ./test/e2e/runner.test.js ./test/e2e/e2e.test.js",
+    "test:e2e:fast": "GIT_TERMINAL_PROMPT=0 RALLY_E2E_FILE_EXCLUDE='^dispatch/' node test/build-jsx.mjs && GIT_TERMINAL_PROMPT=0 RALLY_E2E_FILE_EXCLUDE='^dispatch/' node --test --test-force-exit --test-timeout 120000 test/e2e/runner.js ./test/e2e/runner.test.js ./test/e2e/e2e.test.js",
+    "test:e2e:dispatch": "GIT_TERMINAL_PROMPT=0 RALLY_E2E_FILE_PATTERN='^dispatch/' node test/build-jsx.mjs && GIT_TERMINAL_PROMPT=0 RALLY_E2E_FILE_PATTERN='^dispatch/' node --test --test-force-exit --test-timeout 900000 test/e2e/runner.js ./test/e2e/e2e.test.js",
     "test:all": "npm test && npm run test:e2e",
     "docs:generate": "node scripts/generate-docs.js"
   },

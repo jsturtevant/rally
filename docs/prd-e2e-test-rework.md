@@ -2,7 +2,7 @@
 
 **Author:** Mal (Lead)
 **Date:** 2026-03-10
-**Status:** In Progress — Phase 3 complete, E7–E9 remaining
+**Status:** In Progress — E7 complete, E8–E9 remaining
 
 ---
 
@@ -394,8 +394,8 @@ The `assertExactMatch(actual, expected)` function:
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E6** | **✅ Write onboard e2e tests** — 12 markdown test files in `test/e2e/cli/onboard/` covering: help, errors, local onboard (PTY + non-PTY), clone (owner/repo + HTTPS URL), fork (explicit, auto-discovery, local path), interactive remove (confirm + decline), --team flag, filesystem verification (grep projects.yaml, ls cloned dirs, git remote URLs). Runner enhanced with PTY support, non-rally commands, `clone:` + `setup:` frontmatter, `(exit N)` syntax, GH_CONFIG_DIR preservation, ANSI stripping. | E4 | L |
-| **E7** | **Write `test/e2e/cli/dashboard.md`** — `dashboard --json` and related tests from `e2e.test.js`. | E4 | S |
-| **E8** | **Write `test/e2e/cli/dispatch.md`** — convert dispatch tests from `e2e.test.js` (dispatch issue, dispatch clean, dispatch sessions). | E4, E2 | M |
+| **E7** | **✅ Write dashboard e2e tests** — 3 markdown files in `test/e2e/cli/dashboard/`: `dashboard.md` (help, empty JSON, filter), `dashboard-onboard.md` (multi-project onboard + filter + cleanup, 9 tests), `dashboard-interactive.md` (PTY squad creation via `rally dashboard`, Ink TUI quit via `match-raw: {hide-cursor}`, onboard + JSON verify, 3 tests). Runner enhanced with `match-raw:` directive for raw PTY output matching with named placeholders (`{hide-cursor}`, `{show-cursor}`, `{clear-screen}`, `{alt-screen}`), dual cursor tracking (raw vs stripped). Product fix: `process.exit(0)` after dashboard loop for Windows Ink ConPTY handle cleanup. | E4 | M |
+| **E8** | **Write dispatch e2e tests** — markdown files in `test/e2e/cli/dispatch/` covering: `dispatch-help.md` (help text for dispatch + subcommands), `dispatch-issue.md` (dispatch to fixture repo issue #1, verify worktree/branch/context creation, dashboard JSON shows dispatch, sessions output after dispatch, clean removes it), `dispatch-pr.md` (dispatch PR review to fixture repo PR #3, verify worktree/branch/REVIEW.md creation, clean removes it). Uses `clone: jsturtevant/rally-test-fixtures` for real GitHub API integration. | E4, E2 | L |
 | **E9** | **Retire `e2e.test.js` monolith.** Once all its CLI-stdout tests are covered by markdown files, remove it. Keep any library-level dispatch tests that need real GitHub API calls as separate integration tests. | E6, E7, E8 | S |
 
 #### Phase 3 Summary
@@ -415,6 +415,19 @@ The `assertExactMatch(actual, expected)` function:
 - [#415](https://github.com/jsturtevant/rally/issues/415) — Multi-team support (--team flag currently ignored)
 - [#416](https://github.com/jsturtevant/rally/issues/416) — Add git_protocol config option (ssh/https) for deterministic remote URLs
 
+#### E7 Summary
+
+**3 test files, 15 individual test cases, all passing.** Dashboard coverage includes basic help/JSON, multi-project onboard+filter+cleanup, and interactive squad creation via Ink TUI.
+
+**Runner enhancements:**
+- `match-raw:` directive for matching raw PTY output without ANSI stripping
+- Named placeholders: `{hide-cursor}`, `{show-cursor}`, `{clear-screen}`, `{alt-screen}`
+- Dual cursor tracking (raw vs stripped) for mixed match/match-raw steps
+- `tryAdvanceStep()` helper replacing inline onData matching
+
+**Product fix:**
+- `process.exit(0)` after dashboard loop — Windows Ink fullScreen leaves lingering ConPTY handles
+
 ### Phase 4: Wire into CI
 
 | ID | Task | Dependencies | Est. |
@@ -427,7 +440,7 @@ The `assertExactMatch(actual, expected)` function:
 
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
-| **E13** | **Add `dispatch pr` test cases** to `dispatch.md`. | E8 | S |
+| **E13** | ~~**Add `dispatch pr` test cases**~~ — absorbed into E8. | E8 | — |
 | **E14** | **Add `dispatch refresh` test cases** to `dispatch.md`. | E8 | S |
 | **E15** | **Add `dispatch log` test cases** to `dispatch.md`. | E8 | S |
 

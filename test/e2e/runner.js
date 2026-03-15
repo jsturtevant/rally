@@ -371,27 +371,18 @@ if (!existsSync(CLI_DIR)) {
         });
 
         after(() => {
-          // Cleanup repo — best-effort on Windows where Copilot may hold file handles.
-          // Cleanup failures should not fail the test suite; CI orphan cleanup handles leftovers.
-          try {
-            if (repoSetup && repoSetup.cleanup) {
-              repoSetup.cleanup();
-            }
-          } catch {
-            // EBUSY on Windows when Copilot process still has handles open
+          // Cleanup repo
+          if (repoSetup && repoSetup.cleanup) {
+            repoSetup.cleanup();
           }
 
           // Cleanup RALLY_HOME and XDG_CONFIG_HOME
-          try {
-            if (rallyHome) {
-              rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
-            }
-          } catch { /* best-effort */ }
-          try {
-            if (xdgConfigHome) {
-              rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
-            }
-          } catch { /* best-effort */ }
+          if (rallyHome) {
+            rmSync(rallyHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
+          }
+          if (xdgConfigHome) {
+            rmSync(xdgConfigHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
+          }
         });
 
         // Ensure at least one test case exists

@@ -1,45 +1,36 @@
 /**
- * Verify a dispatch log contains the Copilot completion marker.
- * Usage: node check-log.js <dispatch-id>
+ * Run `rally dispatch log` and verify the output contains the completion marker.
+ * Usage: node check-log.js <number> [--repo owner/repo]
+ *
+ * This exercises the real CLI command, not the log file directly.
  */
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import yaml from 'js-yaml';
+import { execFileSync } from 'node:child_process';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const dispatchId = process.argv[2];
-const rallyHome = process.env.RALLY_HOME;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const RALLY_BIN = join(__dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 
-if (!dispatchId || !rallyHome) {
-  console.error('Usage: node check-log.js <dispatch-id>');
-  console.error('RALLY_HOME must be set');
+const args = process.argv.slice(2);
+if (args.length === 0) {
+  console.error('Usage: node check-log.js <number> [--repo owner/repo]');
   process.exit(1);
 }
 
 try {
-  const activeYaml = readFileSync(join(rallyHome, 'active.yaml'), 'utf8');
-  const active = yaml.load(activeYaml, { schema: yaml.CORE_SCHEMA });
-  const raw = active?.dispatches ?? active;
-  const dispatches = Array.isArray(raw) ? raw : [];
-  const dispatch = dispatches.find(candidate => candidate.id === dispatchId);
+  const output = execFileSync(process.execPath, [RALLY_BIN, 'dispatch', 'log', ...args], {
+    encoding: 'utf8',
+    timeout: 10000,
+    env: { ...process.env, NO_COLOR: '1' },
+  });
 
-  if (!dispatch) {
-    console.error(`Dispatch not found: ${dispatchId}`);
+  if (output.includes('Total session time:')) {
+    console.log('log complete');
+  } else {
+    console.error('rally dispatch log ran but completion marker not found in output');
     process.exit(1);
   }
-
-  if (!dispatch.logPath) {
-    console.error(`Dispatch ${dispatchId} does not have a logPath`);
-    process.exit(1);
-  }
-
-  const content = readFileSync(dispatch.logPath, 'utf8');
-  if (!content.includes('Total session time:')) {
-    console.error(`Completion marker not found in ${dispatch.logPath}`);
-    process.exit(1);
-  }
-
-  console.log('log complete');
 } catch (err) {
-  console.error(err.message);
+  console.error(`rally dispatch log failed: ${err.message}`);
   process.exit(1);
 }

@@ -2,7 +2,7 @@
 
 **Author:** Mal (Lead)
 **Date:** 2026-03-10
-**Status:** In Progress — E7–E9 complete, E11/E14/E15 remaining
+**Status:** In Progress — E7–E10/E12/E15 complete, E11/E14 remaining
 
 ---
 
@@ -55,8 +55,8 @@ Three shared modules in `test/harness/`:
 | `dispatch pr` | ❌ Missing | No e2e coverage |
 | `dispatch remove` | ⚠️ Partial | Journey test exists, not in CI |
 | `dispatch continue` | ⚠️ Partial | Journey test exists, not in CI |
-| `dispatch log` | ⚠️ Partial | Journey test exists, not in CI |
-| `dispatch refresh` | ❌ Missing | No e2e coverage (only dashboard `r` key) |
+| `dispatch log` | ✅ Good | Markdown spec in `test/e2e/cli/dispatch/dispatch-log.md` |
+| `dispatch refresh` | ✅ Good | Markdown spec in `test/e2e/cli/dispatch/dispatch-refresh.md` |
 | Dashboard keyboard nav | ⚠️ Partial | Journey tests exist, not in CI |
 | Dashboard display/layout | ⚠️ Partial | Journey tests exist, not in CI |
 | Visual regression | ⚠️ Built | Infrastructure exists (`snapshots.js`), baselines taken but not asserted in CI |
@@ -478,7 +478,7 @@ The `assertExactMatch(actual, expected)` function:
 |----|------|-------------|------|
 | **E13** | ~~**Add `dispatch pr` test cases**~~ — absorbed into E8. | E8 | — |
 | **E14** | **Add `dispatch refresh` test cases** to `dispatch.md`. | E8 | S |
-| **E15** | **Add `dispatch log` test cases** to `dispatch.md`. | E8 | S |
+| **E15** | **✅ Add `dispatch log` test cases** to `dispatch.md`. Implemented in `test/e2e/cli/dispatch/dispatch-log.md` with help, missing-dispatch, and real dispatch→log→clean coverage. | E8 | S |
 
 **Size key:** S = < 1 hour, M = 1–3 hours, L = 3–8 hours.
 

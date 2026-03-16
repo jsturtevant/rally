@@ -8,7 +8,8 @@ timeout: 300
 
 Exercises `rally dispatch refresh` first with zero active dispatches, then with a
 real issue dispatch whose Copilot PID has already exited. The key assertion is
-that the status stays `implementing` until `rally dispatch refresh` runs.
+that the status stays `implementing` until `rally dispatch refresh` observes the
+Copilot completion marker and advances it to `reviewing`.
 
 ## `rally onboard . --team default`
 
@@ -56,10 +57,6 @@ refresh runs.
 ```expected
 status: implementing
 ```
-
-## `sleep 31`
-
-Give the log activity window time to expire without refreshing the dispatch.
 
 ## `rally dispatch refresh`
 

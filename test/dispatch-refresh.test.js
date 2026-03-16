@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { refreshDispatchStatuses, isProcessRunning, isLogFileActive } from '../lib/dispatch-refresh.js';
+import { refreshDispatchStatuses, isProcessRunning, isLogComplete } from '../lib/dispatch-refresh.js';
 
 describe('refreshDispatchStatuses — session ID auto-resolution', () => {
   test('resolves PID-style session_id to UUID from log when moving to reviewing', () => {
@@ -15,7 +15,7 @@ describe('refreshDispatchStatuses — session ID auto-resolution', () => {
       _updateDispatchStatus: (id, status) => { statusUpdates.push({ id, status }); },
       _updateDispatchField: (id, field, value) => { fieldUpdates.push({ id, field, value }); },
       _isProcessRunning: () => false,
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
       _parseSessionIdFromLog: () => 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     });
 
@@ -42,7 +42,7 @@ describe('refreshDispatchStatuses — session ID auto-resolution', () => {
       _updateDispatchStatus: () => {},
       _updateDispatchField: (id, field, value) => { fieldUpdates.push({ id, field, value }); },
       _isProcessRunning: () => false,
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
       _parseSessionIdFromLog: () => 'should-not-be-called',
     });
 
@@ -54,16 +54,18 @@ describe('refreshDispatchStatuses — session ID auto-resolution', () => {
       { id: 'rally-42', status: 'implementing', session_id: '12345', logPath: '/tmp/copilot.log' },
     ];
     const fieldUpdates = [];
+    const statusUpdates = [];
 
     refreshDispatchStatuses({
       _getActiveDispatches: () => dispatches,
-      _updateDispatchStatus: () => {},
+      _updateDispatchStatus: (id, status) => { statusUpdates.push({ id, status }); },
       _updateDispatchField: (id, field, value) => { fieldUpdates.push({ id, field, value }); },
       _isProcessRunning: () => false,
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
       _parseSessionIdFromLog: () => null,
     });
 
+    assert.strictEqual(statusUpdates.length, 1);
     assert.strictEqual(fieldUpdates.length, 0);
   });
 
@@ -79,11 +81,10 @@ describe('refreshDispatchStatuses — session ID auto-resolution', () => {
       _updateDispatchStatus: (id, status) => { statusUpdates.push({ id, status }); },
       _updateDispatchField: () => { throw new Error('disk full'); },
       _isProcessRunning: () => false,
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
       _parseSessionIdFromLog: () => 'uuid-parsed',
     });
 
-    // Both should still get their status updated
     assert.strictEqual(statusUpdates.length, 2);
   });
 });
@@ -94,54 +95,63 @@ describe('isProcessRunning', () => {
   });
 
   test('returns false for a PID that does not exist', () => {
-    // PID 2147483647 is almost certainly not running
     assert.strictEqual(isProcessRunning(2147483647), false);
   });
 });
 
-describe('isLogFileActive', () => {
-  test('returns true when log file was modified recently', () => {
-    const now = 1000000;
-    const result = isLogFileActive('/tmp/test.log', {
-      _statSync: () => ({ mtimeMs: now - 5000 }),
-      _now: () => now,
+describe('isLogComplete', () => {
+  test('returns true when the log contains the completion marker', () => {
+    const result = isLogComplete('/tmp/test.log', {
+      _exists: () => true,
+      _readFile: () => 'Total usage est: 6 Premium requests\nTotal session time:     1m 15s\n',
     });
     assert.strictEqual(result, true);
   });
 
-  test('returns false when log file is stale', () => {
-    const now = 1000000;
-    const result = isLogFileActive('/tmp/test.log', {
-      _statSync: () => ({ mtimeMs: now - 60000 }),
-      _now: () => now,
+  test('returns false when the log does not exist', () => {
+    let readAttempted = false;
+    const result = isLogComplete('/no/such/file', {
+      _exists: () => false,
+      _readFile: () => {
+        readAttempted = true;
+        return 'Total session time:     1m 15s';
+      },
     });
     assert.strictEqual(result, false);
+    assert.strictEqual(readAttempted, false);
   });
 
   test('returns false when logPath is null', () => {
-    assert.strictEqual(isLogFileActive(null), false);
+    assert.strictEqual(isLogComplete(null), false);
   });
 
-  test('returns false when stat throws (file missing)', () => {
-    const result = isLogFileActive('/no/such/file', {
-      _statSync: () => { throw new Error('ENOENT'); },
+  test('returns false when the log is empty', () => {
+    const result = isLogComplete('/tmp/test.log', {
+      _exists: () => true,
+      _readFile: () => '',
     });
     assert.strictEqual(result, false);
   });
 
-  test('respects custom thresholdMs', () => {
-    const now = 1000000;
-    const result = isLogFileActive('/tmp/test.log', {
-      thresholdMs: 5000,
-      _statSync: () => ({ mtimeMs: now - 10000 }),
-      _now: () => now,
+  test('returns false when the completion marker is missing', () => {
+    const result = isLogComplete('/tmp/test.log', {
+      _exists: () => true,
+      _readFile: () => 'Still writing output\n',
+    });
+    assert.strictEqual(result, false);
+  });
+
+  test('returns false when reading the log throws', () => {
+    const result = isLogComplete('/tmp/test.log', {
+      _exists: () => true,
+      _readFile: () => { throw new Error('EACCES'); },
     });
     assert.strictEqual(result, false);
   });
 });
 
 describe('refreshDispatchStatuses', () => {
-  test('updates status to reviewing when PID is not running and log is stale', () => {
+  test('updates status to reviewing when PID is not running and log is complete', () => {
     const dispatches = [
       { id: 'issue-42', status: 'implementing', session_id: '99999', type: 'issue' },
     ];
@@ -151,7 +161,7 @@ describe('refreshDispatchStatuses', () => {
       _getActiveDispatches: () => dispatches,
       _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
       _isProcessRunning: () => false,
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
     });
 
     assert.strictEqual(updates.length, 1);
@@ -162,7 +172,7 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result[0].status, 'reviewing');
   });
 
-  test('refreshDispatchStatuses leaves status unchanged when PID is dead but log is still active', () => {
+  test('refreshDispatchStatuses leaves status unchanged when PID is dead but log is not complete', () => {
     const dispatches = [
       { id: 'issue-42', status: 'implementing', session_id: '99999', type: 'issue', logPath: '/tmp/test.log' },
     ];
@@ -172,7 +182,7 @@ describe('refreshDispatchStatuses', () => {
       _getActiveDispatches: () => dispatches,
       _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
       _isProcessRunning: () => false,
-      _isLogFileActive: () => true,
+      _isLogComplete: () => false,
     });
 
     assert.strictEqual(updates.length, 0);
@@ -189,11 +199,28 @@ describe('refreshDispatchStatuses', () => {
       _getActiveDispatches: () => dispatches,
       _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
       _isProcessRunning: () => true,
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
     });
 
     assert.strictEqual(updates.length, 0);
     assert.strictEqual(result.length, 0);
+  });
+
+  test('supports the legacy _isLogFileActive test hook as a completion alias', () => {
+    const dispatches = [
+      { id: 'issue-43', status: 'implementing', session_id: '99998', type: 'issue' },
+    ];
+    const updates = [];
+
+    const result = refreshDispatchStatuses({
+      _getActiveDispatches: () => dispatches,
+      _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
+      _isProcessRunning: () => false,
+      _isLogFileActive: () => true,
+    });
+
+    assert.strictEqual(updates.length, 1);
+    assert.strictEqual(result.length, 1);
   });
 
   test('skips dispatches with non-PID session_id', () => {
@@ -265,20 +292,15 @@ describe('refreshDispatchStatuses', () => {
       { id: 'e', status: 'implementing', session_id: '400', type: 'issue' },
     ];
     const updates = [];
-    const runningPids = new Set([100]); // only PID 100 is alive
+    const runningPids = new Set([100]);
 
     const result = refreshDispatchStatuses({
       _getActiveDispatches: () => dispatches,
       _updateDispatchStatus: (id, status) => { updates.push({ id, status }); },
       _isProcessRunning: (pid) => runningPids.has(pid),
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
     });
 
-    // 'a' (PID 100) still running — no update
-    // 'b' (PID 200) dead, log stale — updated
-    // 'c' done — skipped
-    // 'd' non-PID — skipped
-    // 'e' (PID 400) dead, log stale — updated
     assert.strictEqual(updates.length, 2);
     assert.strictEqual(updates[0].id, 'b');
     assert.strictEqual(updates[1].id, 'e');
@@ -299,8 +321,9 @@ describe('refreshDispatchStatuses', () => {
         if (callCount === 1) throw new Error('disk full');
       },
       _isProcessRunning: () => false,
-      _isLogFileActive: () => false,
+      _isLogComplete: () => true,
     });
+
     assert.strictEqual(callCount, 2);
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].id, 'y');

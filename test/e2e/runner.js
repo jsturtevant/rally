@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { readdirSync, readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
@@ -92,6 +92,33 @@ function setupRepo(frontmatter) {
   };
 }
 
+function quoteForShell(value) {
+  return `"${value}"`;
+}
+
+function resolveShellStage(stage, specDir) {
+  const trimmed = stage.trim();
+  const match = trimmed.match(/^(\S+)(?:\s+(.*))?$/s);
+  if (!match) {
+    return trimmed;
+  }
+
+  const [, execFile, remainder = ''] = match;
+  if (execFile === 'rally') {
+    return `${quoteForShell(process.execPath)} ${quoteForShell(RALLY_BIN)}${remainder ? ` ${remainder}` : ''}`;
+  }
+
+  if (execFile === 'node' && remainder.startsWith('./') && specDir) {
+    const scriptMatch = remainder.match(/^(\.\/\S+)(?:\s+(.*))?$/s);
+    if (scriptMatch) {
+      const [, scriptPath, scriptArgs = ''] = scriptMatch;
+      return `${quoteForShell(process.execPath)} ${quoteForShell(join(specDir, scriptPath))}${scriptArgs ? ` ${scriptArgs}` : ''}`;
+    }
+  }
+
+  return trimmed;
+}
+
 /**
  * Execute a rally command
  * @param {string} command - full command string (e.g., "rally --help")
@@ -103,7 +130,6 @@ function setupRepo(frontmatter) {
  * @returns {string} - stdout
  */
 function executeCommand(command, rallyHome, cwd, opts = {}) {
-  const parts = command.trim().split(/\s+/);
   const env = {
     ...process.env,
     RALLY_HOME: rallyHome,
@@ -130,6 +156,23 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
   if (opts.stdinInput) {
     execOpts.input = opts.stdinInput;
   }
+
+  if (command.includes(' | ')) {
+    const shellCommand = command
+      .split(' | ')
+      .map((stage) => resolveShellStage(stage, opts.specDir))
+      .join(' | ');
+
+    try {
+      return execSync(shellCommand, { ...execOpts, shell: true });
+    } catch (err) {
+      const output = (err.stdout || '') + (err.stderr || '');
+      err.output = output;
+      throw err;
+    }
+  }
+
+  const parts = command.trim().split(/\s+/);
 
   // Rally commands go through node + rally bin; other commands run directly
   const isRally = parts[0] === 'rally';

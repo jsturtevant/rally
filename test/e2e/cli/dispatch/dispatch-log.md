@@ -54,13 +54,13 @@ Dispatched issue #1: [E2E Test] Dispatch issue test → $REPO_ROOT/.worktrees/ra
 
 Wait for the Copilot PID to exit without refreshing dispatch status.
 
-## `node ./check-log.js 1 --repo jsturtevant/rally-test-fixtures`
+## `rally dispatch log 1 --repo jsturtevant/rally-test-fixtures | grep -c 'Total session time:'`
 
-Run `rally dispatch log` via helper and verify the output contains the
-completion marker (`Total session time:`).
+Run `rally dispatch log` through a pipe and verify the completion marker is
+present exactly once.
 
 ```expected
-log complete
+1
 ```
 
 ## `rally dispatch clean --all --yes`

@@ -12,6 +12,7 @@ import {
   assertContainsLines,
   assertExactMatch,
   splitCommand,
+  splitPipeline,
 } from './runner-lib.js';
 
 let pty;
@@ -99,6 +100,9 @@ function setupRepo(frontmatter) {
  */
 function resolveCommand(command, specDir) {
   const parts = splitCommand(command);
+  if (parts.length === 0) {
+    throw new Error('Empty command in pipeline stage');
+  }
   if (parts[0] === 'rally') {
     return [process.execPath, [RALLY_BIN, ...parts.slice(1)]];
   }
@@ -182,7 +186,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
     execOpts.input = opts.stdinInput;
   }
 
-  const stages = command.split(' | ').map((s) => s.trim());
+  const stages = splitPipeline(command);
   return executePipeline(stages, execOpts, opts.specDir);
 }
 

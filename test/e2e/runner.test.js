@@ -9,6 +9,7 @@ import {
   parseTestCases,
   parseFrontmatter,
   splitCommand,
+  splitPipeline,
 } from './runner-lib.js';
 
 describe('normalizeLine', () => {
@@ -355,5 +356,56 @@ describe('splitCommand', () => {
 
   it('returns empty array for empty string', () => {
     assert.deepEqual(splitCommand(''), []);
+  });
+});
+
+describe('splitPipeline', () => {
+  it('splits on spaced pipe', () => {
+    assert.deepEqual(
+      splitPipeline('rally dispatch log 42 | grep -c done'),
+      ['rally dispatch log 42', 'grep -c done']
+    );
+  });
+
+  it('splits on pipe without spaces', () => {
+    assert.deepEqual(
+      splitPipeline('echo hello|grep hello'),
+      ['echo hello', 'grep hello']
+    );
+  });
+
+  it('splits on pipe with extra whitespace', () => {
+    assert.deepEqual(
+      splitPipeline('cmd1  |  cmd2'),
+      ['cmd1', 'cmd2']
+    );
+  });
+
+  it('handles single command (no pipe)', () => {
+    assert.deepEqual(
+      splitPipeline('rally --help'),
+      ['rally --help']
+    );
+  });
+
+  it('filters out empty stages from leading/trailing pipe', () => {
+    assert.deepEqual(
+      splitPipeline('| cmd1 | cmd2 |'),
+      ['cmd1', 'cmd2']
+    );
+  });
+
+  it('filters out empty stages from double pipe', () => {
+    assert.deepEqual(
+      splitPipeline('cmd1 || cmd2'),
+      ['cmd1', 'cmd2']
+    );
+  });
+
+  it('handles three-stage pipeline', () => {
+    assert.deepEqual(
+      splitPipeline('cat file | grep pattern | wc -l'),
+      ['cat file', 'grep pattern', 'wc -l']
+    );
   });
 });

@@ -445,6 +445,14 @@ function splitCommand(command) {
   return tokens;
 }
 
+/**
+ * Split a command string into pipeline stages on `|`, tolerating
+ * variable whitespace. Empty stages are filtered out.
+ */
+function splitPipeline(command) {
+  return command.split(/\s*\|\s*/).filter(Boolean);
+}
+
 export {
   parseFrontmatter,
   parseTestCases,
@@ -455,4 +463,5 @@ export {
   assertContainsLines,
   formatDiff,
   splitCommand,
+  splitPipeline,
 };

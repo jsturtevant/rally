@@ -54,13 +54,16 @@ Dispatched issue #1: [E2E Test] Dispatch issue test → $REPO_ROOT/.worktrees/ra
 
 Wait for the Copilot PID to exit without refreshing dispatch status.
 
-## `rally dispatch log 1 --repo jsturtevant/rally-test-fixtures | grep 'Total session time:'`
+## `rally dispatch log 1 --repo jsturtevant/rally-test-fixtures`
 
-The Copilot log always ends with a summary block containing session time.
-Grep for the completion marker to verify the log has real content.
+Smoke test the command that prints the captured Copilot log.
+
+## `node ./check-log.js rally-test-fixtures-issue-1`
+
+Verify the stored log contains the completion marker.
 
 ```expected
-Total session time:
+log complete
 ```
 
 ## `rally dispatch clean --all --yes`

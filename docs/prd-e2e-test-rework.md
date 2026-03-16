@@ -56,7 +56,7 @@ Three shared modules in `test/harness/`:
 | `dispatch remove` | ⚠️ Partial | Journey test exists, not in CI |
 | `dispatch continue` | ⚠️ Partial | Journey test exists, not in CI |
 | `dispatch log` | ✅ Good | Markdown spec in `test/e2e/cli/dispatch/dispatch-log.md` |
-| `dispatch refresh` | ❌ Missing | No e2e coverage (only dashboard `r` key) |
+| `dispatch refresh` | ✅ Good | Markdown spec in `test/e2e/cli/dispatch/dispatch-refresh.md` |
 | Dashboard keyboard nav | ⚠️ Partial | Journey tests exist, not in CI |
 | Dashboard display/layout | ⚠️ Partial | Journey tests exist, not in CI |
 | Visual regression | ⚠️ Built | Infrastructure exists (`snapshots.js`), baselines taken but not asserted in CI |

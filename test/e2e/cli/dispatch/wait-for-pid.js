@@ -22,42 +22,58 @@ if (!Number.isFinite(timeoutSecs) || timeoutSecs <= 0) {
   process.exit(1);
 }
 
-function readDispatch(dispatchIdToFind) {
-  const activeYaml = readFileSync(join(rallyHome, 'active.yaml'), 'utf8');
-  const active = yaml.load(activeYaml, { schema: yaml.CORE_SCHEMA });
-  const raw = active?.dispatches ?? active;
-  const dispatches = Array.isArray(raw) ? raw : [];
-  return dispatches.find(dispatch => dispatch.id === dispatchIdToFind);
-}
-
-let dispatch;
-try {
-  dispatch = readDispatch(dispatchId);
-} catch (err) {
-  console.error(`Failed to read active.yaml: ${err.message}`);
-  process.exit(1);
-}
-
-if (!dispatch) {
-  console.error(`Dispatch not found: ${dispatchId}`);
-  process.exit(1);
-}
-
-const pid = Number(dispatch.pid ?? dispatch.session_id);
-if (!Number.isFinite(pid) || pid <= 0) {
-  console.error(`Dispatch ${dispatchId} does not have a valid PID`);
-  process.exit(1);
-}
-
+const interval = 2000;
 const deadline = Date.now() + (timeoutSecs * 1000);
+let sawDispatch = false;
+let lastError = null;
+let lastPid = null;
+
 while (Date.now() < deadline) {
-  if (!isPidAlive(pid)) {
-    console.log('pid exited');
-    process.exit(0);
+  try {
+    const activeYaml = readFileSync(join(rallyHome, 'active.yaml'), 'utf8');
+    const active = yaml.load(activeYaml, { schema: yaml.CORE_SCHEMA });
+    const raw = active?.dispatches ?? active;
+    const dispatches = Array.isArray(raw) ? raw : [];
+    const dispatch = dispatches.find(candidate => candidate.id === dispatchId);
+
+    if (!dispatch) {
+      if (sawDispatch) {
+        console.log('dispatch cleaned');
+        process.exit(0);
+      }
+
+      lastError = new Error(`Dispatch not found: ${dispatchId}`);
+      await new Promise(resolve => setTimeout(resolve, interval));
+      continue;
+    }
+
+    sawDispatch = true;
+
+    const pid = Number(dispatch.pid ?? dispatch.session_id);
+    if (!Number.isFinite(pid) || pid <= 0) {
+      lastError = new Error(`Dispatch ${dispatchId} does not have a valid PID`);
+      await new Promise(resolve => setTimeout(resolve, interval));
+      continue;
+    }
+
+    lastPid = pid;
+    lastError = null;
+
+    if (!isPidAlive(pid)) {
+      console.log('pid exited');
+      process.exit(0);
+    }
+  } catch (err) {
+    lastError = err;
   }
 
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, interval));
 }
 
-console.error(`Timed out after ${timeoutSecs}s waiting for PID ${pid} from ${dispatchId}`);
+console.error(
+  `Timed out after ${timeoutSecs}s waiting for ${dispatchId}${lastPid ? ` (last PID ${lastPid})` : ''}`
+);
+if (lastError) {
+  console.error(`Last error: ${lastError.message}`);
+}
 process.exit(1);

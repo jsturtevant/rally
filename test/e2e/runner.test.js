@@ -8,6 +8,7 @@ import {
   filterSpecFiles,
   parseTestCases,
   parseFrontmatter,
+  splitCommand,
 } from './runner-lib.js';
 
 describe('normalizeLine', () => {
@@ -311,5 +312,48 @@ describe('parseTestCases', () => {
       '## `rally dashboard`\n\n```pty\nmatch-raw: {clear-screen}\nsend: q\n```'
     );
     assert.equal(cases[0].ptySteps[0].match, '\x1b[2J');
+  });
+});
+
+describe('splitCommand', () => {
+  it('splits simple commands on whitespace', () => {
+    assert.deepEqual(splitCommand('rally --help'), ['rally', '--help']);
+  });
+
+  it('handles single-quoted arguments', () => {
+    assert.deepEqual(
+      splitCommand("grep -c 'Total session time:'"),
+      ['grep', '-c', 'Total session time:']
+    );
+  });
+
+  it('handles double-quoted arguments', () => {
+    assert.deepEqual(
+      splitCommand('echo "hello world"'),
+      ['echo', 'hello world']
+    );
+  });
+
+  it('handles mixed quote types', () => {
+    assert.deepEqual(
+      splitCommand(`grep -c "foo bar" 'baz qux'`),
+      ['grep', '-c', 'foo bar', 'baz qux']
+    );
+  });
+
+  it('handles single token with no args', () => {
+    assert.deepEqual(splitCommand('rally'), ['rally']);
+  });
+
+  it('strips leading/trailing whitespace', () => {
+    assert.deepEqual(splitCommand('  rally  --help  '), ['rally', '--help']);
+  });
+
+  it('handles unclosed quote by including remaining text', () => {
+    assert.deepEqual(splitCommand('echo "hello'), ['echo', 'hello']);
+  });
+
+  it('returns empty array for empty string', () => {
+    assert.deepEqual(splitCommand(''), []);
   });
 });

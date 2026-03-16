@@ -421,6 +421,30 @@ function formatDiff(actual, expected, vars = {}) {
   return lines.join('\n');
 }
 
+/**
+ * Split a command string into tokens, respecting single and double quotes.
+ * Quotes are stripped from the resulting tokens.
+ */
+function splitCommand(command) {
+  const tokens = [];
+  let current = '';
+  let quote = null;
+  for (const ch of command.trim()) {
+    if (quote) {
+      if (ch === quote) { quote = null; continue; }
+      current += ch;
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+    } else if (/\s/.test(ch)) {
+      if (current) { tokens.push(current); current = ''; }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
+
 export {
   parseFrontmatter,
   parseTestCases,
@@ -430,4 +454,5 @@ export {
   assertExactMatch,
   assertContainsLines,
   formatDiff,
+  splitCommand,
 };

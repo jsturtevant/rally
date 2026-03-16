@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
@@ -11,6 +11,7 @@ import {
   formatDiff,
   assertContainsLines,
   assertExactMatch,
+  splitCommand,
 } from './runner-lib.js';
 
 let pty;
@@ -92,42 +93,66 @@ function setupRepo(frontmatter) {
   };
 }
 
-function quoteForShell(value) {
-  return `"${value}"`;
-}
-
-function resolveShellStage(stage, specDir) {
-  const trimmed = stage.trim();
-  const match = trimmed.match(/^(\S+)(?:\s+(.*))?$/s);
-  if (!match) {
-    return trimmed;
+/**
+ * Resolve a command string into [execFile, args] for use with spawnSync.
+ * Handles rally → node rally.js and node ./script.js → absolute path resolution.
+ */
+function resolveCommand(command, specDir) {
+  const parts = splitCommand(command);
+  if (parts[0] === 'rally') {
+    return [process.execPath, [RALLY_BIN, ...parts.slice(1)]];
   }
-
-  const [, execFile, remainder = ''] = match;
-  if (execFile === 'rally') {
-    return `${quoteForShell(process.execPath)} ${quoteForShell(RALLY_BIN)}${remainder ? ` ${remainder}` : ''}`;
+  let args = parts.slice(1);
+  if (parts[0] === 'node' && args[0] && args[0].startsWith('./') && specDir) {
+    args[0] = join(specDir, args[0]);
+    return [process.execPath, args];
   }
-
-  if (execFile === 'node' && remainder.startsWith('./') && specDir) {
-    const scriptMatch = remainder.match(/^(\.\/\S+)(?:\s+(.*))?$/s);
-    if (scriptMatch) {
-      const [, scriptPath, scriptArgs = ''] = scriptMatch;
-      return `${quoteForShell(process.execPath)} ${quoteForShell(join(specDir, scriptPath))}${scriptArgs ? ` ${scriptArgs}` : ''}`;
-    }
-  }
-
-  return trimmed;
+  return [parts[0], args];
 }
 
 /**
- * Execute a rally command
- * @param {string} command - full command string (e.g., "rally --help")
+ * Execute a pipeline of commands connected via spawnSync stdio piping.
+ * No shell involved — each stage is spawned directly.
+ */
+function executePipeline(stages, execOpts, specDir) {
+  let input = execOpts.input || null;
+  for (let i = 0; i < stages.length; i++) {
+    const [cmd, args] = resolveCommand(stages[i], specDir);
+    const isLast = i === stages.length - 1;
+    const result = spawnSync(cmd, args, {
+      ...execOpts,
+      input,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      const err = new Error(`Command failed (stage ${i + 1}/${stages.length}): ${stages[i]}`);
+      err.status = result.status;
+      err.stdout = result.stdout;
+      err.stderr = result.stderr;
+      err.output = (result.stdout || '') + (result.stderr || '');
+      throw err;
+    }
+    if (!isLast) {
+      input = result.stdout;
+      continue;
+    }
+    const stdout = result.stdout;
+    return typeof stdout === 'string' ? stdout : stdout.toString('utf8');
+  }
+}
+
+/**
+ * Execute a command or pipeline (e.g., "rally --help" or "rally dispatch log 42 | grep -c done").
+ * All commands are executed via spawnSync with no shell — pipes are handled by
+ * chaining stdout→stdin between stages.
+ * @param {string} command - full command string, may contain " | " for pipelines
  * @param {string} rallyHome - RALLY_HOME path
  * @param {string} cwd - working directory
  * @param {object} [opts] - options
  * @param {string} [opts.xdgConfigHome] - XDG_CONFIG_HOME override for personal squad
- * @param {string} [opts.stdinInput] - stdin input to pipe to the command
- * @returns {string} - stdout
+ * @param {string} [opts.stdinInput] - stdin input to pipe to the first command
+ * @returns {string} - stdout of the final stage
  */
 function executeCommand(command, rallyHome, cwd, opts = {}) {
   const env = {
@@ -157,40 +182,8 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
     execOpts.input = opts.stdinInput;
   }
 
-  if (command.includes(' | ')) {
-    const shellCommand = command
-      .split(' | ')
-      .map((stage) => resolveShellStage(stage, opts.specDir))
-      .join(' | ');
-
-    try {
-      return execSync(shellCommand, { ...execOpts, shell: true });
-    } catch (err) {
-      const output = (err.stdout || '') + (err.stderr || '');
-      err.output = output;
-      throw err;
-    }
-  }
-
-  const parts = command.trim().split(/\s+/);
-
-  // Rally commands go through node + rally bin; other commands run directly
-  const isRally = parts[0] === 'rally';
-  const execFile = isRally ? process.execPath : parts[0];
-  let args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
-
-  // Resolve node script paths starting with ./ relative to the spec's directory
-  if (parts[0] === 'node' && args[0] && args[0].startsWith('./') && opts.specDir) {
-    args[0] = join(opts.specDir, args[0]);
-  }
-
-  try {
-    return execFileSync(execFile, args, execOpts);
-  } catch (err) {
-    const output = (err.stdout || '') + (err.stderr || '');
-    err.output = output;
-    throw err;
-  }
+  const stages = command.split(' | ').map((s) => s.trim());
+  return executePipeline(stages, execOpts, opts.specDir);
 }
 
 /**

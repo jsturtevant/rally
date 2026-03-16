@@ -38,6 +38,17 @@ The runner registers each `.md` file as a `describe()` suite and each `## \`comm
 
 **⚠️ Exit code caveat:** When using `--test-name-pattern`, Node's test runner may exit with code 0 even when filtered tests fail. Always check the `ℹ fail` count in the output, not just the exit code. Running the full suite without `--test-name-pattern` correctly exits with code 1 on failure.
 
+The runner also supports env-var filtering before suites are registered:
+
+| Env var | Behavior |
+|---------|----------|
+| `RALLY_E2E_FILE_PATTERN` | Include only spec paths matching the regex |
+| `RALLY_E2E_FILE_EXCLUDE` | Exclude spec paths matching the regex |
+| `RALLY_E2E_TAGS` | Include only specs that have **all** listed tags (comma-separated, case-insensitive) |
+| `RALLY_E2E_TAGS_EXCLUDE` | Exclude specs that have **any** listed tags (comma-separated, case-insensitive) |
+
+File filters and tag filters stack. For example, `RALLY_E2E_FILE_PATTERN=dispatch RALLY_E2E_TAGS_EXCLUDE=slow` runs only fast dispatch specs.
+
 ## Writing Tests
 
 See the [PRD](../../docs/prd-e2e-test-rework.md) for full spec. Quick reference:
@@ -66,6 +77,7 @@ exact expected output line 2
 | Raw PTY match | `match-raw:` in `` ```pty `` block | Match raw output including escape sequences |
 | Variables | `$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME` | Dynamic paths |
 | Repo setup | `clone: owner/repo` in frontmatter | Clones test fixtures repo via `gh repo clone` |
+| Tags | `tags: [dispatch, slow]` in frontmatter | Filter specs with `RALLY_E2E_TAGS` / `RALLY_E2E_TAGS_EXCLUDE` |
 | Smoke test | Heading with no `` ```expected `` block | Just checks exit code 0 |
 
 ### PTY tests (interactive prompts)

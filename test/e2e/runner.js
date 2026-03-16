@@ -303,25 +303,40 @@ if (!existsSync(CLI_DIR)) {
   const mdFiles = filterSpecFiles(findMdFiles(CLI_DIR), {
     includePattern: process.env.RALLY_E2E_FILE_PATTERN,
     excludePattern: process.env.RALLY_E2E_FILE_EXCLUDE,
+  }).map((file) => {
+    const content = readFileSync(join(CLI_DIR, file), 'utf8');
+    const { frontmatter, body } = parseFrontmatter(content);
+    if (frontmatter && frontmatter.timeout != null) {
+      const t = Number(frontmatter.timeout);
+      if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
+      frontmatter.timeout = t;
+    }
+
+    return {
+      file,
+      frontmatter,
+      tags: frontmatter ? frontmatter.tags : [],
+      body,
+    };
   });
 
-  if (mdFiles.length === 0) {
+  const specs = filterSpecFiles(mdFiles, {
+    includeTags: process.env.RALLY_E2E_TAGS,
+    excludeTags: process.env.RALLY_E2E_TAGS_EXCLUDE,
+  }).map(({ body, ...spec }) => ({
+    ...spec,
+    testCases: parseTestCases(body),
+  }));
+
+  if (specs.length === 0) {
     describe('markdown-driven E2E tests', () => {
       it('no .md files found', () => {
         assert.fail('No markdown test specs found in test/e2e/cli/');
       });
     });
   } else {
-    for (const file of mdFiles) {
-      const filePath = join(CLI_DIR, file);
-      const content = readFileSync(filePath, 'utf8');
-      const { frontmatter, body } = parseFrontmatter(content);
-      if (frontmatter && frontmatter.timeout != null) {
-        const t = Number(frontmatter.timeout);
-        if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
-        frontmatter.timeout = t;
-      }
-      const testCases = parseTestCases(body);
+    for (const spec of specs) {
+      const { file, frontmatter, testCases } = spec;
 
       describe(file, () => {
         let rallyHome;

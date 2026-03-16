@@ -1,6 +1,34 @@
 import assert from 'node:assert/strict';
 import yaml from 'js-yaml';
 
+function normalizeTag(tag, sourceName) {
+  if (typeof tag !== 'string') {
+    throw new Error(`${sourceName} tags must be an array of strings`);
+  }
+
+  const normalized = tag.trim().toLowerCase();
+  if (!normalized) {
+    throw new Error(`${sourceName} tags must not contain empty values`);
+  }
+
+  return normalized;
+}
+
+function normalizeSpecTags(tags, sourceName = 'Spec', { allowMissing = true } = {}) {
+  if (tags == null) {
+    if (allowMissing) {
+      return [];
+    }
+    throw new Error(`${sourceName} tags must be an array of strings`);
+  }
+
+  if (!Array.isArray(tags)) {
+    throw new Error(`${sourceName} tags must be an array of strings`);
+  }
+
+  return [...new Set(tags.map((tag) => normalizeTag(tag, sourceName)))];
+}
+
 /**
  * Parse YAML frontmatter from markdown content
  * @param {string} content - markdown file content
@@ -14,12 +42,18 @@ function parseFrontmatter(content) {
     return { frontmatter: null, body: content };
   }
 
-  const frontmatter = yaml.load(match[1], { schema: yaml.CORE_SCHEMA });
+  const parsedFrontmatter = yaml.load(match[1], { schema: yaml.CORE_SCHEMA });
   const body = content.slice(match[0].length);
 
-  // Validate frontmatter is an object
-  if (frontmatter !== null && (typeof frontmatter !== 'object' || Array.isArray(frontmatter))) {
-    throw new Error(`Frontmatter must be a YAML object (got ${typeof frontmatter}${Array.isArray(frontmatter) ? ' array' : ''})`);
+  if (parsedFrontmatter !== null && (typeof parsedFrontmatter !== 'object' || Array.isArray(parsedFrontmatter))) {
+    throw new Error(`Frontmatter must be a YAML object (got ${typeof parsedFrontmatter}${Array.isArray(parsedFrontmatter) ? ' array' : ''})`);
+  }
+
+  const frontmatter = parsedFrontmatter ? { ...parsedFrontmatter } : null;
+  if (frontmatter) {
+    frontmatter.tags = Object.prototype.hasOwnProperty.call(frontmatter, 'tags')
+      ? normalizeSpecTags(frontmatter.tags, 'Frontmatter', { allowMissing: false })
+      : [];
   }
 
   return { frontmatter, body };
@@ -161,19 +195,62 @@ function compilePattern(pattern, envName) {
   }
 }
 
+function parseFilterTags(rawTags) {
+  if (!rawTags) {
+    return [];
+  }
+
+  return [...new Set(rawTags
+    .split(',')
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean))];
+}
+
+function getSpecFile(spec) {
+  if (typeof spec === 'string') {
+    return spec;
+  }
+
+  if (spec && typeof spec.file === 'string') {
+    return spec.file;
+  }
+
+  throw new Error('Spec entries must be file paths or objects with a string "file" property');
+}
+
+function getSpecTags(spec) {
+  if (typeof spec === 'string' || spec == null) {
+    return [];
+  }
+
+  return normalizeSpecTags(spec.tags, 'Spec');
+}
+
 function filterSpecFiles(files, options = {}) {
   const includePattern = compilePattern(options.includePattern, 'RALLY_E2E_FILE_PATTERN');
   const excludePattern = compilePattern(options.excludePattern, 'RALLY_E2E_FILE_EXCLUDE');
+  const includeTags = parseFilterTags(options.includeTags);
+  const excludeTags = parseFilterTags(options.excludeTags);
 
-  return files.filter((file) => {
-    // Normalize to forward slashes for cross-platform pattern matching
+  return files.filter((spec) => {
+    const file = getSpecFile(spec);
     const normalized = file.replace(/\\/g, '/');
+
     if (includePattern && !includePattern.test(normalized)) {
       return false;
     }
     if (excludePattern && excludePattern.test(normalized)) {
       return false;
     }
+
+    const specTags = new Set(getSpecTags(spec));
+    if (includeTags.length > 0 && includeTags.some((tag) => !specTags.has(tag))) {
+      return false;
+    }
+    if (excludeTags.length > 0 && excludeTags.some((tag) => specTags.has(tag))) {
+      return false;
+    }
+
     return true;
   });
 }

@@ -1,6 +1,7 @@
 ---
 clone: jsturtevant/rally-test-fixtures
 setup: ../dashboard/setup-squad.js
+tags: [dispatch, slow]
 timeout: 300
 ---
 

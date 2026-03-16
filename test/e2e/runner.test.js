@@ -171,6 +171,28 @@ describe('filterSpecFiles', () => {
     const files = ['dispatch\\dispatch-help.md', 'dashboard\\dashboard.md', 'help.md'];
     assert.deepEqual(filterSpecFiles(files, { excludePattern: '^dispatch/' }), ['dashboard\\dashboard.md', 'help.md']);
   });
+
+  it('filters by tags with include-all and exclude-any semantics', () => {
+    const files = [
+      { file: 'dispatch/dispatch-help.md', tags: ['dispatch'] },
+      { file: 'dispatch/dispatch-issue.md', tags: ['dispatch', 'slow'] },
+      { file: 'dispatch/dispatch-refresh.md', tags: ['dispatch', 'slow'] },
+      { file: 'help.md' },
+    ];
+
+    assert.deepEqual(
+      filterSpecFiles(files, { includeTags: 'DISPATCH,SLOW' }),
+      [
+        { file: 'dispatch/dispatch-issue.md', tags: ['dispatch', 'slow'] },
+        { file: 'dispatch/dispatch-refresh.md', tags: ['dispatch', 'slow'] },
+      ]
+    );
+
+    assert.deepEqual(
+      filterSpecFiles(files, { includePattern: 'dispatch', excludeTags: 'slow' }),
+      [{ file: 'dispatch/dispatch-help.md', tags: ['dispatch'] }]
+    );
+  });
 });
 
 describe('parseFrontmatter', () => {
@@ -184,6 +206,11 @@ describe('parseFrontmatter', () => {
     const { frontmatter, body } = parseFrontmatter('# Title\nContent');
     assert.equal(frontmatter, null);
     assert.ok(body.includes('# Title'));
+  });
+
+  it('normalizes frontmatter tags to lowercase', () => {
+    const { frontmatter } = parseFrontmatter('---\ntags: [Dispatch, SLOW]\n---\n# Title');
+    assert.deepEqual(frontmatter.tags, ['dispatch', 'slow']);
   });
 });
 

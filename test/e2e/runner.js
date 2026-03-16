@@ -300,10 +300,30 @@ if (!existsSync(CLI_DIR)) {
     }
     return files.sort();
   }
-  const mdFiles = filterSpecFiles(findMdFiles(CLI_DIR), {
-    includePattern: process.env.RALLY_E2E_FILE_PATTERN,
-    excludePattern: process.env.RALLY_E2E_FILE_EXCLUDE,
-  });
+  const mdFiles = filterSpecFiles(
+    findMdFiles(CLI_DIR).map((file) => {
+      const content = readFileSync(join(CLI_DIR, file), 'utf8');
+      const { frontmatter, body } = parseFrontmatter(content);
+      if (frontmatter && frontmatter.timeout != null) {
+        const t = Number(frontmatter.timeout);
+        if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
+        frontmatter.timeout = t;
+      }
+
+      return {
+        file,
+        frontmatter,
+        tags: frontmatter ? frontmatter.tags : [],
+        testCases: parseTestCases(body),
+      };
+    }),
+    {
+      includePattern: process.env.RALLY_E2E_FILE_PATTERN,
+      excludePattern: process.env.RALLY_E2E_FILE_EXCLUDE,
+      includeTags: process.env.RALLY_E2E_TAGS,
+      excludeTags: process.env.RALLY_E2E_TAGS_EXCLUDE,
+    }
+  );
 
   if (mdFiles.length === 0) {
     describe('markdown-driven E2E tests', () => {
@@ -312,16 +332,8 @@ if (!existsSync(CLI_DIR)) {
       });
     });
   } else {
-    for (const file of mdFiles) {
-      const filePath = join(CLI_DIR, file);
-      const content = readFileSync(filePath, 'utf8');
-      const { frontmatter, body } = parseFrontmatter(content);
-      if (frontmatter && frontmatter.timeout != null) {
-        const t = Number(frontmatter.timeout);
-        if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
-        frontmatter.timeout = t;
-      }
-      const testCases = parseTestCases(body);
+    for (const spec of mdFiles) {
+      const { file, frontmatter, testCases } = spec;
 
       describe(file, () => {
         let rallyHome;

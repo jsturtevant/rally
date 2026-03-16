@@ -300,39 +300,42 @@ if (!existsSync(CLI_DIR)) {
     }
     return files.sort();
   }
-  const mdFiles = filterSpecFiles(
-    findMdFiles(CLI_DIR).map((file) => {
-      const content = readFileSync(join(CLI_DIR, file), 'utf8');
-      const { frontmatter, body } = parseFrontmatter(content);
-      if (frontmatter && frontmatter.timeout != null) {
-        const t = Number(frontmatter.timeout);
-        if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
-        frontmatter.timeout = t;
-      }
-
-      return {
-        file,
-        frontmatter,
-        tags: frontmatter ? frontmatter.tags : [],
-        testCases: parseTestCases(body),
-      };
-    }),
-    {
-      includePattern: process.env.RALLY_E2E_FILE_PATTERN,
-      excludePattern: process.env.RALLY_E2E_FILE_EXCLUDE,
-      includeTags: process.env.RALLY_E2E_TAGS,
-      excludeTags: process.env.RALLY_E2E_TAGS_EXCLUDE,
+  const mdFiles = filterSpecFiles(findMdFiles(CLI_DIR), {
+    includePattern: process.env.RALLY_E2E_FILE_PATTERN,
+    excludePattern: process.env.RALLY_E2E_FILE_EXCLUDE,
+  }).map((file) => {
+    const content = readFileSync(join(CLI_DIR, file), 'utf8');
+    const { frontmatter, body } = parseFrontmatter(content);
+    if (frontmatter && frontmatter.timeout != null) {
+      const t = Number(frontmatter.timeout);
+      if (!Number.isFinite(t) || t <= 0) throw new Error(`Invalid timeout in ${file}: ${frontmatter.timeout}`);
+      frontmatter.timeout = t;
     }
-  );
 
-  if (mdFiles.length === 0) {
+    return {
+      file,
+      frontmatter,
+      tags: frontmatter ? frontmatter.tags : [],
+      body,
+    };
+  });
+
+  const specs = filterSpecFiles(mdFiles, {
+    includeTags: process.env.RALLY_E2E_TAGS,
+    excludeTags: process.env.RALLY_E2E_TAGS_EXCLUDE,
+  }).map(({ body, ...spec }) => ({
+    ...spec,
+    testCases: parseTestCases(body),
+  }));
+
+  if (specs.length === 0) {
     describe('markdown-driven E2E tests', () => {
       it('no .md files found', () => {
         assert.fail('No markdown test specs found in test/e2e/cli/');
       });
     });
   } else {
-    for (const spec of mdFiles) {
+    for (const spec of specs) {
       const { file, frontmatter, testCases } = spec;
 
       describe(file, () => {

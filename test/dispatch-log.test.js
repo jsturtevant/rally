@@ -92,27 +92,41 @@ describe('dispatchLog', () => {
     assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('Log file not found')));
   });
 
-  test('throws when no dispatch is found for number', async () => {
+  test('prints error and returns when no dispatch is found for number', async (t) => {
     const mockGetActive = () => [
       { id: 'issue-99', repo: 'owner/repo', number: 99, type: 'issue' },
     ];
-
-    await assert.rejects(
-      async () => dispatchLog(42, { _getActiveDispatches: mockGetActive }),
-      { message: /No active dispatch found for #42/ }
-    );
+    const logs = [];
+    const origLog = console.log;
+    console.log = (...args) => logs.push(args.join(' '));
+    const origExitCode = process.exitCode;
+    try {
+      await dispatchLog(42, { _getActiveDispatches: mockGetActive });
+      assert.ok(logs.some(l => l.includes('No active dispatch found for #42')));
+      assert.equal(process.exitCode, 1);
+    } finally {
+      console.log = origLog;
+      process.exitCode = origExitCode;
+    }
   });
 
-  test('throws when multiple dispatches found without --repo', async () => {
+  test('prints error and returns when multiple dispatches found without --repo', async (t) => {
     const mockGetActive = () => [
       { id: 'issue-42-a', repo: 'owner/repo1', number: 42, type: 'issue' },
       { id: 'issue-42-b', repo: 'owner/repo2', number: 42, type: 'issue' },
     ];
-
-    await assert.rejects(
-      async () => dispatchLog(42, { _getActiveDispatches: mockGetActive }),
-      { message: /Multiple dispatches found/ }
-    );
+    const logs = [];
+    const origLog = console.log;
+    console.log = (...args) => logs.push(args.join(' '));
+    const origExitCode = process.exitCode;
+    try {
+      await dispatchLog(42, { _getActiveDispatches: mockGetActive });
+      assert.ok(logs.some(l => l.includes('Multiple dispatches found')));
+      assert.equal(process.exitCode, 1);
+    } finally {
+      console.log = origLog;
+      process.exitCode = origExitCode;
+    }
   });
 
   test('dispatchLog disambiguates with --repo flag', async (t) => {

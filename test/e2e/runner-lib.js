@@ -62,7 +62,7 @@ function parseFrontmatter(content) {
 /**
  * Parse test cases from markdown body
  * @param {string} body - markdown content after frontmatter
- * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number, stdinInput: string | null, ptySteps: Array<{ match: string, input: string, raw: boolean }> | null }>}
+ * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number, expectedContains: boolean, stdinInput: string | null, ptySteps: Array<{ match: string, input: string, raw: boolean }> | null }>}
  */
 function parseTestCases(body) {
   const testCases = [];

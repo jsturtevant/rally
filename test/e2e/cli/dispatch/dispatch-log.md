@@ -33,6 +33,10 @@ Options:
 
 No dispatch exists for issue #999, so the command should fail with exit code 1.
 
+```expected
+No active dispatch found for #999
+```
+
 ## `rally onboard . --team default`
 
 Onboard the cloned fixtures repo so dispatch can find it.

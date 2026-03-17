@@ -79,8 +79,9 @@ function parseTestCases(body) {
       const expectedExitCode = headingMatch[2] ? parseInt(headingMatch[2], 10) : 0;
       i++;
 
-      // Skip prose until we find ```expected, ```stdin, ```pty, or another heading
+      // Skip prose until we find ```expected, ```expected-contains, ```stdin, ```pty, or another heading
       let expected = null;
+      let expectedContains = false;
       let stdinInput = null;
       let ptySteps = null;
       while (i < lines.length) {
@@ -91,7 +92,21 @@ function parseTestCases(body) {
           break;
         }
 
-        // Look for ```expected
+        // Look for ```expected-contains (substring match)
+        if (currentLine.match(/^```expected-contains/)) {
+          i++;
+          const expectedLines = [];
+          while (i < lines.length && !lines[i].match(/^```\s*$/)) {
+            expectedLines.push(lines[i]);
+            i++;
+          }
+          expected = expectedLines.join('\n');
+          expectedContains = true;
+          i++; // skip closing ```
+          continue;
+        }
+
+        // Look for ```expected (exact match)
         if (currentLine.match(/^```expected/)) {
           i++;
           const expectedLines = [];
@@ -165,7 +180,7 @@ function parseTestCases(body) {
         i++;
       }
 
-      testCases.push({ command, expected, expectedExitCode, stdinInput, ptySteps });
+      testCases.push({ command, expected, expectedExitCode, expectedContains, stdinInput, ptySteps });
     } else {
       i++;
     }
@@ -423,25 +438,28 @@ function formatDiff(actual, expected, vars = {}) {
 
 /**
  * Split a command string into tokens, respecting single and double quotes.
- * Quotes are stripped from the resulting tokens.
+ * Quotes are stripped from the resulting tokens. Empty quoted args are preserved.
  */
 function splitCommand(command) {
   const tokens = [];
   let current = '';
   let quote = null;
+  let inToken = false;
   for (const ch of command.trim()) {
     if (quote) {
       if (ch === quote) { quote = null; continue; }
       current += ch;
     } else if (ch === "'" || ch === '"') {
       quote = ch;
+      inToken = true;
     } else if (/\s/.test(ch)) {
-      if (current) { tokens.push(current); current = ''; }
+      if (inToken) { tokens.push(current); current = ''; inToken = false; }
     } else {
       current += ch;
+      inToken = true;
     }
   }
-  if (current) tokens.push(current);
+  if (inToken) tokens.push(current);
   return tokens;
 }
 

@@ -314,6 +314,23 @@ describe('parseTestCases', () => {
     );
     assert.equal(cases[0].ptySteps[0].match, '\x1b[2J');
   });
+
+  it('parses expected-contains block with substring matching flag', () => {
+    const cases = parseTestCases(
+      '## `rally dispatch log 999` (exit 1)\n\n```expected-contains\nNo active dispatch\n```'
+    );
+    assert.equal(cases.length, 1);
+    assert.equal(cases[0].expected, 'No active dispatch');
+    assert.equal(cases[0].expectedContains, true);
+    assert.equal(cases[0].expectedExitCode, 1);
+  });
+
+  it('expected block defaults expectedContains to false', () => {
+    const cases = parseTestCases(
+      '## `rally --help`\n\n```expected\nUsage: rally\n```'
+    );
+    assert.equal(cases[0].expectedContains, false);
+  });
 });
 
 describe('splitCommand', () => {
@@ -356,6 +373,18 @@ describe('splitCommand', () => {
 
   it('returns empty array for empty string', () => {
     assert.deepEqual(splitCommand(''), []);
+  });
+
+  it('preserves empty double-quoted argument', () => {
+    assert.deepEqual(splitCommand('cmd ""'), ['cmd', '']);
+  });
+
+  it('preserves empty single-quoted argument', () => {
+    assert.deepEqual(splitCommand("cmd ''"), ['cmd', '']);
+  });
+
+  it('preserves empty quoted arg between other args', () => {
+    assert.deepEqual(splitCommand('cmd "" --flag'), ['cmd', '', '--flag']);
   });
 });
 

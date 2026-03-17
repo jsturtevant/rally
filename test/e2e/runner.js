@@ -462,7 +462,7 @@ if (!existsSync(CLI_DIR)) {
 
         // Execute tests sequentially
         for (const testCase of testCases) {
-          const { command: rawCommand, expected, expectedExitCode, stdinInput, ptySteps } = testCase;
+          const { command: rawCommand, expected, expectedExitCode, expectedContains, stdinInput, ptySteps } = testCase;
 
           // PTY tests need async; skip if node-pty unavailable
           if (ptySteps && !pty) {
@@ -542,9 +542,9 @@ if (!existsSync(CLI_DIR)) {
               }
 
               try {
-                // PTY tests use contains matching (output includes prompt noise);
+                // PTY and expected-contains use contains matching;
                 // standard tests use exact matching
-                if (ptySteps) {
+                if (ptySteps || expectedContains) {
                   assertContainsLines(output, expected, vars);
                 } else {
                   assertExactMatch(output, expected, vars);

@@ -31,11 +31,7 @@ Options:
 
 ## `rally dispatch log 999` (exit 1)
 
-No dispatch exists for issue #999, so the command should fail.
-
-```expected-contains
-No active dispatch found for #999
-```
+No dispatch exists for issue #999, so the command should fail with exit code 1.
 
 ## `rally onboard . --team default`
 

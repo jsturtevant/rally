@@ -71,7 +71,7 @@ exact expected output line 2
 | Feature | Syntax | Example |
 |---------|--------|---------|
 | Expected output | `` ```expected `` block | Exact line-by-line match |
-| Contains match | `` ```expected-contains `` block | Line-level contains — each expected line must appear in output (order preserved; no extra trailing lines after the last expected match) |
+| Contains match | `` ```expected-contains `` block | Line-level contains — each expected line must appear in output in order, and any unmatched trailing lines after the last expected match cause the test to fail |
 | Non-zero exit | `## \`command\` (exit 1)` | Bad command tests |
 | Stdin input | `` ```stdin `` block | Piped input (non-TTY) |
 | Pipelines | `cmd1 \| cmd2` in heading | `rally dispatch log 42 \| grep -c 'marker'` — chained via spawnSync, no shell |

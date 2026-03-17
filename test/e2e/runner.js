@@ -122,7 +122,7 @@ function executePipeline(stages, execOpts, specDir) {
   if (stages.length === 0) {
     throw new Error('Empty pipeline: no commands to execute');
   }
-  let input = execOpts.input ?? null;
+  let input = execOpts.input;
   for (let i = 0; i < stages.length; i++) {
     const [cmd, args] = resolveCommand(stages[i], specDir);
     const isLast = i === stages.length - 1;
@@ -502,7 +502,7 @@ if (!existsSync(CLI_DIR)) {
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {
-                output = err.stdout || err.output || err.message || '';
+                output = err.output || err.stdout || err.message || '';
                 exitCode = typeof err.status === 'number' ? err.status : 1;
               }
             }

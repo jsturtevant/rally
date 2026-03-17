@@ -108,16 +108,16 @@ describe('dispatchLog', () => {
     const mockGetActive = () => [
       { id: 'issue-99', repo: 'owner/repo', number: 99, type: 'issue' },
     ];
-    const logs = [];
-    t.mock.method(console, 'log', (...args) => {
-      logs.push(args.join(' '));
+    const errors = [];
+    t.mock.method(console, 'error', (...args) => {
+      errors.push(args.join(' '));
     });
 
     const exitCode = await captureExitCode(() =>
       dispatchLog(42, { _getActiveDispatches: mockGetActive }),
     );
 
-    assert.ok(logs.some((l) => l.includes('No active dispatch found for #42')));
+    assert.ok(errors.some((l) => l.includes('No active dispatch found for #42')));
     assert.equal(exitCode, 1);
   });
 
@@ -126,16 +126,16 @@ describe('dispatchLog', () => {
       { id: 'issue-42-a', repo: 'owner/repo1', number: 42, type: 'issue' },
       { id: 'issue-42-b', repo: 'owner/repo2', number: 42, type: 'issue' },
     ];
-    const logs = [];
-    t.mock.method(console, 'log', (...args) => {
-      logs.push(args.join(' '));
+    const errors = [];
+    t.mock.method(console, 'error', (...args) => {
+      errors.push(args.join(' '));
     });
 
     const exitCode = await captureExitCode(() =>
       dispatchLog(42, { _getActiveDispatches: mockGetActive }),
     );
 
-    assert.ok(logs.some((l) => l.includes('Multiple dispatches found')));
+    assert.ok(errors.some((l) => l.includes('Multiple dispatches found')));
     assert.equal(exitCode, 1);
   });
 

@@ -408,4 +408,25 @@ describe('splitPipeline', () => {
       ['cat file', 'grep pattern', 'wc -l']
     );
   });
+
+  it('preserves pipe inside single quotes', () => {
+    assert.deepEqual(
+      splitPipeline("grep -E 'a|b' file.txt"),
+      ["grep -E 'a|b' file.txt"]
+    );
+  });
+
+  it('preserves pipe inside double quotes', () => {
+    assert.deepEqual(
+      splitPipeline('echo "a|b" | wc -c'),
+      ['echo "a|b"', 'wc -c']
+    );
+  });
+
+  it('preserves pipe in quoted arg with real pipeline', () => {
+    assert.deepEqual(
+      splitPipeline("grep -P 'foo|bar' file | wc -l"),
+      ["grep -P 'foo|bar' file", 'wc -l']
+    );
+  });
 });

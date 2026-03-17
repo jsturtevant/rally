@@ -446,11 +446,32 @@ function splitCommand(command) {
 }
 
 /**
- * Split a command string into pipeline stages on `|`, tolerating
- * variable whitespace. Empty stages are filtered out.
+ * Split a command string into pipeline stages on unquoted `|`.
+ * Respects single and double quotes — `|` inside quotes is literal.
+ * Stages are trimmed; empty stages are filtered out.
  */
 function splitPipeline(command) {
-  return command.split(/\s*\|\s*/).filter(Boolean);
+  const stages = [];
+  let current = '';
+  let quote = null;
+  for (const ch of command) {
+    if (quote) {
+      if (ch === quote) { quote = null; }
+      current += ch;
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+      current += ch;
+    } else if (ch === '|') {
+      const trimmed = current.trim();
+      if (trimmed) stages.push(trimmed);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  const trimmed = current.trim();
+  if (trimmed) stages.push(trimmed);
+  return stages;
 }
 
 export {

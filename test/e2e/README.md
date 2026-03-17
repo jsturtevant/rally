@@ -73,6 +73,7 @@ exact expected output line 2
 | Expected output | `` ```expected `` block | Exact line-by-line match |
 | Non-zero exit | `## \`command\` (exit 1)` | Bad command tests |
 | Stdin input | `` ```stdin `` block | Piped input (non-TTY) |
+| Pipelines | `cmd1 \| cmd2` in heading | `rally dispatch log 42 \| grep -c 'marker'` — chained via spawnSync, no shell |
 | PTY interactive | `` ```pty `` block with match/send | Inquirer prompts (needs node-pty) |
 | Raw PTY match | `match-raw:` in `` ```pty `` block | Match raw output including escape sequences |
 | Variables | `$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME` | Dynamic paths |

@@ -119,6 +119,9 @@ function resolveCommand(command, specDir) {
  * No shell involved — each stage is spawned directly.
  */
 function executePipeline(stages, execOpts, specDir) {
+  if (stages.length === 0) {
+    throw new Error('Empty pipeline: no commands to execute');
+  }
   let input = execOpts.input || null;
   for (let i = 0; i < stages.length; i++) {
     const [cmd, args] = resolveCommand(stages[i], specDir);
@@ -128,7 +131,12 @@ function executePipeline(stages, execOpts, specDir) {
       input,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    if (result.error) throw result.error;
+    if (result.error) {
+      result.error.stdout = result.stdout;
+      result.error.stderr = result.stderr;
+      result.error.output = (result.stdout || '') + (result.stderr || '');
+      throw result.error;
+    }
     if (result.status !== 0) {
       const err = new Error(`Command failed (stage ${i + 1}/${stages.length}): ${stages[i]}`);
       err.status = result.status;

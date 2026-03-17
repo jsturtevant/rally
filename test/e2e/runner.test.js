@@ -8,6 +8,8 @@ import {
   filterSpecFiles,
   parseTestCases,
   parseFrontmatter,
+  splitCommand,
+  splitPipeline,
 } from './runner-lib.js';
 
 describe('normalizeLine', () => {
@@ -311,5 +313,149 @@ describe('parseTestCases', () => {
       '## `rally dashboard`\n\n```pty\nmatch-raw: {clear-screen}\nsend: q\n```'
     );
     assert.equal(cases[0].ptySteps[0].match, '\x1b[2J');
+  });
+
+  it('parses expected-contains block with line-level contains flag', () => {
+    const cases = parseTestCases(
+      '## `rally dispatch log 999` (exit 1)\n\n```expected-contains\nNo active dispatch\n```'
+    );
+    assert.equal(cases.length, 1);
+    assert.equal(cases[0].expected, 'No active dispatch');
+    assert.equal(cases[0].expectedContains, true);
+    assert.equal(cases[0].expectedExitCode, 1);
+  });
+
+  it('expected block defaults expectedContains to false', () => {
+    const cases = parseTestCases(
+      '## `rally --help`\n\n```expected\nUsage: rally\n```'
+    );
+    assert.equal(cases[0].expectedContains, false);
+  });
+});
+
+describe('splitCommand', () => {
+  it('splits simple commands on whitespace', () => {
+    assert.deepEqual(splitCommand('rally --help'), ['rally', '--help']);
+  });
+
+  it('handles single-quoted arguments', () => {
+    assert.deepEqual(
+      splitCommand("grep -c 'Total session time:'"),
+      ['grep', '-c', 'Total session time:']
+    );
+  });
+
+  it('handles double-quoted arguments', () => {
+    assert.deepEqual(
+      splitCommand('echo "hello world"'),
+      ['echo', 'hello world']
+    );
+  });
+
+  it('handles mixed quote types', () => {
+    assert.deepEqual(
+      splitCommand(`grep -c "foo bar" 'baz qux'`),
+      ['grep', '-c', 'foo bar', 'baz qux']
+    );
+  });
+
+  it('handles single token with no args', () => {
+    assert.deepEqual(splitCommand('rally'), ['rally']);
+  });
+
+  it('strips leading/trailing whitespace', () => {
+    assert.deepEqual(splitCommand('  rally  --help  '), ['rally', '--help']);
+  });
+
+  it('handles unclosed quote by including remaining text', () => {
+    assert.deepEqual(splitCommand('echo "hello'), ['echo', 'hello']);
+  });
+
+  it('returns empty array for empty string', () => {
+    assert.deepEqual(splitCommand(''), []);
+  });
+
+  it('preserves empty double-quoted argument', () => {
+    assert.deepEqual(splitCommand('cmd ""'), ['cmd', '']);
+  });
+
+  it('preserves empty single-quoted argument', () => {
+    assert.deepEqual(splitCommand("cmd ''"), ['cmd', '']);
+  });
+
+  it('preserves empty quoted arg between other args', () => {
+    assert.deepEqual(splitCommand('cmd "" --flag'), ['cmd', '', '--flag']);
+  });
+});
+
+describe('splitPipeline', () => {
+  it('splits on spaced pipe', () => {
+    assert.deepEqual(
+      splitPipeline('rally dispatch log 42 | grep -c done'),
+      ['rally dispatch log 42', 'grep -c done']
+    );
+  });
+
+  it('splits on pipe without spaces', () => {
+    assert.deepEqual(
+      splitPipeline('echo hello|grep hello'),
+      ['echo hello', 'grep hello']
+    );
+  });
+
+  it('splits on pipe with extra whitespace', () => {
+    assert.deepEqual(
+      splitPipeline('cmd1  |  cmd2'),
+      ['cmd1', 'cmd2']
+    );
+  });
+
+  it('handles single command (no pipe)', () => {
+    assert.deepEqual(
+      splitPipeline('rally --help'),
+      ['rally --help']
+    );
+  });
+
+  it('filters out empty stages from leading/trailing pipe', () => {
+    assert.deepEqual(
+      splitPipeline('| cmd1 | cmd2 |'),
+      ['cmd1', 'cmd2']
+    );
+  });
+
+  it('filters out empty stages from double pipe', () => {
+    assert.deepEqual(
+      splitPipeline('cmd1 || cmd2'),
+      ['cmd1', 'cmd2']
+    );
+  });
+
+  it('handles three-stage pipeline', () => {
+    assert.deepEqual(
+      splitPipeline('cat file | grep pattern | wc -l'),
+      ['cat file', 'grep pattern', 'wc -l']
+    );
+  });
+
+  it('preserves pipe inside single quotes', () => {
+    assert.deepEqual(
+      splitPipeline("grep -E 'a|b' file.txt"),
+      ["grep -E 'a|b' file.txt"]
+    );
+  });
+
+  it('preserves pipe inside double quotes', () => {
+    assert.deepEqual(
+      splitPipeline('echo "a|b" | wc -c'),
+      ['echo "a|b"', 'wc -c']
+    );
+  });
+
+  it('preserves pipe in quoted arg with real pipeline', () => {
+    assert.deepEqual(
+      splitPipeline("grep -P 'foo|bar' file | wc -l"),
+      ["grep -P 'foo|bar' file", 'wc -l']
+    );
   });
 });

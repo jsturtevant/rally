@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
@@ -11,6 +11,8 @@ import {
   formatDiff,
   assertContainsLines,
   assertExactMatch,
+  splitCommand,
+  splitPipeline,
 } from './runner-lib.js';
 
 let pty;
@@ -93,17 +95,78 @@ function setupRepo(frontmatter) {
 }
 
 /**
- * Execute a rally command
- * @param {string} command - full command string (e.g., "rally --help")
+ * Resolve a command string into [execFile, args] for use with spawnSync.
+ * Handles rally → node rally.js and node ./script.js → absolute path resolution.
+ */
+function resolveCommand(command, specDir) {
+  const parts = splitCommand(command);
+  if (parts.length === 0) {
+    throw new Error('Empty command in pipeline stage');
+  }
+  if (parts[0] === 'rally') {
+    return [process.execPath, [RALLY_BIN, ...parts.slice(1)]];
+  }
+  let args = parts.slice(1);
+  if (parts[0] === 'node' && args[0] && args[0].startsWith('./') && specDir) {
+    args[0] = join(specDir, args[0]);
+    return [process.execPath, args];
+  }
+  return [parts[0], args];
+}
+
+/**
+ * Execute a pipeline of commands connected via spawnSync stdio piping.
+ * No shell involved — each stage is spawned directly.
+ */
+function executePipeline(stages, execOpts, specDir) {
+  if (stages.length === 0) {
+    throw new Error('Empty pipeline: no commands to execute');
+  }
+  let input = execOpts.input;
+  for (let i = 0; i < stages.length; i++) {
+    const [cmd, args] = resolveCommand(stages[i], specDir);
+    const isLast = i === stages.length - 1;
+    const result = spawnSync(cmd, args, {
+      ...execOpts,
+      input,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    if (result.error) {
+      result.error.stdout = result.stdout;
+      result.error.stderr = result.stderr;
+      result.error.output = (result.stdout || '') + (result.stderr || '');
+      throw result.error;
+    }
+    if (result.status !== 0) {
+      const err = new Error(`Command failed (stage ${i + 1}/${stages.length}): ${stages[i]}`);
+      err.status = result.status;
+      err.stdout = result.stdout;
+      err.stderr = result.stderr;
+      err.output = (result.stdout || '') + (result.stderr || '');
+      throw err;
+    }
+    if (!isLast) {
+      input = result.stdout;
+      continue;
+    }
+    const stdout = result.stdout;
+    return typeof stdout === 'string' ? stdout : stdout.toString('utf8');
+  }
+}
+
+/**
+ * Execute a command or pipeline (e.g., "rally --help" or "rally dispatch log 42 | grep -c done").
+ * All commands are executed via spawnSync with no shell — pipes are handled by
+ * chaining stdout→stdin between stages.
+ * @param {string} command - full command string, may contain " | " for pipelines
  * @param {string} rallyHome - RALLY_HOME path
  * @param {string} cwd - working directory
  * @param {object} [opts] - options
  * @param {string} [opts.xdgConfigHome] - XDG_CONFIG_HOME override for personal squad
- * @param {string} [opts.stdinInput] - stdin input to pipe to the command
- * @returns {string} - stdout
+ * @param {string} [opts.stdinInput] - stdin input to pipe to the first command
+ * @returns {string} - stdout of the final stage
  */
 function executeCommand(command, rallyHome, cwd, opts = {}) {
-  const parts = command.trim().split(/\s+/);
   const env = {
     ...process.env,
     RALLY_HOME: rallyHome,
@@ -127,27 +190,12 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
     timeout: opts.timeout || DEFAULT_TIMEOUT,
     env,
   };
-  if (opts.stdinInput) {
+  if (opts.stdinInput != null) {
     execOpts.input = opts.stdinInput;
   }
 
-  // Rally commands go through node + rally bin; other commands run directly
-  const isRally = parts[0] === 'rally';
-  const execFile = isRally ? process.execPath : parts[0];
-  let args = isRally ? [RALLY_BIN, ...parts.slice(1)] : parts.slice(1);
-
-  // Resolve node script paths starting with ./ relative to the spec's directory
-  if (parts[0] === 'node' && args[0] && args[0].startsWith('./') && opts.specDir) {
-    args[0] = join(opts.specDir, args[0]);
-  }
-
-  try {
-    return execFileSync(execFile, args, execOpts);
-  } catch (err) {
-    const output = (err.stdout || '') + (err.stderr || '');
-    err.output = output;
-    throw err;
-  }
+  const stages = splitPipeline(command);
+  return executePipeline(stages, execOpts, opts.specDir);
 }
 
 /**
@@ -414,7 +462,7 @@ if (!existsSync(CLI_DIR)) {
 
         // Execute tests sequentially
         for (const testCase of testCases) {
-          const { command: rawCommand, expected, expectedExitCode, stdinInput, ptySteps } = testCase;
+          const { command: rawCommand, expected, expectedExitCode, expectedContains, stdinInput, ptySteps } = testCase;
 
           // PTY tests need async; skip if node-pty unavailable
           if (ptySteps && !pty) {
@@ -454,7 +502,7 @@ if (!existsSync(CLI_DIR)) {
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {
-                output = err.output || '';
+                output = err.output || err.stderr || err.message || '';
                 exitCode = typeof err.status === 'number' ? err.status : 1;
               }
             }
@@ -494,9 +542,9 @@ if (!existsSync(CLI_DIR)) {
               }
 
               try {
-                // PTY tests use contains matching (output includes prompt noise);
+                // PTY and expected-contains use contains matching;
                 // standard tests use exact matching
-                if (ptySteps) {
+                if (ptySteps || expectedContains) {
                   assertContainsLines(output, expected, vars);
                 } else {
                   assertExactMatch(output, expected, vars);

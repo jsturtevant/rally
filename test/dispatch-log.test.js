@@ -2,6 +2,18 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { dispatchLog } from '../lib/dispatch-log.js';
 
+const captureExitCode = async (fn) => {
+  const previousExitCode = process.exitCode;
+  try {
+    // Normalize before running the function under test
+    process.exitCode = undefined;
+    await fn();
+    return process.exitCode;
+  } finally {
+    process.exitCode = previousExitCode;
+  }
+};
+
 describe('dispatchLog', () => {
   test('displays log file content when dispatch is found', async (t) => {
     const mockGetActive = () => [
@@ -92,27 +104,39 @@ describe('dispatchLog', () => {
     assert.ok(mockLog.mock.calls.some((call) => call.arguments.join(' ').includes('Log file not found')));
   });
 
-  test('throws when no dispatch is found for number', async () => {
+  test('prints error and returns when no dispatch is found for number', async (t) => {
     const mockGetActive = () => [
       { id: 'issue-99', repo: 'owner/repo', number: 99, type: 'issue' },
     ];
+    const errors = [];
+    t.mock.method(console, 'error', (...args) => {
+      errors.push(args.join(' '));
+    });
 
-    await assert.rejects(
-      async () => dispatchLog(42, { _getActiveDispatches: mockGetActive }),
-      { message: /No active dispatch found for #42/ }
+    const exitCode = await captureExitCode(() =>
+      dispatchLog(42, { _getActiveDispatches: mockGetActive }),
     );
+
+    assert.ok(errors.some((l) => l.includes('No active dispatch found for #42')));
+    assert.equal(exitCode, 1);
   });
 
-  test('throws when multiple dispatches found without --repo', async () => {
+  test('prints error and returns when multiple dispatches found without --repo', async (t) => {
     const mockGetActive = () => [
       { id: 'issue-42-a', repo: 'owner/repo1', number: 42, type: 'issue' },
       { id: 'issue-42-b', repo: 'owner/repo2', number: 42, type: 'issue' },
     ];
+    const errors = [];
+    t.mock.method(console, 'error', (...args) => {
+      errors.push(args.join(' '));
+    });
 
-    await assert.rejects(
-      async () => dispatchLog(42, { _getActiveDispatches: mockGetActive }),
-      { message: /Multiple dispatches found/ }
+    const exitCode = await captureExitCode(() =>
+      dispatchLog(42, { _getActiveDispatches: mockGetActive }),
     );
+
+    assert.ok(errors.some((l) => l.includes('Multiple dispatches found')));
+    assert.equal(exitCode, 1);
   });
 
   test('dispatchLog disambiguates with --repo flag', async (t) => {

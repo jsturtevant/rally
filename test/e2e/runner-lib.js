@@ -62,7 +62,7 @@ function parseFrontmatter(content) {
 /**
  * Parse test cases from markdown body
  * @param {string} body - markdown content after frontmatter
- * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number, stdinInput: string | null, ptySteps: Array<{ match: string, input: string, raw: boolean }> | null }>}
+ * @returns {Array<{ command: string, expected: string | null, expectedExitCode: number, expectedContains: boolean, stdinInput: string | null, ptySteps: Array<{ match: string, input: string, raw: boolean }> | null }>}
  */
 function parseTestCases(body) {
   const testCases = [];
@@ -79,8 +79,9 @@ function parseTestCases(body) {
       const expectedExitCode = headingMatch[2] ? parseInt(headingMatch[2], 10) : 0;
       i++;
 
-      // Skip prose until we find ```expected, ```stdin, ```pty, or another heading
+      // Skip prose until we find ```expected, ```expected-contains, ```stdin, ```pty, or another heading
       let expected = null;
+      let expectedContains = false;
       let stdinInput = null;
       let ptySteps = null;
       while (i < lines.length) {
@@ -91,7 +92,21 @@ function parseTestCases(body) {
           break;
         }
 
-        // Look for ```expected
+        // Look for ```expected-contains (line-level contains — each expected line must appear in output, order preserved)
+        if (currentLine.match(/^```expected-contains/)) {
+          i++;
+          const expectedLines = [];
+          while (i < lines.length && !lines[i].match(/^```\s*$/)) {
+            expectedLines.push(lines[i]);
+            i++;
+          }
+          expected = expectedLines.join('\n');
+          expectedContains = true;
+          i++; // skip closing ```
+          continue;
+        }
+
+        // Look for ```expected (exact match)
         if (currentLine.match(/^```expected/)) {
           i++;
           const expectedLines = [];
@@ -165,7 +180,7 @@ function parseTestCases(body) {
         i++;
       }
 
-      testCases.push({ command, expected, expectedExitCode, stdinInput, ptySteps });
+      testCases.push({ command, expected, expectedExitCode, expectedContains, stdinInput, ptySteps });
     } else {
       i++;
     }
@@ -421,6 +436,62 @@ function formatDiff(actual, expected, vars = {}) {
   return lines.join('\n');
 }
 
+/**
+ * Split a command string into tokens, respecting single and double quotes.
+ * Quotes are stripped from the resulting tokens. Empty quoted args are preserved.
+ */
+function splitCommand(command) {
+  const tokens = [];
+  let current = '';
+  let quote = null;
+  let inToken = false;
+  for (const ch of command.trim()) {
+    if (quote) {
+      if (ch === quote) { quote = null; continue; }
+      current += ch;
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+      inToken = true;
+    } else if (/\s/.test(ch)) {
+      if (inToken) { tokens.push(current); current = ''; inToken = false; }
+    } else {
+      current += ch;
+      inToken = true;
+    }
+  }
+  if (inToken) tokens.push(current);
+  return tokens;
+}
+
+/**
+ * Split a command string into pipeline stages on unquoted `|`.
+ * Respects single and double quotes — `|` inside quotes is literal.
+ * Stages are trimmed; empty stages are filtered out.
+ */
+function splitPipeline(command) {
+  const stages = [];
+  let current = '';
+  let quote = null;
+  for (const ch of command) {
+    if (quote) {
+      if (ch === quote) { quote = null; }
+      current += ch;
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+      current += ch;
+    } else if (ch === '|') {
+      const trimmed = current.trim();
+      if (trimmed) stages.push(trimmed);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  const trimmed = current.trim();
+  if (trimmed) stages.push(trimmed);
+  return stages;
+}
+
 export {
   parseFrontmatter,
   parseTestCases,
@@ -430,4 +501,6 @@ export {
   assertExactMatch,
   assertContainsLines,
   formatDiff,
+  splitCommand,
+  splitPipeline,
 };

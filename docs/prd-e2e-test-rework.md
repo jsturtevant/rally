@@ -478,7 +478,7 @@ The `assertExactMatch(actual, expected)` function:
 |----|------|-------------|------|
 | **E13** | ~~**Add `dispatch pr` test cases**~~ — absorbed into E8. | E8 | — |
 | **E14** | **Add `dispatch refresh` test cases** to `dispatch.md`. | E8 | S |
-| **E15** | **✅ Add `dispatch log` test cases** to `dispatch.md`. Implemented in `test/e2e/cli/dispatch/dispatch-log.md` with help, missing-dispatch, and real dispatch→log→clean coverage. | E8 | S |
+| **E15** | **✅ Add `dispatch log` test cases** in `dispatch-log.md`. Implemented in `test/e2e/cli/dispatch/dispatch-log.md` with help, missing-dispatch, and real dispatch→log→clean coverage. | E8 | S |
 
 **Size key:** S = < 1 hour, M = 1–3 hours, L = 3–8 hours.
 

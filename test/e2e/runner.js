@@ -122,7 +122,7 @@ function executePipeline(stages, execOpts, specDir) {
   if (stages.length === 0) {
     throw new Error('Empty pipeline: no commands to execute');
   }
-  let input = execOpts.input || null;
+  let input = execOpts.input ?? null;
   for (let i = 0; i < stages.length; i++) {
     const [cmd, args] = resolveCommand(stages[i], specDir);
     const isLast = i === stages.length - 1;
@@ -190,7 +190,7 @@ function executeCommand(command, rallyHome, cwd, opts = {}) {
     timeout: opts.timeout || DEFAULT_TIMEOUT,
     env,
   };
-  if (opts.stdinInput) {
+  if (opts.stdinInput != null) {
     execOpts.input = opts.stdinInput;
   }
 

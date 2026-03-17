@@ -315,7 +315,7 @@ describe('parseTestCases', () => {
     assert.equal(cases[0].ptySteps[0].match, '\x1b[2J');
   });
 
-  it('parses expected-contains block with substring matching flag', () => {
+  it('parses expected-contains block with line-level contains flag', () => {
     const cases = parseTestCases(
       '## `rally dispatch log 999` (exit 1)\n\n```expected-contains\nNo active dispatch\n```'
     );

@@ -92,7 +92,7 @@ function parseTestCases(body) {
           break;
         }
 
-        // Look for ```expected-contains (substring match)
+        // Look for ```expected-contains (line-level contains — each expected line must appear in output, order preserved)
         if (currentLine.match(/^```expected-contains/)) {
           i++;
           const expectedLines = [];

@@ -502,7 +502,7 @@ if (!existsSync(CLI_DIR)) {
               try {
                 output = executeCommand(command, rallyHome, repoSetup.cwd, execOpts);
               } catch (err) {
-                output = err.output || err.stdout || err.message || '';
+                output = err.stderr || err.stdout || err.message || '';
                 exitCode = typeof err.status === 'number' ? err.status : 1;
               }
             }

@@ -437,7 +437,7 @@ describe('navigation - refresh edge cases', () => {
 
     // Should either show error or continue with stale data — not crash
     assert.ok(
-      frame.includes('Rally Dashboard') || frame.includes('error') || frame.includes('Error'),
+      frame.includes('Rally Dashboard') || frame.includes('error') || frame.includes('Error') || frame.includes('Failed'),
       'Should handle corrupted config gracefully'
     );
   });

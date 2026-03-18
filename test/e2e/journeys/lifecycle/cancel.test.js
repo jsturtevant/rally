@@ -146,11 +146,13 @@ describe('lifecycle — cancel dispatch flow', () => {
     await term.send('n');
     await term.waitFor('Select a Project', { timeout: 5_000 });
     await term.sendKey('enter');
-    await term.waitFor(/Loading|#\d+|Dispatch new branch/, { timeout: 30_000 });
-    await new Promise(r => setTimeout(r, 2000));
+    await term.waitFor(/Loading|#\d+|Dispatch new branch|select an issue/, { timeout: 15_000 });
+    await new Promise(r => setTimeout(r, 1000));
     await term.screenshot(path.join(SCREENSHOT_DIR, '04-item-picker.png'));
 
-    // Cancel with Escape
+    // Cancel with Escape — first escape returns to project picker, second to dashboard
+    await term.sendKey('escape');
+    await new Promise(r => setTimeout(r, 500));
     await term.sendKey('escape');
     await term.waitFor('Rally Dashboard', { timeout: 10_000 });
     await term.screenshot(path.join(SCREENSHOT_DIR, '05-returned-after-item.png'));

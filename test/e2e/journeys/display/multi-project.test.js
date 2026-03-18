@@ -80,7 +80,8 @@ function seedMultiProjectConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-1',
           repo: 'acme/frontend-app',
-          issue: 42,
+          number: 42,
+          type: 'issue',
           title: 'Fix login button styling',
           branch: 'rally/42-fix-login-button',
           status: 'implementing',
@@ -90,7 +91,8 @@ function seedMultiProjectConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-2',
           repo: 'acme/frontend-app',
-          issue: 57,
+          number: 57,
+          type: 'issue',
           title: 'Add dark mode support',
           branch: 'rally/57-add-dark-mode',
           status: 'waiting',
@@ -100,7 +102,8 @@ function seedMultiProjectConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-3',
           repo: 'acme/backend-api',
-          issue: 123,
+          number: 123,
+          type: 'issue',
           title: 'Implement OAuth2 endpoints',
           branch: 'rally/123-oauth2-endpoints',
           status: 'implementing',

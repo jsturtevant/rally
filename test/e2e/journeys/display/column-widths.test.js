@@ -61,7 +61,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-short',
           repo: 'org/repo',
-          issue: 1,
+          number: 1,
+          type: 'issue',
           title: 'Short title',
           branch: 'rally/1-short',
           status: 'implementing',
@@ -71,7 +72,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-medium',
           repo: 'organization/repository',
-          issue: 42,
+          number: 42,
+          type: 'issue',
           title: 'Medium length title for testing column widths',
           branch: 'rally/42-medium-title',
           status: 'waiting',
@@ -81,7 +83,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-long',
           repo: 'organization/long-repository-name-here',
-          issue: 1234,
+          number: 1234,
+          type: 'issue',
           title: 'This is a very long title that might get truncated on narrow terminals and we want to verify it handles gracefully',
           branch: 'rally/1234-very-long-branch-name-that-tests-truncation-behavior',
           status: 'reviewing',
@@ -91,7 +94,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-status',
           repo: 'org/repo',
-          issue: 99,
+          number: 99,
+          type: 'issue',
           title: 'Testing status column visibility',
           branch: 'rally/99-status-test',
           status: 'waiting on upstream',

@@ -70,7 +70,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-waiting',
           repo: 'test/status-icons',
-          issue: 1,
+          number: 1,
+          type: 'issue',
           title: 'Task in waiting status',
           branch: 'rally/1-waiting',
           status: 'waiting',
@@ -80,7 +81,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-implementing',
           repo: 'test/status-icons',
-          issue: 2,
+          number: 2,
+          type: 'issue',
           title: 'Task being implemented',
           branch: 'rally/2-implementing',
           status: 'implementing',
@@ -90,7 +92,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-done',
           repo: 'test/status-icons',
-          issue: 3,
+          number: 3,
+          type: 'issue',
           title: 'Completed task',
           branch: 'rally/3-done',
           status: 'done',
@@ -100,7 +103,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-reviewing',
           repo: 'test/status-icons',
-          pr: 4,
+          number: 4,
+          type: 'pr',
           title: 'PR under review',
           branch: 'rally/4-reviewing',
           status: 'reviewing',
@@ -110,7 +114,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-paused',
           repo: 'test/status-icons',
-          issue: 5,
+          number: 5,
+          type: 'issue',
           title: 'Paused for later',
           branch: 'rally/5-paused',
           status: 'paused',
@@ -240,8 +245,8 @@ describe('display — status icons', () => {
     await term.waitFor('Rally Dashboard', { timeout: 10_000 });
     const frame = term.getFrame();
 
-    const hasReviewing = frame.includes('🟣') || frame.includes('reviewing');
-    assert.ok(hasReviewing, 'Reviewing status (🟣) should be visible');
+    const hasReviewing = frame.includes('🟡') || frame.includes('ready for review') || frame.includes('reviewing');
+    assert.ok(hasReviewing, 'Reviewing status should be visible');
 
     await term.screenshot(path.join(SCREENSHOT_DIR, 'status-reviewing.png'));
   });

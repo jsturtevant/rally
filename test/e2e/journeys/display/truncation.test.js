@@ -61,7 +61,8 @@ function seedTruncationTestConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-long-title-1',
           repo: 'test/truncation-tests',
-          issue: 1,
+          number: 1,
+          type: 'issue',
           title: 'This is an extremely long issue title that should definitely trigger truncation behavior in narrower terminal widths and we want to ensure it handles gracefully',
           branch: 'rally/1-extremely-long-branch-name-that-tests-truncation',
           status: 'implementing',
@@ -71,7 +72,8 @@ function seedTruncationTestConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-upstream',
           repo: 'test/truncation-tests',
-          issue: 42,
+          number: 42,
+          type: 'issue',
           title: 'Fix dependency issue in auth module',
           branch: 'rally/42-fix-dependency',
           status: 'waiting on upstream',  // This status was being truncated (bug)
@@ -81,7 +83,8 @@ function seedTruncationTestConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-long-status',
           repo: 'test/truncation-tests',
-          issue: 99,
+          number: 99,
+          type: 'issue',
           title: 'Another task with special status',
           branch: 'rally/99-special-status',
           status: 'blocked by external',
@@ -91,7 +94,8 @@ function seedTruncationTestConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-normal',
           repo: 'test/truncation-tests',
-          issue: 100,
+          number: 100,
+          type: 'issue',
           title: 'Normal length title',
           branch: 'rally/100-normal',
           status: 'implementing',
@@ -101,7 +105,8 @@ function seedTruncationTestConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-short',
           repo: 'test/truncation-tests',
-          issue: 7,
+          number: 7,
+          type: 'issue',
           title: 'Short',
           branch: 'rally/7-short',
           status: 'done',
@@ -292,8 +297,9 @@ describe('display — truncation', () => {
     
     // Status for that dispatch should still be visible
     const hasStatus =
+      frame.includes('copilot working') ||
       frame.includes('implementing') ||
-      frame.includes('🔵');
+      frame.includes('⏳');
 
     // Both should be true — title partially visible, status complete
     assert.ok(

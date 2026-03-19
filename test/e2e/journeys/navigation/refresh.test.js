@@ -6,7 +6,7 @@
  * - Status updates appear after refresh
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import path from 'node:path';
@@ -14,6 +14,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -96,13 +102,7 @@ describe('navigation - refresh with r key', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-refresh-'));
     seedConfig(tempDir, REPO_ROOT, []);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-before-refresh.png'));
 
     const beforeFrame = term.getFrame();
@@ -122,13 +122,7 @@ describe('navigation - refresh with r key', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-refresh-'));
     seedConfig(tempDir, REPO_ROOT, []);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Rapid refresh
     await term.send('r');
@@ -146,13 +140,7 @@ describe('navigation - refresh with r key', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-refresh-'));
     seedConfig(tempDir, REPO_ROOT, []);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     await term.send('r');
     await new Promise(r => setTimeout(r, 500));
@@ -184,13 +172,7 @@ describe('navigation - status updates after refresh', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-refresh-'));
     seedConfig(tempDir, REPO_ROOT, []); // Start empty
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '04-empty-before.png'));
 
     const beforeFrame = term.getFrame();
@@ -251,13 +233,7 @@ describe('navigation - status updates after refresh', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-refresh-'));
     seedConfig(tempDir, REPO_ROOT, [initialDispatch]);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '06-status-before.png'));
 
     const beforeFrame = term.getFrame();
@@ -318,13 +294,7 @@ describe('navigation - status updates after refresh', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-refresh-'));
     seedConfig(tempDir, REPO_ROOT, dispatches);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '08-removal-before.png'));
 
     // Remove one dispatch
@@ -386,13 +356,7 @@ describe('navigation - refresh edge cases', () => {
       },
     ]);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Interleave navigation and refresh
     await term.send('j');
@@ -413,13 +377,7 @@ describe('navigation - refresh edge cases', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-refresh-'));
     seedConfig(tempDir, REPO_ROOT, []);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Corrupt the active.yaml file
     writeFileSync(
@@ -480,13 +438,7 @@ describe('navigation - refresh edge cases', () => {
       },
     ]);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigate to second item
     await term.send('j');

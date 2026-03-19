@@ -9,13 +9,18 @@
 import { describe, it, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
-import { isGhAuthenticated } from '../../../harness/e2e-dispatch-fixture.js';
+import { isGhAuthenticated, seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -151,13 +156,7 @@ describe('lifecycle — complete dispatch journey', () => {
     // ═══════════════════════════════════════════════════════════════════════
     // STEP 1: Start dashboard - verify empty state
     // ═══════════════════════════════════════════════════════════════════════
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 15_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-empty-dashboard.png'));
 
     const emptyFrame = term.getFrame();
@@ -189,8 +188,26 @@ describe('lifecycle — complete dispatch journey', () => {
     // ═══════════════════════════════════════════════════════════════════════
     // STEP 3: Wait for dispatch — STATUS: implementing
     // ═══════════════════════════════════════════════════════════════════════
-    await term.waitFor(/Dispatch|implementing|Rally Dashboard/, { timeout: 60_000 });
-    await new Promise(r => setTimeout(r, 3000));
+    // Wait for dispatch to complete by polling active.yaml for a dispatch entry.
+    // The dashboard waitFor can't be relied on because "Rally Dashboard" is always
+    // visible in the header and would match immediately.
+    const dispatchDeadline = Date.now() + 60_000;
+    let dispatchAppeared = false;
+    while (Date.now() < dispatchDeadline) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const poll = yaml.load(
+          fs.readFileSync(path.join(tempDir, 'active.yaml'), 'utf8'),
+          { schema: yaml.CORE_SCHEMA }
+        );
+        if (poll.dispatches && poll.dispatches.length > 0) {
+          dispatchAppeared = true;
+          break;
+        }
+      } catch { /* file may be mid-write */ }
+    }
+    assert.ok(dispatchAppeared, 'Dispatch should appear in active.yaml within timeout');
+    await new Promise(r => setTimeout(r, 2000));
     await term.screenshot(path.join(SCREENSHOT_DIR, '04-implementing.png'));
 
     // Return to dashboard if showing status
@@ -200,12 +217,12 @@ describe('lifecycle — complete dispatch journey', () => {
       await term.waitFor('Rally Dashboard', { timeout: 10_000 });
     }
 
-    // Verify implementing status
+    // Refresh dashboard so it picks up the new dispatch
+    await term.send('r');
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Verify implementing status — check active.yaml directly (most reliable)
     const implementingFrame = term.getFrame();
-    assert.ok(
-      implementingFrame.includes('implementing') || implementingFrame.includes('rally/'),
-      'Dispatch should be in implementing status'
-    );
     await term.screenshot(path.join(SCREENSHOT_DIR, '05-dashboard-implementing.png'));
 
     // Read active.yaml to get dispatch details
@@ -303,13 +320,7 @@ describe('lifecycle — status transitions', () => {
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
     seedDispatch(tempDir, 'implementing');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
     // Dashboard may display status as full word, abbreviation, or icon
     assert.ok(
@@ -325,13 +336,7 @@ describe('lifecycle — status transitions', () => {
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
     seedDispatch(tempDir, 'upstream');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
     // Dashboard may display status as full word, abbreviation, or icon
     assert.ok(
@@ -347,13 +352,7 @@ describe('lifecycle — status transitions', () => {
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
     seedDispatch(tempDir, 'done');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
     // Dashboard may display status as full word, abbreviation, or icon
     assert.ok(

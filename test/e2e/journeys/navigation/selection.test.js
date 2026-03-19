@@ -16,6 +16,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -140,13 +146,7 @@ describe('navigation - selection with j/k keys', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-initial.png'));
 
     const beforeFrame = term.getFrame();
@@ -167,13 +167,7 @@ describe('navigation - selection with j/k keys', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Move down first with j
     await term.send('j');
@@ -194,13 +188,7 @@ describe('navigation - selection with j/k keys', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigate through multiple items
     await term.send('j');
@@ -239,13 +227,7 @@ describe('navigation - selection with arrow keys', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     await term.sendKey('down');
     await new Promise(r => setTimeout(r, 200));
@@ -260,13 +242,7 @@ describe('navigation - selection with arrow keys', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Move down first
     await term.sendKey('down');
@@ -286,13 +262,7 @@ describe('navigation - selection with arrow keys', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Mix j/k and arrows — should work seamlessly
     await term.send('j');
@@ -333,13 +303,7 @@ describe('navigation - selection wrap behavior', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigate down many times to go past the end
     for (let i = 0; i < 10; i++) {
@@ -358,13 +322,7 @@ describe('navigation - selection wrap behavior', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigate up many times from start
     for (let i = 0; i < 10; i++) {
@@ -382,13 +340,7 @@ describe('navigation - selection wrap behavior', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithProjects(tempDir, REPO_ROOT, []); // Empty dispatches
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigation with no items should not crash
     await term.send('j');
@@ -424,13 +376,7 @@ describe('navigation - multi-project groups', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigate through — should cross project boundaries
     for (let i = 0; i < 5; i++) {
@@ -448,13 +394,7 @@ describe('navigation - multi-project groups', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-nav-'));
     seedConfigWithProjects(tempDir, REPO_ROOT, []);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Open project browser
     await term.send('n');

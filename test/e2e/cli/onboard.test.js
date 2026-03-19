@@ -7,6 +7,7 @@
 import { describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../harness/terminal.js';
+import { seedPersonalSquad } from '../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,6 +18,11 @@ const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', 'bin', 'rally
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
   encoding: 'utf8',
 }).trim();
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 /**
  * Seed minimal Rally setup config (without projects).
@@ -98,7 +104,7 @@ describe('CLI — onboard command', () => {
     term = await spawn(`node ${RALLY_BIN} onboard ${fakeRepoDir} --team shared`, {
       cols: 100,
       rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
+      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: '0' },
     });
 
     await new Promise(r => setTimeout(r, 5000));
@@ -120,7 +126,7 @@ describe('CLI — onboard command', () => {
       cols: 100,
       rows: 30,
       cwd: REPO_ROOT,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
+      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: '0' },
     });
 
     await new Promise(r => setTimeout(r, 5000));

@@ -9,12 +9,17 @@
 import { describe, it, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
-import { isGhAuthenticated } from '../../../harness/e2e-dispatch-fixture.js';
+import { isGhAuthenticated, seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -91,13 +96,7 @@ describe('lifecycle — cancel dispatch flow', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-dashboard.png'));
 
     // Start dispatch flow
@@ -134,13 +133,7 @@ describe('lifecycle — cancel dispatch flow', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigate to item picker
     await term.send('n');
@@ -172,13 +165,7 @@ describe('lifecycle — cancel dispatch flow', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '06-before-quit.png'));
 
     // Press q to quit
@@ -196,13 +183,7 @@ describe('lifecycle — cancel dispatch flow', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Send Ctrl+C
     await term.sendKey('ctrl+c');
@@ -216,13 +197,7 @@ describe('lifecycle — cancel dispatch flow', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Rapid escape presses should not crash
     await term.sendKey('escape');

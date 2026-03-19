@@ -5,7 +5,7 @@
  * Specifically tests the bug where "waiting on upstream" was truncating.
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import path from 'node:path';
@@ -13,6 +13,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -141,13 +147,7 @@ describe('display — truncation', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-trunc-'));
     seedTruncationTestConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 80,
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 80, rows: 24, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Each line should not exceed terminal width
@@ -168,13 +168,7 @@ describe('display — truncation', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-trunc-'));
     seedTruncationTestConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 80,
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 80, rows: 24, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Status column should be fully visible
@@ -195,13 +189,7 @@ describe('display — truncation', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-trunc-'));
     seedTruncationTestConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // This was the specific bug: "waiting on upstream" was being cut off
@@ -225,13 +213,7 @@ describe('display — truncation', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-trunc-'));
     seedTruncationTestConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 80,
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 80, rows: 24, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Even at narrow width, some indication of "waiting" status should show
@@ -253,13 +235,7 @@ describe('display — truncation', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-trunc-'));
     seedTruncationTestConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 60,  // Very narrow
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 60, rows: 24, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // At very narrow width, long titles should be truncated with ellipsis
@@ -283,13 +259,7 @@ describe('display — truncation', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-trunc-'));
     seedTruncationTestConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 100,
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 100, rows: 24, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // The dispatch with long title exists
@@ -314,13 +284,7 @@ describe('display — truncation', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-trunc-'));
     seedTruncationTestConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 100,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 100, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Should show multiple dispatches with different title lengths

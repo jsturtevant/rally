@@ -5,7 +5,7 @@
  * Captures screenshots for visual regression testing.
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import path from 'node:path';
@@ -13,6 +13,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -78,13 +84,7 @@ describe('display — empty state', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-empty-'));
     seedEmptyConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Verify dashboard shows the header
@@ -107,13 +107,7 @@ describe('display — empty state', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-empty-'));
     seedEmptyConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Even with empty state, navigation hints should be visible
@@ -129,13 +123,7 @@ describe('display — empty state', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-empty-'));
     seedEmptyConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 80,
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 80, rows: 24, env: { NO_COLOR: '1' } });
 
     // Standard terminal dimensions screenshot
     await term.screenshot(path.join(SCREENSHOT_DIR, 'empty-80x24.png'));

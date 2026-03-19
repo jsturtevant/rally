@@ -8,11 +8,18 @@
  * For real GitHub integration tests, see real-dispatch.test.js
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
-import { createIsolatedConfig, RALLY_BIN_PATH, REPO_ROOT_PATH } from '../../../harness/e2e-dispatch-fixture.js';
+import { createIsolatedConfig, RALLY_BIN_PATH, REPO_ROOT_PATH, seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const SCREENSHOT_DIR = path.join(REPO_ROOT_PATH, 'test', 'baselines', 'actions-continue');
 
@@ -59,13 +66,7 @@ describe('continue/attach action — a key', () => {
   it('a key triggers attach to existing session', { timeout: 30_000 }, async () => {
     isolated = createConfigWithActiveDispatch();
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-dashboard.png'));
 
     const initialFrame = term.getFrame();
@@ -97,13 +98,7 @@ describe('continue/attach action — a key', () => {
     // Seed without any dispatches (empty config)
     isolated = createIsolatedConfig({ prefix: 'rally-continue-empty' });
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '03-empty-dashboard.png'));
 
     // Press 'a' with no dispatches
@@ -131,13 +126,7 @@ describe('continue/attach action — a key', () => {
       createdAt: new Date().toISOString(),
     });
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Press 'a' to attach to paused dispatch
     await term.send('a');

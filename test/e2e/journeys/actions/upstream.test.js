@@ -8,13 +8,19 @@
  * For real GitHub integration tests, see real-dispatch.test.js
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
-import { createIsolatedConfig, RALLY_BIN_PATH, REPO_ROOT_PATH } from '../../../harness/e2e-dispatch-fixture.js';
+import { createIsolatedConfig, RALLY_BIN_PATH, REPO_ROOT_PATH, seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import yaml from 'js-yaml';
+import { tmpdir } from 'node:os';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const SCREENSHOT_DIR = path.join(REPO_ROOT_PATH, 'test', 'baselines', 'actions-upstream');
 
@@ -61,13 +67,7 @@ describe('upstream status action — u key', () => {
   it('u key marks item as waiting on upstream with 🟣 status', { timeout: 30_000 }, async () => {
     isolated = createConfigWithDispatch('implementing');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-before-upstream.png'));
 
     const initialFrame = term.getFrame();
@@ -96,13 +96,7 @@ describe('upstream status action — u key', () => {
   it('u key updates status in active.yaml', { timeout: 30_000 }, async () => {
     isolated = createConfigWithDispatch('implementing');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Verify initial status
     const initialYaml = yaml.load(
@@ -134,13 +128,7 @@ describe('upstream status action — u key', () => {
     // Seed without any dispatches (empty config)
     isolated = createIsolatedConfig({ prefix: 'rally-upstream-empty' });
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '04-empty-dashboard.png'));
 
     // Press 'u' with no dispatches
@@ -156,13 +144,7 @@ describe('upstream status action — u key', () => {
     // Start with upstream status
     isolated = createConfigWithDispatch('upstream');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '05-starting-upstream.png'));
 
     // Press 'u' to toggle status

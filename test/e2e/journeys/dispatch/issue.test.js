@@ -17,6 +17,8 @@ import {
   createIsolatedConfig, 
   getSkipReason,
   isGhAuthenticated,
+  seedPersonalSquad,
+  spawnDashboard,
   RALLY_BIN_PATH, 
   REPO_ROOT_PATH,
   E2E_ISSUE,
@@ -27,6 +29,11 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const JOURNEY_TIMEOUT = 120_000; // 2 minutes — UI journeys can be slow
 const SCREENSHOT_DIR = path.join(REPO_ROOT_PATH, 'test', 'baselines', 'dispatch-issue');
@@ -119,13 +126,7 @@ describe('dispatch issue journey — error paths', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.send('q');
 
     // Process should exit — wait a bit then check
@@ -137,13 +138,7 @@ describe('dispatch issue journey — error paths', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Press 'n' to open project browser
     await term.send('n');
@@ -158,13 +153,7 @@ describe('dispatch issue journey — error paths', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
     // Dashboard should render even with no dispatches — at least show the navigation hints
     assert.ok(frame.includes('n new dispatch') || frame.includes('Rally Dashboard'),
@@ -218,13 +207,7 @@ describe('dispatch issue journey — happy path', () => {
     // ═══════════════════════════════════════════════════════════════════════
     // STEP 1: Start dashboard and verify initial render
     // ═══════════════════════════════════════════════════════════════════════
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 15_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-dashboard.png'));
 
     const dashboardFrame = term.getFrame();
@@ -398,13 +381,7 @@ describe('dispatch issue journey — edge cases', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Rapid key presses — should not crash
     await term.send('r'); // refresh
@@ -421,13 +398,7 @@ describe('dispatch issue journey — edge cases', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
     seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Arrow keys with no dispatches should not crash
     await term.sendKey('up');
@@ -446,7 +417,7 @@ describe('dispatch issue journey — edge cases', () => {
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,
       rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
+      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: '0' },
     });
 
     // Should either show error or empty dashboard, not crash

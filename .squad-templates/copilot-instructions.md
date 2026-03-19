@@ -44,3 +44,11 @@ If you make a decision that affects other team members, write it to:
 .squad/decisions/inbox/copilot-{brief-slug}.md
 ```
 The Scribe will merge it into the shared decisions file.
+
+## PR Review Thread Etiquette
+
+When resolving PR review threads, always leave a reply comment first explaining:
+- **If fixed:** what was changed and why that approach was chosen
+- **If not fixed:** why it's intentional, an accepted trade-off, or deferred
+
+Never silently resolve threads. The PR review history should serve as a decision log.

@@ -92,6 +92,15 @@ function cleanupWorktree(repoPath, worktreePath, branchName) {
 describe('dispatch issue journey — error paths', () => {
   let term;
   let tempDir;
+  let fixtureRepoPath;
+
+  before(() => {
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  });
 
   afterEach(async () => {
     if (term) {
@@ -103,11 +112,12 @@ describe('dispatch issue journey — error paths', () => {
   after(async () => {
     await cleanupAll();
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('dashboard exits gracefully with q key', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,
@@ -125,7 +135,7 @@ describe('dispatch issue journey — error paths', () => {
 
   it('escape from project browser returns to dashboard', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,
@@ -146,7 +156,7 @@ describe('dispatch issue journey — error paths', () => {
 
   it('shows empty state when no dispatches exist', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,
@@ -174,11 +184,18 @@ describe('dispatch issue journey — happy path', () => {
   let tempDir;
   let worktreePath;
   let branchName;
+  let fixtureRepoPath;
 
   before(() => {
     if (skipReason) return;
+    // Clone the test fixture repo (no .squad/ → no consult mode)
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
   });
 
   afterEach(async () => {
@@ -191,9 +208,10 @@ describe('dispatch issue journey — happy path', () => {
   after(async () => {
     await cleanupAll();
     if (!skipReason) {
-      cleanupWorktree(REPO_ROOT_PATH, worktreePath, branchName);
+      cleanupWorktree(fixtureRepoPath, worktreePath, branchName);
     }
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('complete dispatch-to-issue journey through dashboard UI', { skip: skipReason, timeout: JOURNEY_TIMEOUT }, async () => {
@@ -318,7 +336,7 @@ describe('dispatch issue journey — happy path', () => {
 
     // Verify branch exists in git
     const branches = execFileSync('git', ['branch', '--list', branchName], {
-      cwd: REPO_ROOT_PATH,
+      cwd: fixtureRepoPath,
       encoding: 'utf8',
     });
     assert.ok(branches.includes(branchName.replace('rally/', '')), 'Branch should exist in git');
@@ -353,6 +371,15 @@ describe('dispatch issue journey — happy path', () => {
 describe('dispatch issue journey — edge cases', () => {
   let term;
   let tempDir;
+  let fixtureRepoPath;
+
+  before(() => {
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  });
 
   afterEach(async () => {
     if (term) {
@@ -364,11 +391,12 @@ describe('dispatch issue journey — edge cases', () => {
   after(async () => {
     await cleanupAll();
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('handles rapid key presses without crashing', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,
@@ -391,7 +419,7 @@ describe('dispatch issue journey — edge cases', () => {
 
   it('navigation wraps correctly with empty dispatch list', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,

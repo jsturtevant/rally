@@ -117,11 +117,18 @@ describe('lifecycle — complete dispatch journey', () => {
   let tempDir;
   let worktreePath;
   let branchName;
+  let fixtureRepoPath;
 
   before(() => {
     if (skipReason) return;
+    // Clone the test fixture repo (no .squad/ → no consult mode)
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-lifecycle-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
   });
 
   afterEach(async () => {
@@ -134,9 +141,10 @@ describe('lifecycle — complete dispatch journey', () => {
   after(async () => {
     await cleanupAll();
     if (!skipReason) {
-      cleanupWorktree(REPO_ROOT, worktreePath, branchName);
+      cleanupWorktree(fixtureRepoPath, worktreePath, branchName);
     }
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('full lifecycle: dispatch → implementing → done → clean', { skip: skipReason, timeout: JOURNEY_TIMEOUT }, async () => {
@@ -267,6 +275,15 @@ describe('lifecycle — complete dispatch journey', () => {
 describe('lifecycle — status transitions', () => {
   let term;
   let tempDir;
+  let fixtureRepoPath;
+
+  before(() => {
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  });
 
   afterEach(async () => {
     if (term) {
@@ -278,11 +295,12 @@ describe('lifecycle — status transitions', () => {
   after(async () => {
     await cleanupAll();
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('displays implementing status correctly', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-lifecycle-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
     seedDispatch(tempDir, 'implementing');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {
@@ -304,7 +322,7 @@ describe('lifecycle — status transitions', () => {
 
   it('displays upstream status correctly', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-lifecycle-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
     seedDispatch(tempDir, 'upstream');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {
@@ -326,7 +344,7 @@ describe('lifecycle — status transitions', () => {
 
   it('displays done status correctly', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-lifecycle-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
     seedDispatch(tempDir, 'done');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {

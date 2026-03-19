@@ -6,7 +6,7 @@
  * - Verify no side effects from canceled operations
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { describe, it, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import { isGhAuthenticated } from '../../../harness/e2e-dispatch-fixture.js';
@@ -64,6 +64,15 @@ function seedConfig(rallyHome, repoPath, repoName = 'jsturtevant/rally') {
 describe('lifecycle — cancel dispatch flow', () => {
   let term;
   let tempDir;
+  let fixtureRepoPath;
+
+  before(() => {
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  });
 
   afterEach(async () => {
     if (term) {
@@ -75,11 +84,12 @@ describe('lifecycle — cancel dispatch flow', () => {
   after(async () => {
     await cleanupAll();
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('escape from project selection returns to dashboard', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {
       cols: 120,
@@ -122,7 +132,7 @@ describe('lifecycle — cancel dispatch flow', () => {
     }
 
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {
       cols: 120,
@@ -158,7 +168,7 @@ describe('lifecycle — cancel dispatch flow', () => {
 
   it('q key exits dashboard cleanly', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {
       cols: 120,
@@ -182,7 +192,7 @@ describe('lifecycle — cancel dispatch flow', () => {
 
   it('ctrl+c exits dashboard cleanly', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {
       cols: 120,
@@ -202,7 +212,7 @@ describe('lifecycle — cancel dispatch flow', () => {
 
   it('multiple escapes do not crash', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-cancel-'));
-    seedConfig(tempDir, REPO_ROOT);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
     term = await spawn(`node ${RALLY_BIN} dashboard`, {
       cols: 120,

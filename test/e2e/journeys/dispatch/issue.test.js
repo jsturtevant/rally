@@ -417,7 +417,7 @@ describe('dispatch issue journey — edge cases', () => {
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,
       rows: 30,
-      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: '0' },
+      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: undefined },
     });
 
     // Should either show error or empty dashboard, not crash

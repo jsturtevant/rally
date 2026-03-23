@@ -270,7 +270,7 @@ export async function spawnDashboard(options = {}) {
       ...(rallyHome ? { RALLY_HOME: rallyHome } : {}),
       ...(xdgConfigHome ? { XDG_CONFIG_HOME: xdgConfigHome } : {}),
       NO_COLOR: '1',
-      // CI must not be present — Ink defers rendering when CI env var exists (any value)
+      CI: undefined, // Ink defers rendering when CI env var exists (any value)
       ...env,
     },
   });

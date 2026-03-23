@@ -131,11 +131,17 @@ export async function spawn(command, options = {}) {
   const xterm = new Terminal({ cols, rows, allowProposedApi: true });
 
   // Spawn the PTY process
+  const mergedEnv = { ...process.env, ...env, TERM: 'xterm-256color' };
+  // Allow callers to strip inherited env vars by setting them to undefined
+  for (const key of Object.keys(mergedEnv)) {
+    if (mergedEnv[key] == null) delete mergedEnv[key];
+  }
+
   const proc = pty.spawn(shell, args, {
     cols,
     rows,
     cwd,
-    env: { ...process.env, ...env, TERM: 'xterm-256color' },
+    env: mergedEnv,
   });
 
   // Buffer for raw output

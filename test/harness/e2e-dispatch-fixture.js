@@ -186,10 +186,18 @@ export async function setupDispatchFixture(options = {}) {
 
   // Clone the test fixture repo (no .squad/ → no consult mode conflict)
   fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
-  execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
-    encoding: 'utf8',
-    timeout: 30_000,
-  });
+  try {
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  } catch (err) {
+    // Clean up the temp dir that mkdtempSync created before re-throwing
+    const cloneParent = path.dirname(fixtureRepoPath);
+    rmSync(cloneParent, { recursive: true, force: true });
+    fixtureRepoPath = null;
+    throw err;
+  }
 
   const randomId = crypto.randomBytes(4).toString('hex');
   const tempDir = mkdtempSync(path.join(tmpdir(), `rally-e2e-${randomId}-`));
@@ -262,7 +270,7 @@ export async function spawnDashboard(options = {}) {
       ...(rallyHome ? { RALLY_HOME: rallyHome } : {}),
       ...(xdgConfigHome ? { XDG_CONFIG_HOME: xdgConfigHome } : {}),
       NO_COLOR: '1',
-      CI: '0', // Ink defers rendering in CI mode — disable so PTY captures frames
+      // CI must not be present — Ink defers rendering when CI env var exists (any value)
       ...env,
     },
   });

@@ -88,6 +88,7 @@ describe('navigation - help overlay', () => {
     seedConfig(tempDir, REPO_ROOT);
 
     term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
+    await new Promise(r => setTimeout(r, 500)); // Allow full UI render (footer after header)
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-dashboard-shortcuts.png'));
 
     const frame = term.getFrame();

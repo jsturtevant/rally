@@ -745,3 +745,8 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 
 - **Ink CI detection:** The presence of the `CI` env var (any non-empty value, including `'0'`) triggers Ink's CI mode. Must omit the variable entirely from the child env to disable CI behavior — setting it to `'0'` or `'false'` is not enough.
 - **Temp dir cleanup on clone failure:** Wrapped `git clone` in `setupDispatchFixture` with try/catch so the temp directory created by `mkdtempSync` is cleaned up and `fixtureRepoPath` is reset to null if the clone fails.
+
+### 2025-07-17 — Fix Fork E2E Tests in CI (PR #431)
+
+- **E2E tag filtering:** `RALLY_E2E_TAGS_EXCLUDE` in package.json excludes tagged specs from the default `test:e2e` run. Use `tags: [tag-name]` frontmatter in spec files and add the tag to the exclude list for CI-incompatible tests.
+- **Fork tests need `gh api user`:** The onboard fork tests call `gh api user` which requires user scope on the GitHub token. The default `GITHUB_TOKEN` in Actions lacks this scope, causing fork tests to fail in CI. Tagged these with `gh-auth` and excluded from CI runs.

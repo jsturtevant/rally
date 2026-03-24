@@ -62,6 +62,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RALLY_TEST_TOKEN != '' && secrets.RALLY_TEST_TOKEN || secrets.GITHUB_TOKEN }}
 
+  test-pty:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: PTY / journey E2E tests (Ubuntu only)
+        run: npm run test:e2e:pty
+        env:
+          GH_TOKEN: ${{ secrets.RALLY_TEST_TOKEN != '' && secrets.RALLY_TEST_TOKEN || secrets.GITHUB_TOKEN }}
+
   docs:
     runs-on: ubuntu-latest
     defaults:

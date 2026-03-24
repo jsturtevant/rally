@@ -8,13 +8,19 @@
  * For real GitHub integration tests, see real-dispatch.test.js
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
-import { createIsolatedConfig, RALLY_BIN_PATH, REPO_ROOT_PATH } from '../../../harness/e2e-dispatch-fixture.js';
+import { createIsolatedConfig, RALLY_BIN_PATH, REPO_ROOT_PATH, seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import yaml from 'js-yaml';
+import { tmpdir } from 'node:os';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const SCREENSHOT_DIR = path.join(REPO_ROOT_PATH, 'test', 'baselines', 'actions-clean');
 
@@ -108,13 +114,7 @@ describe('clean completed items action — c key', () => {
     const config = createConfigWithMixedDispatches();
     isolated = config.isolated;
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-before-clean.png'));
 
     // Verify we have dispatches
@@ -149,13 +149,7 @@ describe('clean completed items action — c key', () => {
     const config = createConfigWithMixedDispatches();
     isolated = config.isolated;
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Press 'c' to clean
     await term.send('c');
@@ -191,13 +185,7 @@ describe('clean completed items action — c key', () => {
       createdAt: new Date().toISOString(),
     });
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '04-no-completed.png'));
 
     // Press 'c' with no completed items
@@ -227,13 +215,7 @@ describe('clean completed items action — c key', () => {
     // Empty config
     isolated = createIsolatedConfig({ prefix: 'rally-clean-empty' });
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Press 'c' with empty list
     await term.send('c');
@@ -248,13 +230,7 @@ describe('clean completed items action — c key', () => {
     const config = createConfigWithMixedDispatches();
     isolated = config.isolated;
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: isolated.tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Press 'c' to clean
     await term.send('c');

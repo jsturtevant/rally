@@ -2376,3 +2376,23 @@ The Rally CLI codebase demonstrates mature security practices:
 - **Appropriate file permissions** for sensitive data
 
 No action required. The codebase is ready for production use from a security standpoint.
+
+---
+
+## Decision: CI env var must be omitted, not set to falsy value
+
+**By:** Kaylee (Core Dev)  
+**Date:** 2025-07-16  
+**Status:** Accepted
+
+### Context
+
+In `spawnDashboard()`, we were setting `CI: '0'` to try to disable Ink's CI mode. Copilot review caught that many libraries (including Ink) treat the *presence* of `CI` — regardless of value — as "running in CI". Setting `CI: '0'` or `CI: 'false'` still triggers CI behavior.
+
+### Decision
+
+When spawning child processes where CI mode must be disabled, omit the `CI` env var entirely rather than setting it to a falsy string. This applies to any PTY-based test harness or child process where we need non-CI rendering behavior.
+
+### Impact
+
+Any future test helpers or process spawning code that needs to disable CI detection should ensure `CI` is not present in the env object at all.

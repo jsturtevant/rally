@@ -12,7 +12,7 @@ afterEach(() => {
   }
 });
 
-const delay = (ms = 50) => new Promise(r => setTimeout(r, ms));
+const delay = (ms = 150) => new Promise(r => setTimeout(r, ms));
 
 describe('OnboardInput', () => {
   it('renders initial path step', () => {

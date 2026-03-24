@@ -17,6 +17,8 @@ import {
   createIsolatedConfig, 
   getSkipReason,
   isGhAuthenticated,
+  seedPersonalSquad,
+  spawnDashboard,
   RALLY_BIN_PATH, 
   REPO_ROOT_PATH,
   E2E_ISSUE,
@@ -27,6 +29,11 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const JOURNEY_TIMEOUT = 120_000; // 2 minutes — UI journeys can be slow
 const SCREENSHOT_DIR = path.join(REPO_ROOT_PATH, 'test', 'baselines', 'dispatch-issue');
@@ -92,6 +99,15 @@ function cleanupWorktree(repoPath, worktreePath, branchName) {
 describe('dispatch issue journey — error paths', () => {
   let term;
   let tempDir;
+  let fixtureRepoPath;
+
+  before(() => {
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  });
 
   afterEach(async () => {
     if (term) {
@@ -103,19 +119,14 @@ describe('dispatch issue journey — error paths', () => {
   after(async () => {
     await cleanupAll();
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('dashboard exits gracefully with q key', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.send('q');
 
     // Process should exit — wait a bit then check
@@ -125,15 +136,9 @@ describe('dispatch issue journey — error paths', () => {
 
   it('escape from project browser returns to dashboard', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Press 'n' to open project browser
     await term.send('n');
@@ -146,15 +151,9 @@ describe('dispatch issue journey — error paths', () => {
 
   it('shows empty state when no dispatches exist', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
     // Dashboard should render even with no dispatches — at least show the navigation hints
     assert.ok(frame.includes('n new dispatch') || frame.includes('Rally Dashboard'),
@@ -174,11 +173,18 @@ describe('dispatch issue journey — happy path', () => {
   let tempDir;
   let worktreePath;
   let branchName;
+  let fixtureRepoPath;
 
   before(() => {
     if (skipReason) return;
+    // Clone the test fixture repo (no .squad/ → no consult mode)
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
   });
 
   afterEach(async () => {
@@ -191,22 +197,17 @@ describe('dispatch issue journey — happy path', () => {
   after(async () => {
     await cleanupAll();
     if (!skipReason) {
-      cleanupWorktree(REPO_ROOT_PATH, worktreePath, branchName);
+      cleanupWorktree(fixtureRepoPath, worktreePath, branchName);
     }
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('complete dispatch-to-issue journey through dashboard UI', { skip: skipReason, timeout: JOURNEY_TIMEOUT }, async () => {
     // ═══════════════════════════════════════════════════════════════════════
     // STEP 1: Start dashboard and verify initial render
     // ═══════════════════════════════════════════════════════════════════════
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 15_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-dashboard.png'));
 
     const dashboardFrame = term.getFrame();
@@ -318,7 +319,7 @@ describe('dispatch issue journey — happy path', () => {
 
     // Verify branch exists in git
     const branches = execFileSync('git', ['branch', '--list', branchName], {
-      cwd: REPO_ROOT_PATH,
+      cwd: fixtureRepoPath,
       encoding: 'utf8',
     });
     assert.ok(branches.includes(branchName.replace('rally/', '')), 'Branch should exist in git');
@@ -353,6 +354,15 @@ describe('dispatch issue journey — happy path', () => {
 describe('dispatch issue journey — edge cases', () => {
   let term;
   let tempDir;
+  let fixtureRepoPath;
+
+  before(() => {
+    fixtureRepoPath = path.join(mkdtempSync(path.join(tmpdir(), 'rally-fixture-')), 'rally-test-fixtures');
+    execFileSync('git', ['clone', '--depth', '1', 'https://github.com/jsturtevant/rally-test-fixtures.git', fixtureRepoPath], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  });
 
   afterEach(async () => {
     if (term) {
@@ -364,19 +374,14 @@ describe('dispatch issue journey — edge cases', () => {
   after(async () => {
     await cleanupAll();
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+    if (fixtureRepoPath) rmSync(path.dirname(fixtureRepoPath), { recursive: true, force: true });
   });
 
   it('handles rapid key presses without crashing', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Rapid key presses — should not crash
     await term.send('r'); // refresh
@@ -391,15 +396,9 @@ describe('dispatch issue journey — edge cases', () => {
 
   it('navigation wraps correctly with empty dispatch list', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-journey-'));
-    seedConfig(tempDir, REPO_ROOT_PATH);
+    seedConfig(tempDir, fixtureRepoPath, 'jsturtevant/rally-test-fixtures');
 
-    term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Arrow keys with no dispatches should not crash
     await term.sendKey('up');
@@ -418,7 +417,7 @@ describe('dispatch issue journey — edge cases', () => {
     term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
       cols: 120,
       rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
+      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: undefined },
     });
 
     // Should either show error or empty dashboard, not crash

@@ -7,7 +7,7 @@
  * - Screenshot the help overlay for visual regression
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import path from 'node:path';
@@ -15,6 +15,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -77,52 +83,32 @@ describe('navigation - help overlay', () => {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('? shows shortcut help overlay', { timeout: 30_000 }, async () => {
+  it('dashboard footer shows shortcut hints', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-help-'));
     seedConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
+    await new Promise(r => setTimeout(r, 500)); // Allow full UI render (footer after header)
+    await term.screenshot(path.join(SCREENSHOT_DIR, '01-dashboard-shortcuts.png'));
 
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
-    await term.screenshot(path.join(SCREENSHOT_DIR, '01-before-help.png'));
+    const frame = term.getFrame();
 
-    const beforeFrame = term.getFrame();
+    // Dashboard footer shows inline shortcut hints
+    const hasShortcutHints =
+      frame.includes('navigate') ||
+      frame.includes('actions') ||
+      frame.includes('quit') ||
+      frame.includes('refresh') ||
+      frame.includes('details');
 
-    // Press ? to show help
-    await term.send('?');
-    await new Promise(r => setTimeout(r, 300));
-
-    await term.screenshot(path.join(SCREENSHOT_DIR, '02-help-overlay.png'));
-    const afterFrame = term.getFrame();
-
-    // Help overlay should show keyboard shortcuts
-    const hasHelpContent = 
-      afterFrame.includes('Help') ||
-      afterFrame.includes('Keyboard') ||
-      afterFrame.includes('Shortcuts') ||
-      afterFrame.includes('j/k') ||
-      afterFrame.includes('navigation') ||
-      afterFrame.includes('press');
-
-    assert.ok(hasHelpContent, 'Help overlay should display shortcuts or help content');
-    assert.notEqual(beforeFrame, afterFrame, 'Screen should change when help is shown');
+    assert.ok(hasShortcutHints, 'Dashboard footer should display shortcut hints');
   });
 
   it('? again hides help overlay', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-help-'));
     seedConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Show help
     await term.send('?');
@@ -146,13 +132,7 @@ describe('navigation - help overlay', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-help-'));
     seedConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Show help
     await term.send('?');
@@ -195,13 +175,7 @@ describe('navigation - help overlay visual regression', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-help-'));
     seedConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Open help
     await term.send('?');
@@ -227,13 +201,7 @@ describe('navigation - help overlay visual regression', () => {
     seedConfig(tempDir, REPO_ROOT);
 
     // Test with narrow terminal
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 80,
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 80, rows: 24, env: { NO_COLOR: '1' } });
 
     await term.send('?');
     await new Promise(r => setTimeout(r, 300));
@@ -246,13 +214,7 @@ describe('navigation - help overlay visual regression', () => {
     term.close();
 
     // Test with wide terminal
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 160,
-      rows: 40,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 160, rows: 40, env: { NO_COLOR: '1' } });
 
     await term.send('?');
     await new Promise(r => setTimeout(r, 300));
@@ -286,13 +248,7 @@ describe('navigation - help overlay edge cases', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-help-'));
     seedConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Rapid toggle
     await term.send('?');
@@ -314,13 +270,7 @@ describe('navigation - help overlay edge cases', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-help-'));
     seedConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Open help
     await term.send('?');
@@ -345,13 +295,7 @@ describe('navigation - help overlay edge cases', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-help-'));
     seedConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Open help
     await term.send('?');

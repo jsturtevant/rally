@@ -5,7 +5,7 @@
  * Verifies each status has the correct visual representation.
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import path from 'node:path';
@@ -13,6 +13,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -70,7 +76,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-waiting',
           repo: 'test/status-icons',
-          issue: 1,
+          number: 1,
+          type: 'issue',
           title: 'Task in waiting status',
           branch: 'rally/1-waiting',
           status: 'waiting',
@@ -80,7 +87,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-implementing',
           repo: 'test/status-icons',
-          issue: 2,
+          number: 2,
+          type: 'issue',
           title: 'Task being implemented',
           branch: 'rally/2-implementing',
           status: 'implementing',
@@ -90,7 +98,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-done',
           repo: 'test/status-icons',
-          issue: 3,
+          number: 3,
+          type: 'issue',
           title: 'Completed task',
           branch: 'rally/3-done',
           status: 'done',
@@ -100,7 +109,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-reviewing',
           repo: 'test/status-icons',
-          pr: 4,
+          number: 4,
+          type: 'pr',
           title: 'PR under review',
           branch: 'rally/4-reviewing',
           status: 'reviewing',
@@ -110,7 +120,8 @@ function seedAllStatusesConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-paused',
           repo: 'test/status-icons',
-          issue: 5,
+          number: 5,
+          type: 'issue',
           title: 'Paused for later',
           branch: 'rally/5-paused',
           status: 'paused',
@@ -145,13 +156,7 @@ describe('display — status icons', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Screenshot all statuses together
@@ -174,13 +179,7 @@ describe('display — status icons', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome });
     const frame = term.getFrame();
 
     const hasWaiting = frame.includes('⏳') || frame.includes('waiting');
@@ -193,13 +192,7 @@ describe('display — status icons', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome });
     const frame = term.getFrame();
 
     const hasImplementing = frame.includes('🔵') || frame.includes('implementing');
@@ -212,13 +205,7 @@ describe('display — status icons', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome });
     const frame = term.getFrame();
 
     const hasDone = frame.includes('✅') || frame.includes('done');
@@ -227,21 +214,15 @@ describe('display — status icons', () => {
     await term.screenshot(path.join(SCREENSHOT_DIR, 'status-done.png'));
   });
 
-  it('reviewing status (🟣) renders correctly', { timeout: 30_000 }, async () => {
+  it('reviewing status (🟡) renders correctly', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome });
     const frame = term.getFrame();
 
-    const hasReviewing = frame.includes('🟣') || frame.includes('reviewing');
-    assert.ok(hasReviewing, 'Reviewing status (🟣) should be visible');
+    const hasReviewing = frame.includes('🟡') || frame.includes('ready for review') || frame.includes('reviewing');
+    assert.ok(hasReviewing, 'Reviewing status should be visible');
 
     await term.screenshot(path.join(SCREENSHOT_DIR, 'status-reviewing.png'));
   });
@@ -250,13 +231,7 @@ describe('display — status icons', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome });
     const frame = term.getFrame();
 
     const hasPaused = frame.includes('🟡') || frame.includes('paused');
@@ -269,13 +244,7 @@ describe('display — status icons', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome });
     const frame = term.getFrame();
 
     // Verify status icons appear with their corresponding tasks

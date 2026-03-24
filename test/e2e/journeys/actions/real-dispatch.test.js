@@ -2,12 +2,12 @@
  * E2E Journey Test: Action Shortcuts with Real GitHub Integration
  * 
  * Tests all action shortcuts (l, a, u, x, c, o) using a real dispatch
- * to GitHub issue #54. Uses a shared dispatch for efficiency.
+ * to GitHub issue #1 on rally-test-fixtures. Uses a shared dispatch for efficiency.
  * 
  * This test file:
  * - Skips if gh CLI not authenticated
  * - Uses isolated RALLY_HOME temp directory
- * - Dispatches once to issue #54, tests multiple shortcuts
+ * - Dispatches once to issue #1, tests multiple shortcuts
  * - Cleans up dispatch after all tests
  */
 
@@ -19,15 +19,23 @@ import {
   teardownDispatchFixture,
   getFixture,
   getSkipReason,
+  seedPersonalSquad,
   startDashboard,
   closeDashboard,
+  spawnDashboard,
   E2E_ISSUE,
   RALLY_BIN_PATH,
   REPO_ROOT_PATH,
 } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const SCREENSHOT_DIR = path.join(REPO_ROOT_PATH, 'test', 'baselines', 'actions-real-dispatch');
 const JOURNEY_TIMEOUT = 120_000;
@@ -37,7 +45,7 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
 
   before(async () => {
     if (skipReason) return;
-    await setupDispatchFixture({ timeout: JOURNEY_TIMEOUT });
+    await setupDispatchFixture({ timeout: JOURNEY_TIMEOUT, xdgConfigHome });
   }, { timeout: JOURNEY_TIMEOUT });
 
   afterEach(async () => {
@@ -68,29 +76,29 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
     // Verify context contains issue reference
     const contextContent = readFileSync(contextPath, 'utf8');
     assert.ok(
-      contextContent.includes('#54') || 
+      contextContent.includes('#1') || 
       contextContent.includes('E2E') || 
       contextContent.includes('test'),
       'Context should reference the issue'
     );
 
     // Verify branch name follows pattern
-    assert.match(branchName, /^rally\/54-/, 'Branch should match rally/54-* pattern');
+    assert.match(branchName, /^rally\/1-/, 'Branch should match rally/1-* pattern');
   });
 
   // ─── VIEW LOG (l key) ─────────────────────────────────────────────────────
 
   it('l key shows log view for real dispatch', { skip: skipReason, timeout: 30_000 }, async () => {
     const { tempDir } = getFixture();
-    const term = await startDashboard();
+    const term = await startDashboard({ xdgConfigHome });
 
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-dashboard-before-log.png'));
 
     const initialFrame = term.getFrame();
-    // Should show issue #54 dispatch
+    // Should show issue #1 dispatch
     assert.ok(
       initialFrame.includes(`#${E2E_ISSUE.number}`) || 
-      initialFrame.includes('rally/54') || 
+      initialFrame.includes('rally/1') || 
       initialFrame.includes('implementing') ||
       initialFrame.includes('E2E'),
       'Should show the E2E test dispatch'
@@ -115,7 +123,7 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
   // ─── CONTINUE/ATTACH (a key) ──────────────────────────────────────────────
 
   it('a key triggers attach action for real dispatch', { skip: skipReason, timeout: 30_000 }, async () => {
-    const term = await startDashboard();
+    const term = await startDashboard({ xdgConfigHome });
 
     await term.screenshot(path.join(SCREENSHOT_DIR, '03-dashboard-before-attach.png'));
 
@@ -141,7 +149,7 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
 
   it('u key marks reviewing dispatch as upstream', { skip: skipReason, timeout: 30_000 }, async () => {
     const { tempDir } = getFixture();
-    const term = await startDashboard();
+    const term = await startDashboard({ xdgConfigHome });
 
     await term.screenshot(path.join(SCREENSHOT_DIR, '05-dashboard-before-upstream.png'));
 
@@ -181,17 +189,11 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
     const { tempDir } = getFixture();
     
     // Use echo as mock browser to avoid actually opening browser
-    const term = await spawn(`node ${RALLY_BIN_PATH} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { 
-        RALLY_HOME: tempDir, 
-        NO_COLOR: '1',
-        BROWSER: 'echo',  // Mock browser command
-      },
+    const term = await spawnDashboard({
+      rallyHome: tempDir,
+      xdgConfigHome,
+      env: { NO_COLOR: '1', BROWSER: 'echo' },
     });
-
-    await term.waitFor('Rally Dashboard', { timeout: 15_000 });
     await term.screenshot(path.join(SCREENSHOT_DIR, '07-dashboard-before-open.png'));
 
     // Press 'o' to open browser
@@ -216,7 +218,7 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
     // In a real E2E scenario, we'd need to re-dispatch after this test
     
     const { tempDir } = getFixture();
-    const term = await startDashboard();
+    const term = await startDashboard({ xdgConfigHome });
 
     await term.screenshot(path.join(SCREENSHOT_DIR, '09-dashboard-before-remove.png'));
 
@@ -245,7 +247,7 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
   // ─── NAVIGATION ────────────────────────────────────────────────────────────
 
   it('arrow keys navigate dispatch list', { skip: skipReason, timeout: 30_000 }, async () => {
-    const term = await startDashboard();
+    const term = await startDashboard({ xdgConfigHome });
 
     await term.screenshot(path.join(SCREENSHOT_DIR, '12-navigation-start.png'));
 
@@ -262,7 +264,7 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
   // ─── REFRESH (r key) ───────────────────────────────────────────────────────
 
   it('r key refreshes dashboard with real dispatch', { skip: skipReason, timeout: 30_000 }, async () => {
-    const term = await startDashboard();
+    const term = await startDashboard({ xdgConfigHome });
 
     await term.screenshot(path.join(SCREENSHOT_DIR, '13-before-refresh.png'));
 
@@ -281,7 +283,7 @@ describe('action shortcuts with real dispatch — GitHub integration', () => {
   // ─── QUIT (q key) ──────────────────────────────────────────────────────────
 
   it('q key exits dashboard cleanly', { skip: skipReason, timeout: 30_000 }, async () => {
-    const term = await startDashboard();
+    const term = await startDashboard({ xdgConfigHome });
 
     await term.screenshot(path.join(SCREENSHOT_DIR, '15-before-quit.png'));
 

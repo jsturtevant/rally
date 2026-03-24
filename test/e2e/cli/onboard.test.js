@@ -104,7 +104,7 @@ describe('CLI — onboard command', () => {
     term = await spawn(`node ${RALLY_BIN} onboard ${fakeRepoDir} --team shared`, {
       cols: 100,
       rows: 30,
-      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: '0' },
+      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: undefined },
     });
 
     await new Promise(r => setTimeout(r, 5000));
@@ -126,7 +126,7 @@ describe('CLI — onboard command', () => {
       cols: 100,
       rows: 30,
       cwd: REPO_ROOT,
-      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: '0' },
+      env: { RALLY_HOME: tempDir, XDG_CONFIG_HOME: xdgConfigHome, NO_COLOR: '1', CI: undefined },
     });
 
     await new Promise(r => setTimeout(r, 5000));

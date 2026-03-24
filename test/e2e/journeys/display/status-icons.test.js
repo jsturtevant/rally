@@ -214,7 +214,7 @@ describe('display — status icons', () => {
     await term.screenshot(path.join(SCREENSHOT_DIR, 'status-done.png'));
   });
 
-  it('reviewing status (🟣) renders correctly', { timeout: 30_000 }, async () => {
+  it('reviewing status (🟡) renders correctly', { timeout: 30_000 }, async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-status-'));
     seedAllStatusesConfig(tempDir, REPO_ROOT);
 

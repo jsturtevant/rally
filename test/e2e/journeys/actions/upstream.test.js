@@ -64,7 +64,7 @@ describe('upstream status action — u key', () => {
     await cleanupAll();
   });
 
-  it('u key marks item as waiting on upstream with 🟣 status', { timeout: 30_000 }, async () => {
+  it('u key marks item as waiting on upstream with 🔵 status', { timeout: 30_000 }, async () => {
     isolated = createConfigWithDispatch('implementing');
 
     term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });

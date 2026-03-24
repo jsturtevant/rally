@@ -5,7 +5,7 @@
  * Verifies no truncation of important data at 80, 120, and 160 columns.
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import path from 'node:path';
@@ -13,6 +13,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -61,7 +67,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-short',
           repo: 'org/repo',
-          issue: 1,
+          number: 1,
+          type: 'issue',
           title: 'Short title',
           branch: 'rally/1-short',
           status: 'implementing',
@@ -71,7 +78,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-medium',
           repo: 'organization/repository',
-          issue: 42,
+          number: 42,
+          type: 'issue',
           title: 'Medium length title for testing column widths',
           branch: 'rally/42-medium-title',
           status: 'waiting',
@@ -81,7 +89,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-long',
           repo: 'organization/long-repository-name-here',
-          issue: 1234,
+          number: 1234,
+          type: 'issue',
           title: 'This is a very long title that might get truncated on narrow terminals and we want to verify it handles gracefully',
           branch: 'rally/1234-very-long-branch-name-that-tests-truncation-behavior',
           status: 'reviewing',
@@ -91,7 +100,8 @@ function seedConfigWithDispatches(rallyHome, repoPath) {
         {
           id: 'dispatch-status',
           repo: 'org/repo',
-          issue: 99,
+          number: 99,
+          type: 'issue',
           title: 'Testing status column visibility',
           branch: 'rally/99-status-test',
           status: 'waiting on upstream',
@@ -126,13 +136,7 @@ describe('display — column widths', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-cols-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 80,
-      rows: 24,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 80, rows: 24, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Essential elements should still be visible
@@ -157,13 +161,7 @@ describe('display — column widths', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-cols-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     assert.ok(frame.includes('Rally Dashboard'), 'Header visible at 120 cols');
@@ -184,13 +182,7 @@ describe('display — column widths', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-cols-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 160,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, cols: 160, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     assert.ok(frame.includes('Rally Dashboard'), 'Header visible at 160 cols');
@@ -222,13 +214,7 @@ describe('display — column widths', () => {
       tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-cols-'));
       seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-      term = await spawn(`node ${RALLY_BIN} dashboard`, {
-        cols,
-        rows: 30,
-        env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-      });
-
-      await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+      term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
       const frame = term.getFrame();
 
       // Status column should always be visible
@@ -258,13 +244,7 @@ describe('display — column widths', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-cols-'));
     seedConfigWithDispatches(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     await term.screenshot(path.join(SCREENSHOT_DIR, 'resize-before.png'));
 
     // Resize to narrow

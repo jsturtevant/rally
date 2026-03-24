@@ -740,3 +740,8 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 - **Why `shell: true` is safe:** The tool names are static strings from a trusted constant. No injection risk exists. `shell: true` is the standard Node.js approach for cross-platform tool resolution (Windows requires it, Unix tolerates it).
 - **Test update:** Updated `test/tools.test.js` line 52 to assert `{ stdio: 'pipe', shell: true }` instead of just `{ stdio: 'pipe' }` to match the new behavior.
 - **Verification:** All unit tests pass after the change. This fix enables Rally to work on Windows CI and local Windows development environments.
+
+### 2025-07-16 — PR #428 Copilot Review Fixes (e2e-dispatch-fixture)
+
+- **Ink CI detection:** The presence of the `CI` env var (any non-empty value, including `'0'`) triggers Ink's CI mode. Must omit the variable entirely from the child env to disable CI behavior — setting it to `'0'` or `'false'` is not enough.
+- **Temp dir cleanup on clone failure:** Wrapped `git clone` in `setupDispatchFixture` with try/catch so the temp directory created by `mkdtempSync` is cleaned up and `fixtureRepoPath` is reset to null if the clone fails.

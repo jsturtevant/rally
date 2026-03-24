@@ -2,7 +2,7 @@
 
 **Author:** Mal (Lead)
 **Date:** 2026-03-10
-**Status:** In Progress — E7–E10/E12–E15 complete, E11 remaining
+**Status:** Complete — E7–E15 all done
 
 ---
 
@@ -469,7 +469,7 @@ The `assertExactMatch(actual, expected)` function:
 | ID | Task | Dependencies | Est. |
 |----|------|-------------|------|
 | **E10** | **✅ Fix the `test:e2e` script.** Wired `test:e2e` to the markdown runner during migration; after E9, the obsolete `./test/e2e/e2e.test.js` reference has been removed and the runner remains the e2e entry point. | E4 | S |
-| **E11** | **Add `test:e2e:pty` script** for existing PTY/journey tests. Run on Ubuntu-only in CI. Fix the glob to actually discover `cli/*.test.js` and `journeys/**/*.test.js`. | None | S |
+| **E11** | **✅ Add `test:e2e:pty` script.** Added `npm run test:e2e:pty` discovering `cli/*.test.js` and `journeys/**/*.test.js` (22 files, 121 tests). Wired as `test-pty` CI job on Ubuntu-only with Node 22. | None | S |
 | **E12** | **✅ Update CI workflow** to run the e2e npm scripts on all platforms while PTY test wiring remains deferred. CI does not reference `e2e.test.js` directly. | E10 | S |
 
 ### Phase 5: Expand Coverage to Untested Commands

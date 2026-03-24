@@ -5,7 +5,7 @@
  * Verifies repo grouping headers appear correctly.
  */
 
-import { describe, it, after, afterEach } from 'node:test';
+import { before, describe, it, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import path from 'node:path';
@@ -13,6 +13,12 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
+
+// Per-suite XDG_CONFIG_HOME for personal squad isolation
+const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));
+seedPersonalSquad(xdgConfigHome);
+after(() => { rmSync(xdgConfigHome, { recursive: true, force: true }); });
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', '..', 'bin', 'rally.js');
 const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -80,7 +86,8 @@ function seedMultiProjectConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-1',
           repo: 'acme/frontend-app',
-          issue: 42,
+          number: 42,
+          type: 'issue',
           title: 'Fix login button styling',
           branch: 'rally/42-fix-login-button',
           status: 'implementing',
@@ -90,7 +97,8 @@ function seedMultiProjectConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-2',
           repo: 'acme/frontend-app',
-          issue: 57,
+          number: 57,
+          type: 'issue',
           title: 'Add dark mode support',
           branch: 'rally/57-add-dark-mode',
           status: 'waiting',
@@ -100,7 +108,8 @@ function seedMultiProjectConfig(rallyHome, repoPath) {
         {
           id: 'dispatch-3',
           repo: 'acme/backend-api',
-          issue: 123,
+          number: 123,
+          type: 'issue',
           title: 'Implement OAuth2 endpoints',
           branch: 'rally/123-oauth2-endpoints',
           status: 'implementing',
@@ -145,13 +154,7 @@ describe('display — multi-project dashboard', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-multi-'));
     seedMultiProjectConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Should show multiple repo section headers
@@ -171,13 +174,7 @@ describe('display — multi-project dashboard', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-multi-'));
     seedMultiProjectConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Count distinct repo references — should have at least 2 different repos visible
@@ -196,13 +193,7 @@ describe('display — multi-project dashboard', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-multi-'));
     seedMultiProjectConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
     const frame = term.getFrame();
 
     // Verify dispatch titles are visible
@@ -232,13 +223,7 @@ describe('display — multi-project dashboard', () => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'rally-display-multi-'));
     seedMultiProjectConfig(tempDir, REPO_ROOT);
 
-    term = await spawn(`node ${RALLY_BIN} dashboard`, {
-      cols: 120,
-      rows: 30,
-      env: { RALLY_HOME: tempDir, NO_COLOR: '1' },
-    });
-
-    await term.waitFor('Rally Dashboard', { timeout: 10_000 });
+    term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Navigate through dispatches
     await term.sendKey('down');

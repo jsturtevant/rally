@@ -1,5 +1,6 @@
 ---
 setup: setup-squad.js
+tags: [gh-auth]
 ---
 
 # Onboard with Fork Auto-discovery

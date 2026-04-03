@@ -1,7 +1,6 @@
 ---
 clone: jsturtevant/rally-test-fixtures
 setup: setup-squad.js
-tags: [gh-auth]
 ---
 
 # Onboard Fork Auto — Local Path

@@ -2396,3 +2396,73 @@ When spawning child processes where CI mode must be disabled, omit the `CI` env 
 ### Impact
 
 Any future test helpers or process spawning code that needs to disable CI detection should ensure `CI` is not present in the env object at all.
+
+---
+
+## Decision: Batch Dependency Updates via Single PR
+
+**Date:** 2026-04-03 (backlog entry from 2025-07-17)  
+**Author:** Kaylee (Core Dev)  
+**PR:** #439  
+**Status:** Accepted
+
+### Context
+
+8 Dependabot PRs were open. All 7 remaining (after #429 h3 merge) were failing CI — likely a base branch issue, not the deps themselves. Reviewing and merging individually would be noisy and wasteful.
+
+### Decision
+
+Batch 6 of the 7 into a single branch and PR (`chore/batch-dependency-updates`). Skipped PR #432 (@bradygaster/squad-sdk 0.8.25 → 0.9.1) due to supply chain concerns — the new version lacks provenance attestation and requires separate investigation.
+
+### Dependencies Consolidated
+
+- esbuild (pinned version)
+- canvas 3.2.3 (includes security fixes for memory corruption)
+- opentelemetry (minor version bump)
+- inquirer (minor version bump)
+- configure-pages (minor version bump)
+- deploy-pages (minor version bump)
+
+### Rationale
+
+- Reduces PR noise from 7 to 1 (plus the deferred squad-sdk PR).
+- Rebasing onto current `main` resolves the CI failures that were hitting all Dependabot branches.
+- canvas 3.2.3 includes security fixes for memory corruption — worth prioritizing.
+- squad-sdk is a supply chain risk without attestation; deferring is the safe call.
+
+### Technical Notes
+
+When pushing workflow file changes (`.github/workflows/`), HTTPS OAuth tokens without the `workflow` scope will be rejected. SSH push works around this.
+
+### Impact
+
+All 6 dependencies are now in a single PR for review. Tests pass. Squad-sdk #432 is held for separate security review of provenance attestation.
+
+---
+
+## Decision: Defer Squad-SDK Update #432 Pending Provenance Review
+
+**Date:** 2026-04-03  
+**Author:** Kaylee (Core Dev)  
+**Status:** Deferred
+
+### Context
+
+PR #432 updates @bradygaster/squad-sdk from 0.8.25 to 0.9.1. The newer version lacks provenance attestation that was present in older releases, raising supply chain security concerns.
+
+### Decision
+
+Do not merge #432 until:
+1. Supply chain team reviews the lack of provenance attestation
+2. Upstream package author confirms attestation status
+3. Risk assessment determines acceptability or alternative action
+
+### Rationale
+
+Provenance attestation is critical for third-party dependencies. Missing attestation in a newer release is a red flag for potential tampering or process changes upstream.
+
+### Impact
+
+- #432 remains unmerged pending security review
+- All other 6 dependencies proceed in #439
+- Follow up separately when upstream clarifies provenance status

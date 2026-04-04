@@ -2396,3 +2396,97 @@ When spawning child processes where CI mode must be disabled, omit the `CI` env 
 ### Impact
 
 Any future test helpers or process spawning code that needs to disable CI detection should ensure `CI` is not present in the env object at all.
+
+---
+
+## Decision: Preserve Navigation State Until User Commits to Action
+
+**By:** Kaylee (Core Dev)  
+**Date:** 2026-04-04  
+**Status:** Implemented
+
+### Context
+
+The Dashboard uses React state (`browseMode`, `browseProject`, `dispatchPending`, `dispatchStatus`) to manage a navigation stack across screens. When a user selects an item with trust warnings, we must decide when to clear the navigation state.
+
+### Problem
+
+Previously, navigation state was cleared immediately when a user selected an item that triggered TrustConfirm:
+
+1. User path: Dashboard → ProjectBrowser → ProjectItemPicker → select item → TrustConfirm
+2. Navigation state cleared when item selected (before confirmation)
+3. User presses Escape on TrustConfirm
+4. `browseMode` is already null → returns to Dashboard instead of ProjectItemPicker
+
+This violated the principle that Escape should always return to the previous screen.
+
+### Decision
+
+**Preserve navigation state until the user commits to the action (confirms).**
+
+#### Implementation Pattern
+
+1. **ProjectItemPicker.onSelectItem:** Check for warnings first. Only clear `browseMode`/`browseProject` if no warnings exist.
+2. **TrustConfirm.onConfirm:** Clear `browseMode`/`browseProject` when user confirms the action.
+3. **TrustConfirm.onCancel:** Leave state intact so Escape returns to ProjectItemPicker.
+
+#### Code Pattern
+
+```jsx
+// BEFORE (incorrect)
+onSelectItem={(item, repo) => {
+  setDispatchPending(pending);
+  setBrowseMode(null);        // ❌ clears too early
+  setBrowseProject(null);
+  if (hasWarnings) {
+    setDispatchStatus('confirming');
+    return;
+  }
+  runDispatch(pending);
+}
+
+// AFTER (correct)
+onSelectItem={(item, repo) => {
+  setDispatchPending(pending);
+  if (hasWarnings) {
+    setDispatchStatus('confirming');
+    return;                   // ✓ preserves navigation state
+  }
+  setBrowseMode(null);        // ✓ only clears if no warnings
+  setBrowseProject(null);
+  runDispatch(pending);
+}
+
+// TrustConfirm handlers
+onConfirm={() => {
+  setBrowseMode(null);        // ✓ clear on commit
+  setBrowseProject(null);
+  runDispatch(pending);
+}}
+onCancel={() => {
+  // ✓ don't clear browseMode/browseProject
+  setDispatchPending(null);
+  setDispatchStatus(null);
+}}
+```
+
+### Rationale
+
+1. **Consistent Escape behavior:** Users expect Escape to navigate back across all screens
+2. **Navigation stack integrity:** Clearing state too early breaks the navigation model
+3. **User control:** User hasn't committed to leaving until confirming the dispatch
+
+### Consequences
+
+- ✅ Escape key now works consistently across all screens
+- ✅ Navigation feels predictable and follows standard UI patterns
+- ✅ No side effects (all existing tests pass: 96 unit + E2E tests)
+- ⚠️ Slightly more complex state management (clear in multiple places)
+
+### Future Pattern
+
+When adding new multi-screen flows with confirmations:
+1. Preserve navigation state when entering confirmation screen
+2. Clear state only when user confirms
+3. Leave state intact when user cancels
+

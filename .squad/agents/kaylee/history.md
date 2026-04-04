@@ -759,3 +759,27 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
   - From all other screens (DetailView, LogViewer, ActionMenu, ProjectBrowser, etc.) → back to previous screen as expected
 - **Testing:** All existing tests pass (including 91 unit tests and 5 E2E tests).
 - **Pattern for future:** When building multi-screen flows with modal confirmations, preserve navigation state until the user commits to the action. Clear state only on confirm, not on entry to the confirmation screen.
+
+### 2026-04-04 — Escape Navigation Bug Fix (COMPLETE)
+
+**Status:** ✓ IMPLEMENTED — All tests passing (139/139)
+
+**What:** Fixed escape key navigation bug in Dashboard. When users selected items with trust warnings, the escape key was incorrectly returning to main Dashboard instead of ProjectItemPicker.
+
+**Root Cause:** Navigation state (`browseMode`, `browseProject`) was cleared immediately when selecting an item, before the TrustConfirm screen appeared. This broke the navigation stack.
+
+**Solution:** Preserve navigation state until user commits to action.
+- **ProjectItemPicker.onSelectItem:** Check for warnings first, only clear state if no warnings
+- **TrustConfirm.onConfirm:** Clear state when user confirms dispatch
+- **TrustConfirm.onCancel:** Leave state intact so Escape returns to previous screen
+
+**Files Modified:**
+- `lib/ui/Dashboard.jsx`
+- `lib/ui/Dashboard.js`
+
+**Testing:** Jayne wrote 33 comprehensive tests (E2E + unit). All 139 tests passing, no regressions.
+
+**Decision Pattern:** Established pattern for multi-screen flows with confirmations — preserve state until commit, clear on confirm, preserve on cancel.
+
+**See:** `.squad/decisions.md` → "Decision: Preserve Navigation State Until User Commits to Action"
+

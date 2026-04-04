@@ -706,3 +706,85 @@ Wrote the first two markdown test files for the new E2E test format (PRD: docs/p
 **Why it works:** On Windows, the squad-sdk's `resolveGlobalSquadPath()` now uses the isolated temp dir as `APPDATA`, so the personal squad path becomes `{xdgConfigHome}/squad/.squad` — fully isolated. When the test's `after()` hook cleans up `xdgConfigHome`, it also cleans up the personal squad dir.
 
 **Testing:** Verified locally on Linux — tests run successfully (Windows fix doesn't change Linux behavior due to `process.platform === 'win32'` guard).
+
+### 2026-02-23 — Escape Key Navigation Test Suite
+
+**Created comprehensive test coverage for Escape key navigation across all UI screens.**
+
+**Files created:**
+- `test/e2e/journeys/navigation/escape-navigation.test.js` — E2E tests for screen transitions
+- `test/ui/escape-navigation.test.js` — Unit tests for individual component Escape behavior
+
+**Screen navigation hierarchy tested:**
+```
+Dashboard (top level)
+  ├─ ActionMenu (Enter on dispatch) → Escape returns to Dashboard
+  ├─ DetailView (d key) → Escape returns to Dashboard  
+  ├─ LogViewer (l key) → Escape returns to Dashboard
+  └─ ProjectBrowser (n key) → Escape returns to Dashboard
+      ├─ ProjectItemPicker (select project) → Escape returns to ProjectBrowser
+      │   └─ BranchDispatchInput (new branch) → Escape returns to ProjectItemPicker
+      └─ OnboardInput (add project) → Escape returns to ProjectBrowser (with 2-step navigation)
+```
+
+**E2E test scenarios (16 tests):**
+1. **Single-level navigation:** Dashboard → ActionMenu/DetailView/LogViewer/ProjectBrowser → Escape back
+2. **Multi-level sequences:** Dashboard → Detail → Escape → Dashboard → Log → Escape → Dashboard
+3. **Top-level behavior:** Escape at Dashboard does NOT crash or exit (no-op behavior)
+4. **Alternative keys:** `q` also works on ActionMenu and ProjectBrowser (in addition to Escape)
+5. **Regression test:** Explicit test for the reported bug (Dashboard → Browser → Escape should return to Dashboard)
+
+**Unit test scenarios (17 tests across 8 components):**
+1. All navigation components call `onBack()` on Escape press
+2. Alternative keys (`q`, `n`, `N`) work where documented
+3. Escape behavior during async operations (e.g., BranchDispatchInput while dispatching)
+4. Edge cases: rapid Escape presses, Unicode content, error states, missing data
+5. OnboardInput special case: 2-step Escape (fork step → path step → onBack)
+
+**Key testing patterns learned:**
+- Use `ink-testing-library` for component unit tests with `lastInstance.stdin.write('\x1B')` for Escape
+- Use PTY terminal harness (`test/harness/terminal.js`) for E2E with `term.sendKey('escape')`
+- Delay patterns: 50ms for unit tests, 200-400ms for E2E (rendering + state updates)
+- Screenshot capture at key transition points for visual debugging
+- Seed test configs with `seedConfigWithDispatches()` helper pattern
+- Always test both Escape and alternative keys (q, n, etc.) where applicable
+
+**Edge cases discovered:**
+1. OnboardInput has 2-level Escape: fork step → path step (internal), path step → parent (onBack)
+2. BranchDispatchInput should NOT respond to Escape while `status === 'dispatching'`
+3. Top-level Dashboard Escape is a no-op (doesn't crash, doesn't exit)
+4. TrustConfirm uses `onCancel()` instead of `onBack()` for Escape (different callback name)
+
+**File paths to remember:**
+- E2E navigation tests: `test/e2e/journeys/navigation/`
+- UI component unit tests: `test/ui/`
+- PTY harness utilities: `test/harness/terminal.js`
+- E2E fixture helpers: `test/harness/e2e-dispatch-fixture.js`
+- Baselines/screenshots: `test/baselines/navigation-escape/`
+
+
+### 2026-04-04 — Escape Navigation Test Suite (COMPLETE)
+
+**Status:** ✓ IMPLEMENTED — 139/139 tests passing
+
+**What:** Wrote comprehensive test suite for escape navigation across all Dashboard flows. Validates Kaylee's fix and ensures escape key behavior remains consistent.
+
+**Test Coverage:**
+- **E2E Journey Tests:** 30 tests covering Dashboard → ProjectBrowser → ProjectItemPicker → TrustConfirm escape flows
+- **Unit Tests:** 3 tests for state management and escape key handling
+- **Edge Cases:** Multiple navigations, cancel flows, confirmation flows
+
+**Files Created:**
+- `test/e2e/journeys/navigation/escape-navigation.test.js`
+- `test/unit/escape-navigation.test.js`
+
+**Results:**
+- 33 new tests + 106 existing tests = 139/139 passing
+- No regressions detected
+- All escape navigation scenarios validated
+- Ready for production
+
+**Integration:** Tests validate that escape key correctly navigates back from TrustConfirm to ProjectItemPicker, not to main Dashboard.
+
+**See:** `.squad/orchestration-log/2026-04-04T00-07-05Z-jayne.md` for details
+

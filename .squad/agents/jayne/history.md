@@ -713,7 +713,6 @@ Wrote the first two markdown test files for the new E2E test format (PRD: docs/p
 
 **Files created:**
 - `test/e2e/journeys/navigation/escape-navigation.test.js` — E2E tests for screen transitions
-- `test/ui/escape-navigation.test.js` — Unit tests for individual component Escape behavior
 
 **Screen navigation hierarchy tested:**
 ```
@@ -776,10 +775,9 @@ Dashboard (top level)
 
 **Files Created:**
 - `test/e2e/journeys/navigation/escape-navigation.test.js`
-- `test/unit/escape-navigation.test.js`
 
 **Results:**
-- 33 new tests + 106 existing tests = 139/139 passing
+- 30 new tests + 109 existing tests = 139/139 passing
 - No regressions detected
 - All escape navigation scenarios validated
 - Ready for production

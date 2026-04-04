@@ -13,7 +13,6 @@ Kaylee fixed escape key navigation bug in Dashboard. Jayne wrote 33 comprehensiv
 ## Changes
 - **lib/ui/Dashboard.jsx, lib/ui/Dashboard.js:** Navigation state preservation logic corrected
 - **test/e2e/journeys/navigation/escape-navigation.test.js:** 30 E2E journey tests
-- **test/unit/escape-navigation.test.js:** 3 unit tests
 
 ## Results
 - 139/139 tests passing

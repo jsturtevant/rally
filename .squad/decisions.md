@@ -2480,7 +2480,7 @@ onCancel={() => {
 
 - ✅ Escape key now works consistently across all screens
 - ✅ Navigation feels predictable and follows standard UI patterns
-- ✅ No side effects (all existing tests pass: 96 unit + E2E tests)
+- ✅ No side effects (all existing automated tests pass)
 - ⚠️ Slightly more complex state management (clear in multiple places)
 
 ### Future Pattern

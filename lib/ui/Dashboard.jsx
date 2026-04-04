@@ -374,7 +374,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
         <TrustConfirm
           item={dispatchPending}
           warnings={trustWarnings}
-          onConfirm={() => { setTrustWarnings(null); runDispatch(dispatchPending); }}
+          onConfirm={() => { setTrustWarnings(null); setBrowseMode(null); setBrowseProject(null); runDispatch(dispatchPending); }}
           onCancel={() => { setDispatchPending(null); setTrustWarnings(null); setDispatchStatus(null); }}
         />
       </Box>
@@ -405,8 +405,6 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
           const pending = { type: item.itemType, number: item.number, repo };
           if (onDispatch) {
             setDispatchPending(pending);
-            setBrowseMode(null);
-            setBrowseProject(null);
             if (getTrustWarningsProp) {
               const warnings = getTrustWarningsProp(pending);
               if (warnings.length > 0) {
@@ -415,6 +413,8 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
                 return;
               }
             }
+            setBrowseMode(null);
+            setBrowseProject(null);
             runDispatch(pending);
           } else {
             if (onDispatchItem) {

@@ -104,18 +104,31 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   }, [stdout]);
 
   // Raw escape key interceptor — Ink's input parser defers standalone \x1b
-  // via setImmediate which can be unreliable in some terminals. This catches
-  // the raw byte directly and triggers navigation back.
+  // via setImmediate which can be unreliable in some terminals/Node versions.
+  // This prepends a readable listener that peeks at stdin before Ink's parser,
+  // detects standalone escape bytes, and triggers navigation immediately.
+  // Only active on real TTY stdin (not mock stdin in tests).
   const escapeHandlerRef = useRef(null);
+  const escapeGuardRef = useRef(false);
   useEffect(() => {
-    if (!stdin) return;
-    const onData = (data) => {
-      if ((data === '\x1b' || data === '\x1b\x1b') && escapeHandlerRef.current) {
-        escapeHandlerRef.current();
+    if (!stdin || typeof stdin.unshift !== 'function') return;
+    const onReadable = () => {
+      if (escapeGuardRef.current) return;
+      const chunk = stdin.read();
+      if (chunk === null) return;
+      const handler = escapeHandlerRef.current;
+      const isEscape = chunk === '\x1b' || chunk === '\x1b\x1b';
+      // Push data back for Ink's own readable handler to process normally.
+      // Guard prevents our listener from re-firing on the unshift.
+      escapeGuardRef.current = true;
+      stdin.unshift(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      escapeGuardRef.current = false;
+      if (isEscape && handler) {
+        handler();
       }
     };
-    stdin.on('data', onData);
-    return () => stdin.removeListener('data', onData);
+    stdin.prependListener('readable', onReadable);
+    return () => stdin.removeListener('readable', onReadable);
   }, [stdin]);
 
   const isBranch = actionDispatch?.type === 'branch';

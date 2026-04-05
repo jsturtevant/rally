@@ -8,7 +8,7 @@ import { formatAge } from '../dashboard-data.js';
  */
 export default function DetailView({ dispatch, onBack, terminalRows }) {
   useInput((input, key) => {
-    if (key.escape) {
+    if (key.escape || input === 'q') {
       onBack();
     }
   }, { isActive: true });
@@ -53,7 +53,7 @@ export default function DetailView({ dispatch, onBack, terminalRows }) {
         ))}
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>Esc back</Text>
+        <Text dimColor>Esc/q back</Text>
       </Box>
     </Box>
   );

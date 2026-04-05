@@ -83,7 +83,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
           <Text color="red">✗ {error}</Text>
         </Box>
         <Box justifyContent="center">
-          <Text dimColor>Esc back</Text>
+          <Text dimColor>Esc/q back</Text>
         </Box>
       </Box>
     );
@@ -96,7 +96,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
           <Text dimColor>Loading issues and PRs for {repo}…</Text>
         </Box>
         <Box justifyContent="center">
-          <Text dimColor>Esc back</Text>
+          <Text dimColor>Esc/q back</Text>
         </Box>
       </Box>
     );
@@ -121,7 +121,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
           </Box>
         </Box>
         <Box justifyContent="center">
-          <Text dimColor>Enter dispatch · Esc back</Text>
+          <Text dimColor>Enter dispatch · Esc/q back</Text>
         </Box>
       </Box>
     );
@@ -185,7 +185,7 @@ export default function ProjectItemPicker({ project, onSelectItem, onNewBranch, 
       </Box>
 
       <Box justifyContent="center">
-        <Text dimColor>↑/↓ navigate · Enter dispatch · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter dispatch · Esc/q back</Text>
       </Box>
     </Box>
   );

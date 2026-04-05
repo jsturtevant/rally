@@ -69,7 +69,7 @@ describe('DetailView', () => {
     lastInstance = render(
       React.createElement(DetailView, { dispatch: SAMPLE_DISPATCH, onBack: () => {} })
     );
-    assert.ok(lastInstance.lastFrame().includes('Esc back'), 'should show escape hint');
+    assert.ok(lastInstance.lastFrame().includes('Esc/q back'), 'should show escape hint');
   });
 
   it('calls onBack when Escape is pressed', async () => {

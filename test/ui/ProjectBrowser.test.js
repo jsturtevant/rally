@@ -59,7 +59,7 @@ describe('ProjectBrowser', () => {
     );
     const output = lastInstance.lastFrame();
     assert.ok(output.includes('Config not found'), 'should show error message');
-    assert.ok(output.includes('Esc back'), 'should show escape hint');
+    assert.ok(output.includes('Esc/q back'), 'should show escape hint');
   });
 
   it('navigates with up/down arrows', async () => {

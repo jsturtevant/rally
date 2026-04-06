@@ -64,7 +64,7 @@ describe('LogViewer', () => {
         _existsSync: () => true,
       })
     );
-    assert.ok(lastInstance.lastFrame().includes('Esc back'), 'should show escape hint');
+    assert.ok(lastInstance.lastFrame().includes('Esc/q back'), 'should show escape hint');
     assert.ok(lastInstance.lastFrame().includes('scroll'), 'should show scroll hint');
   });
 

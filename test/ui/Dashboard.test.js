@@ -295,7 +295,7 @@ describe('Dashboard component', () => {
     const output = instance.lastFrame();
     assert.ok(output.includes('Logs for'), 'should show log viewer title');
     assert.ok(output.includes('#42'), 'should show dispatch ref');
-    assert.ok(output.includes('Esc back'), 'should show escape hint');
+    assert.ok(output.includes('Esc/q back'), 'should show escape hint');
   });
 
   it('l shortcut does nothing when no logPath', async () => {
@@ -328,7 +328,7 @@ describe('Dashboard component', () => {
     assert.ok(output.includes('Details for'), 'should show detail view title');
     assert.ok(output.includes('#42'), 'should show dispatch issue ref');
     assert.ok(output.includes('rally/42-fix-bug'), 'should show branch in detail view');
-    assert.ok(output.includes('Esc back'), 'should show escape hint');
+    assert.ok(output.includes('Esc/q back'), 'should show escape hint');
   });
 
   it('detail view Escape returns to dashboard', async () => {

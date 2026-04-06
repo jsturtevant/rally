@@ -63,6 +63,17 @@ Common keyboard shortcuts from the dashboard:
 - **`a`** — attach to a running Copilot session
 - **`l`** — view logs
 - **`d`** — view details
+- **`q`** — quit from the dashboard
+
+On sub-screens (action menu, detail view, log viewer, project browser), press **`Esc`** or **`q`** to go back. Some prompts (e.g., trust confirmation, text input) use **`Esc`** or their own documented keys instead.
+
+> **Troubleshooting: Escape key not working in Windows Terminal**
+>
+> If the Escape key doesn't navigate back on a sub-screen, Windows Terminal may be intercepting it.
+> Check your Windows Terminal `settings.json` for a `sendInput` action that appends
+> extra bytes to the escape key (e.g., `"\u001b\r"` instead of `"\u001b"`). Remove
+> or fix the action. You can also use **`q`** as an alternative to Escape on most
+> menu-style screens.
 
 ### Onboarding a project
 

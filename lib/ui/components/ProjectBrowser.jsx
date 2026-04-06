@@ -50,7 +50,7 @@ export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, 
           <Text color="red">✗ {error}</Text>
         </Box>
         <Box justifyContent="center">
-          <Text dimColor>Esc back</Text>
+          <Text dimColor>Esc/q back</Text>
         </Box>
       </Box>
     );
@@ -72,7 +72,7 @@ export default function ProjectBrowser({ onSelectProject, onAddProject, onBack, 
         ))}
       </Box>
       <Box justifyContent="center">
-        <Text dimColor>↑/↓ navigate · Enter select · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter select · Esc/q back</Text>
       </Box>
     </Box>
   );

@@ -745,3 +745,41 @@ See GitHub issues #1–#8 (Phase 1) for detailed specs. All blockers resolved—
 
 - **Ink CI detection:** The presence of the `CI` env var (any non-empty value, including `'0'`) triggers Ink's CI mode. Must omit the variable entirely from the child env to disable CI behavior — setting it to `'0'` or `'false'` is not enough.
 - **Temp dir cleanup on clone failure:** Wrapped `git clone` in `setupDispatchFixture` with try/catch so the temp directory created by `mkdtempSync` is cleaned up and `fixtureRepoPath` is reset to null if the clone fails.
+
+### 2026-03-23 — Escape Key Navigation Bug Fix (Dashboard)
+
+- **Bug:** When navigating Dashboard → ProjectBrowser → ProjectItemPicker → selecting an item with trust warnings → TrustConfirm screen, pressing Escape would incorrectly return to the main dashboard instead of back to ProjectItemPicker.
+- **Root cause:** In `Dashboard.jsx` line 408-409 (before fix), when an item was selected in ProjectItemPicker, `setBrowseMode(null)` and `setBrowseProject(null)` were called immediately, even if trust warnings existed. This cleared the navigation stack before showing TrustConfirm. When the user cancelled via Escape, browseMode was already null, so the UI returned to the main dashboard instead of ProjectItemPicker.
+- **Fix:** Moved `setBrowseMode(null)` and `setBrowseProject(null)` to occur AFTER trust confirmation, not before. Updated the flow:
+  1. **ProjectItemPicker onSelectItem (lines 404-418):** Check for trust warnings BEFORE clearing browseMode/browseProject. If warnings exist, set dispatchStatus='confirming' and return early without clearing navigation state.
+  2. **TrustConfirm onConfirm (line 377):** Added `setBrowseMode(null)` and `setBrowseProject(null)` to the confirm handler so navigation state is cleared when user confirms dispatch.
+  3. **TrustConfirm onCancel (line 378):** Only clears dispatchPending/trustWarnings/dispatchStatus, leaving browseMode/browseProject intact so user returns to ProjectItemPicker.
+- **Result:** Escape key now correctly navigates back to the previous screen in all cases:
+  - From TrustConfirm → back to ProjectItemPicker
+  - From all other screens (DetailView, LogViewer, ActionMenu, ProjectBrowser, etc.) → back to previous screen as expected
+- **Testing:** All existing tests pass (including 91 unit tests and 5 E2E tests).
+- **Pattern for future:** When building multi-screen flows with modal confirmations, preserve navigation state until the user commits to the action. Clear state only on confirm, not on entry to the confirmation screen.
+
+### 2026-04-04 — Escape Navigation Bug Fix (COMPLETE)
+
+**Status:** ✓ IMPLEMENTED — All tests passing (139/139)
+
+**What:** Fixed escape key navigation bug in Dashboard. When users selected items with trust warnings, the escape key was incorrectly returning to main Dashboard instead of ProjectItemPicker.
+
+**Root Cause:** Navigation state (`browseMode`, `browseProject`) was cleared immediately when selecting an item, before the TrustConfirm screen appeared. This broke the navigation stack.
+
+**Solution:** Preserve navigation state until user commits to action.
+- **ProjectItemPicker.onSelectItem:** Check for warnings first, only clear state if no warnings
+- **TrustConfirm.onConfirm:** Clear state when user confirms dispatch
+- **TrustConfirm.onCancel:** Leave state intact so Escape returns to previous screen
+
+**Files Modified:**
+- `lib/ui/Dashboard.jsx`
+- `lib/ui/Dashboard.js`
+
+**Testing:** Jayne wrote 33 comprehensive tests (E2E + unit). All 139 tests passing, no regressions.
+
+**Decision Pattern:** Established pattern for multi-screen flows with confirmations — preserve state until commit, clear on confirm, preserve on cancel.
+
+**See:** `.squad/decisions.md` → "Decision: Preserve Navigation State Until User Commits to Action"
+

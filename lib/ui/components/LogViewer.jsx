@@ -27,7 +27,7 @@ export default function LogViewer({ dispatch, onBack, terminalRows, visibleLines
   const [scrollOffset, setScrollOffset] = useState(() => maxOffset);
 
   useInput((input, key) => {
-    if (key.escape) {
+    if (key.escape || input === 'q') {
       onBack();
     } else if (key.upArrow) {
       setScrollOffset(o => Math.max(0, o - 1));
@@ -67,7 +67,7 @@ export default function LogViewer({ dispatch, onBack, terminalRows, visibleLines
       )}
       <Box marginTop={1}>
         <Text dimColor>
-          ↑/↓ scroll · Esc back{!isEmpty ? ` · Line ${scrollOffset + 1}–${Math.min(scrollOffset + visibleLines, lines.length)} of ${lines.length}` : ''}
+          ↑/↓ scroll · Esc/q back{!isEmpty ? ` · Line ${scrollOffset + 1}–${Math.min(scrollOffset + visibleLines, lines.length)} of ${lines.length}` : ''}
         </Text>
       </Box>
     </Box>

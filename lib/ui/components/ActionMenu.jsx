@@ -59,7 +59,7 @@ export default function ActionMenu({ dispatch, selectedAction, onSelect, onBack 
         </Box>
       ))}
       <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate · Enter select · Esc back</Text>
+        <Text dimColor>↑/↓ navigate · Enter select · Esc/q back</Text>
       </Box>
     </Box>
   );

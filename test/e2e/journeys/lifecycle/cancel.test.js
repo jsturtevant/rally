@@ -200,9 +200,9 @@ describe('lifecycle — cancel dispatch flow', () => {
     term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Rapid escape presses should not crash
-    await term.send('q');
-    await term.send('q');
-    await term.send('q');
+    await term.sendKey('escape');
+    await term.sendKey('escape');
+    await term.sendKey('escape');
     await new Promise(r => setTimeout(r, 500));
 
     const frame = term.getFrame();

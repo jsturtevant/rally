@@ -552,7 +552,7 @@ describe('TrustConfirm - Escape navigation', () => {
 // ─── EDGE CASES ──────────────────────────────────────────────────────────────
 
 describe('Escape navigation - edge cases', () => {
-  it('multiple rapid Escape presses call onBack only once per component', async () => {
+  it('multiple rapid Escape presses call onBack at least once', async () => {
     let backCount = 0;
     lastInstance = render(
       React.createElement(DetailView, {
@@ -568,8 +568,8 @@ describe('Escape navigation - edge cases', () => {
     lastInstance.stdin.write('\x1B');
     await delay(100);
 
-    // Component should unmount after first Escape, so subsequent presses are no-ops
-    // In practice, parent would unmount the component after first onBack
+    // DetailView calls onBack for each escape; parent would unmount after first.
+    // Without unmounting, all three fire — verify at least one was received.
     assert.ok(backCount >= 1, 'Should call onBack at least once');
   });
 

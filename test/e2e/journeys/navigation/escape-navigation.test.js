@@ -126,11 +126,14 @@ describe('escape navigation - ActionMenu to Dashboard', () => {
       try { term.close(); } catch {}
       term = null;
     }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
+    }
   });
 
   after(async () => {
     await cleanupAll();
-    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('Escape from action menu returns to dashboard', { timeout: 30_000 }, async () => {
@@ -196,11 +199,14 @@ describe('escape navigation - LogViewer to Dashboard', () => {
       try { term.close(); } catch {}
       term = null;
     }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
+    }
   });
 
   after(async () => {
     await cleanupAll();
-    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('Escape from log viewer returns to dashboard', { timeout: 30_000 }, async () => {
@@ -244,11 +250,14 @@ describe('escape navigation - DetailView to Dashboard', () => {
       try { term.close(); } catch {}
       term = null;
     }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
+    }
   });
 
   after(async () => {
     await cleanupAll();
-    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('Escape from detail view returns to dashboard', { timeout: 30_000 }, async () => {
@@ -292,11 +301,14 @@ describe('escape navigation - ProjectBrowser to Dashboard', () => {
       try { term.close(); } catch {}
       term = null;
     }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
+    }
   });
 
   after(async () => {
     await cleanupAll();
-    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('Escape from project browser returns to dashboard', { timeout: 30_000 }, async () => {
@@ -361,11 +373,14 @@ describe('escape navigation - multi-level navigation stack', () => {
       try { term.close(); } catch {}
       term = null;
     }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
+    }
   });
 
   after(async () => {
     await cleanupAll();
-    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('Escape works through multi-level navigation: Dashboard → Browser → Dashboard', { timeout: 30_000 }, async () => {
@@ -437,11 +452,14 @@ describe('escape navigation - top-level dashboard behavior', () => {
       try { term.close(); } catch {}
       term = null;
     }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
+    }
   });
 
   after(async () => {
     await cleanupAll();
-    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('Escape on top-level dashboard does not crash or exit', { timeout: 30_000 }, async () => {
@@ -455,7 +473,7 @@ describe('escape navigation - top-level dashboard behavior', () => {
     assert.ok(beforeFrame.includes('Rally Dashboard'), 'Should show dashboard');
 
     // Press Escape at top level — should be a no-op
-    await term.send('q');
+    await term.sendKey('escape');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '15-toplevel-after-escape.png'));
 
@@ -477,7 +495,7 @@ describe('escape navigation - top-level dashboard behavior', () => {
 
     // Spam Escape at top level
     for (let i = 0; i < 5; i++) {
-      await term.send('q');
+      await term.sendKey('escape');
       await new Promise(r => setTimeout(r, 100));
     }
 
@@ -507,11 +525,14 @@ describe('escape navigation - regression test for dispatch screen bug', () => {
       try { term.close(); } catch {}
       term = null;
     }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
+    }
   });
 
   after(async () => {
     await cleanupAll();
-    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('REGRESSION: Escape after Dashboard → ProjectBrowser navigation returns to Dashboard', { timeout: 30_000 }, async () => {

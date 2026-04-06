@@ -152,7 +152,7 @@ describe('escape navigation - ActionMenu to Dashboard', () => {
     );
 
     // Press Escape to go back
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '03-back-to-dashboard.png'));
 
@@ -221,7 +221,7 @@ describe('escape navigation - LogViewer to Dashboard', () => {
     );
 
     // Press Escape to go back
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '05-back-from-log.png'));
 
@@ -269,7 +269,7 @@ describe('escape navigation - DetailView to Dashboard', () => {
     );
 
     // Press Escape to go back
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '07-back-from-detail.png'));
 
@@ -317,7 +317,7 @@ describe('escape navigation - ProjectBrowser to Dashboard', () => {
     );
 
     // Press Escape to go back
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '09-back-from-browser.png'));
 
@@ -384,7 +384,7 @@ describe('escape navigation - multi-level navigation stack', () => {
     assert.ok(frame.includes('Select a Project'), 'Should be in project browser');
 
     // Escape back to Dashboard
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '12-multi-back.png'));
 
@@ -405,7 +405,7 @@ describe('escape navigation - multi-level navigation stack', () => {
     assert.ok(frame.includes('Details') || frame.includes('Issue'), 'Should show detail view');
 
     // Escape back
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     frame = term.getFrame();
     assert.ok(frame.includes('Rally Dashboard'), 'Should be back at dashboard');
@@ -417,7 +417,7 @@ describe('escape navigation - multi-level navigation stack', () => {
     assert.ok(frame.includes('Test log') || frame.includes('Escape'), 'Should show log viewer');
 
     // Escape back again
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '13-multi-sequence.png'));
 
@@ -455,7 +455,7 @@ describe('escape navigation - top-level dashboard behavior', () => {
     assert.ok(beforeFrame.includes('Rally Dashboard'), 'Should show dashboard');
 
     // Press Escape at top level — should be a no-op
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 300));
     await term.screenshot(path.join(SCREENSHOT_DIR, '15-toplevel-after-escape.png'));
 
@@ -477,7 +477,7 @@ describe('escape navigation - top-level dashboard behavior', () => {
 
     // Spam Escape at top level
     for (let i = 0; i < 5; i++) {
-      await term.sendKey('escape');
+      await term.send('q');
       await new Promise(r => setTimeout(r, 100));
     }
 
@@ -533,7 +533,7 @@ describe('escape navigation - regression test for dispatch screen bug', () => {
     );
 
     // THE BUG: Pressing Escape should go back to dashboard
-    await term.sendKey('escape');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 400));
     await term.screenshot(path.join(SCREENSHOT_DIR, '19-regression-back.png'));
 

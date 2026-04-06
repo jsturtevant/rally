@@ -63,6 +63,15 @@ Common keyboard shortcuts from the dashboard:
 - **`a`** — attach to a running Copilot session
 - **`l`** — view logs
 - **`d`** — view details
+- **`Esc`** or **`q`** — go back / navigate to previous screen
+
+> **Troubleshooting: Escape key not working in Windows Terminal**
+>
+> If the Escape key doesn't navigate back, Windows Terminal may be intercepting it.
+> Check your Windows Terminal `settings.json` for a `sendInput` action that appends
+> extra bytes to the escape key (e.g., `"\u001b\r"` instead of `"\u001b"`). Remove
+> or fix the action. You can also use **`q`** as a reliable alternative to Escape
+> on all screens.
 
 ### Onboarding a project
 

@@ -104,13 +104,13 @@ describe('lifecycle — cancel dispatch flow', () => {
     await term.waitFor('Select a Project', { timeout: 5_000 });
     await term.screenshot(path.join(SCREENSHOT_DIR, '02-project-selection.png'));
 
-    // Cancel with Escape
-    await term.sendKey('escape');
+    // Cancel with q (Escape also works but q is more reliable across terminals)
+    await term.send('q');
     await term.waitFor('Rally Dashboard', { timeout: 5_000 });
     await term.screenshot(path.join(SCREENSHOT_DIR, '03-returned-to-dashboard.png'));
 
     const frame = term.getFrame();
-    assert.ok(frame.includes('Rally Dashboard'), 'Should return to dashboard after Escape');
+    assert.ok(frame.includes('Rally Dashboard'), 'Should return to dashboard after q');
 
     // Verify no dispatches were created
     const activeYaml = yaml.load(
@@ -120,7 +120,7 @@ describe('lifecycle — cancel dispatch flow', () => {
     assert.strictEqual(activeYaml.dispatches.length, 0, 'No dispatches should be created');
   });
 
-  it('escape from item picker returns to dashboard', { timeout: 45_000 }, async () => {
+  it('q from item picker returns to dashboard', { timeout: 45_000 }, async () => {
     const skipReason = !isGhAuthenticated()
       ? 'Skipping: gh CLI not authenticated (run `gh auth login`)'
       : undefined;
@@ -143,15 +143,15 @@ describe('lifecycle — cancel dispatch flow', () => {
     await new Promise(r => setTimeout(r, 1000));
     await term.screenshot(path.join(SCREENSHOT_DIR, '04-item-picker.png'));
 
-    // Cancel with Escape — first escape returns to project picker, second to dashboard
-    await term.sendKey('escape');
+    // Cancel with q — first q returns to project picker, second to dashboard
+    await term.send('q');
     await new Promise(r => setTimeout(r, 500));
-    await term.sendKey('escape');
+    await term.send('q');
     await term.waitFor('Rally Dashboard', { timeout: 10_000 });
     await term.screenshot(path.join(SCREENSHOT_DIR, '05-returned-after-item.png'));
 
     const frame = term.getFrame();
-    assert.ok(frame.includes('Rally Dashboard'), 'Should return to dashboard after Escape from item picker');
+    assert.ok(frame.includes('Rally Dashboard'), 'Should return to dashboard after q from item picker');
 
     // Verify no dispatches were created
     const activeYaml = yaml.load(
@@ -200,9 +200,9 @@ describe('lifecycle — cancel dispatch flow', () => {
     term = await spawnDashboard({ rallyHome: tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
 
     // Rapid escape presses should not crash
-    await term.sendKey('escape');
-    await term.sendKey('escape');
-    await term.sendKey('escape');
+    await term.send('q');
+    await term.send('q');
+    await term.send('q');
     await new Promise(r => setTimeout(r, 500));
 
     const frame = term.getFrame();

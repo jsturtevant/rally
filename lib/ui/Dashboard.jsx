@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Text, useInput, useApp, useStdout, useStdin } from 'ink';
+import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { spawn as defaultSpawn } from 'node:child_process';
 import DispatchTable from './components/DispatchTable.jsx';
 import ActionMenu, { ACTIONS } from './components/ActionMenu.jsx';
@@ -26,7 +26,6 @@ export { getDashboardData, renderPlainDashboard };
 export default function Dashboard({ project, onSelect, onAttachSession, onDispatchItem, onDispatch, onDispatchBranch, getTrustWarnings: getTrustWarningsProp, onAddProject, refreshInterval = 5000, _spawn = defaultSpawn, _dispatchRemove = defaultDispatchRemove, _parseSessionIdFromLog = defaultParseSessionId, _updateDispatchStatus = defaultUpdateDispatchStatus, _listOnboardedRepos, _fetchIssues, _fetchPrs }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
-  const { stdin } = useStdin();
   const [termRows, setTermRows] = useState(stdout?.rows || 25);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [actionDispatch, setActionDispatch] = useState(null);
@@ -103,57 +102,7 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
     return () => stdout.off('resize', onResize);
   }, [stdout]);
 
-  // Raw escape key interceptor — Ink's input parser defers standalone \x1b
-  // via setImmediate which can fail when the flush is cancelled by React
-  // effect lifecycles (raw mode toggle during screen transitions resets
-  // the parser and cancels pending flushes). This wraps stdin.read() to
-  // detect standalone escape bytes and fire the handler synchronously,
-  // bypassing the setImmediate entirely.
-  const escapeHandlerRef = useRef(null);
-  useEffect(() => {
-    if (!stdin || !stdin.read) return;
-    const originalRead = stdin.read.bind(stdin);
-    stdin.read = function (...args) {
-      const chunk = originalRead(...args);
-      if (chunk !== null && (chunk === '\x1b' || chunk === '\x1b\x1b')) {
-        const handler = escapeHandlerRef.current;
-        if (handler) {
-          // Fire synchronously — no setImmediate deferral needed
-          handler();
-        }
-      }
-      return chunk;
-    };
-    return () => { stdin.read = originalRead; };
-  }, [stdin]);
-
   const isBranch = actionDispatch?.type === 'branch';
-
-  // Keep escape handler ref in sync with current screen
-  useEffect(() => {
-    if (detailViewDispatch) {
-      escapeHandlerRef.current = () => setDetailViewDispatch(null);
-    } else if (logViewDispatch) {
-      escapeHandlerRef.current = () => setLogViewDispatch(null);
-    } else if (actionDispatch) {
-      escapeHandlerRef.current = () => { setActionDispatch(null); setActionIndex(0); };
-    } else if (dispatchStatus === 'confirming' && dispatchPending && trustWarnings) {
-      escapeHandlerRef.current = () => { setDispatchPending(null); setTrustWarnings(null); setDispatchStatus(null); };
-    } else if (dispatchStatus === 'done' || dispatchStatus === 'error') {
-      escapeHandlerRef.current = () => { setDispatchPending(null); setDispatchStatus(null); setDispatchMessage(''); };
-    } else if (browseMode === 'items' && browseProject) {
-      escapeHandlerRef.current = () => { setBrowseMode('projects'); setBrowseProject(null); };
-    } else if (browseMode === 'new-branch' && branchRepo) {
-      escapeHandlerRef.current = () => { setBranchRepo(null); setBrowseMode('items'); };
-    } else if (browseMode === 'onboard') {
-      escapeHandlerRef.current = () => setBrowseMode('projects');
-    } else if (browseMode === 'projects') {
-      escapeHandlerRef.current = () => setBrowseMode(null);
-    } else {
-      // Top-level dashboard — escape is a no-op
-      escapeHandlerRef.current = null;
-    }
-  });
 
   // Derive the action list once — used for both count and selection
   const actions = actionDispatch

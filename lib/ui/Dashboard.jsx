@@ -104,31 +104,27 @@ export default function Dashboard({ project, onSelect, onAttachSession, onDispat
   }, [stdout]);
 
   // Raw escape key interceptor — Ink's input parser defers standalone \x1b
-  // via setImmediate which can be unreliable in some terminals/Node versions.
-  // This prepends a readable listener that peeks at stdin before Ink's parser,
-  // detects standalone escape bytes, and triggers navigation immediately.
-  // Only active on real TTY stdin (not mock stdin in tests).
+  // via setImmediate which can fail when the flush is cancelled by React
+  // effect lifecycles (raw mode toggle during screen transitions resets
+  // the parser and cancels pending flushes). This wraps stdin.read() to
+  // detect standalone escape bytes and fire the handler synchronously,
+  // bypassing the setImmediate entirely.
   const escapeHandlerRef = useRef(null);
-  const escapeGuardRef = useRef(false);
   useEffect(() => {
-    if (!stdin || typeof stdin.unshift !== 'function') return;
-    const onReadable = () => {
-      if (escapeGuardRef.current) return;
-      const chunk = stdin.read();
-      if (chunk === null) return;
-      const handler = escapeHandlerRef.current;
-      const isEscape = chunk === '\x1b' || chunk === '\x1b\x1b';
-      // Push data back for Ink's own readable handler to process normally.
-      // Guard prevents our listener from re-firing on the unshift.
-      escapeGuardRef.current = true;
-      stdin.unshift(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-      escapeGuardRef.current = false;
-      if (isEscape && handler) {
-        handler();
+    if (!stdin || !stdin.read) return;
+    const originalRead = stdin.read.bind(stdin);
+    stdin.read = function (...args) {
+      const chunk = originalRead(...args);
+      if (chunk !== null && (chunk === '\x1b' || chunk === '\x1b\x1b')) {
+        const handler = escapeHandlerRef.current;
+        if (handler) {
+          // Fire synchronously — no setImmediate deferral needed
+          handler();
+        }
       }
+      return chunk;
     };
-    stdin.prependListener('readable', onReadable);
-    return () => stdin.removeListener('readable', onReadable);
+    return () => { stdin.read = originalRead; };
   }, [stdin]);
 
   const isBranch = actionDispatch?.type === 'branch';

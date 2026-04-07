@@ -9,7 +9,7 @@ const { version: pkgVersion } = require('../package.json');
 describe('rally CLI', () => {
   it('should show version', () => {
     const output = execFileSync('node', ['bin/rally.js', '--version'], { encoding: 'utf8' });
-    assert.match(output.trim(), new RegExp(pkgVersion.replace(/\./g, '\\.')));
+    assert.strictEqual(output.trim(), pkgVersion);
   });
   
   it('should show help', () => {

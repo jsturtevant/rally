@@ -19,13 +19,13 @@ Rally is for individual developers using [Squad](https://bradygaster.github.io/s
 Run directly with npx:
 
 ```bash
-npx github:jsturtevant/rally#v0.1.0
+npx github:jsturtevant/rally#v0.2.0
 ```
 
 Or install globally:
 
 ```bash
-npm install -g github:jsturtevant/rally#v0.1.0
+npm install -g github:jsturtevant/rally#v0.2.0
 rally
 ```
 

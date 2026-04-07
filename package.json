@@ -1,6 +1,6 @@
 {
   "name": "squad-rally",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI tool that dispatches Squad teams to GitHub issues and PR reviews via git worktrees",
   "type": "module",
   "repository": {

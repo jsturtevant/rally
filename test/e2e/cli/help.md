@@ -28,7 +28,7 @@ Commands:
 Prints the installed version number.
 
 ```expected
-0.1.0
+0.2.0
 ```
 
 ## `rally bad-command` (exit 1)

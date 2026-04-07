@@ -2,10 +2,14 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import yaml from 'js-yaml';
 import { ensureSetup } from '../lib/setup.js';
 import { DEFAULT_DENY_TOOLS } from '../lib/copilot.js';
 import { withTempRallyHome } from './helpers/temp-env.js';
+
+const require = createRequire(import.meta.url);
+const { version: pkgVersion } = require('../package.json');
 
 describe('ensureSetup', () => {
   let tempDir;
@@ -31,7 +35,7 @@ describe('ensureSetup', () => {
 
     const config = yaml.load(readFileSync(configPath, 'utf8'), { schema: yaml.CORE_SCHEMA });
     assert.strictEqual(config.projectsDir, join(tempDir, 'projects'));
-    assert.strictEqual(config.version, '0.1.0');
+    assert.strictEqual(config.version, pkgVersion);
   });
 
   // --- Acceptance Criteria: Returns true if setup was needed ---

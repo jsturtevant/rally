@@ -58,10 +58,11 @@ Dispatched issue #1: [E2E Test] Dispatch issue test → $REPO_ROOT/.worktrees/ra
 
 Wait for the Copilot PID to exit without refreshing dispatch status.
 
-## `rally dispatch log 1 --repo jsturtevant/rally-test-fixtures | grep -c 'Total session time:'`
+## `rally dispatch log 1 --repo jsturtevant/rally-test-fixtures | grep -cE 'Total session time:|^Resume +copilot --resume='`
 
 Run `rally dispatch log` through a pipe and verify the completion marker is
-present exactly once.
+present exactly once. Copilot CLI 1.0.76 replaced the `Total session time:`
+summary line with a `Resume` line, so either marker is accepted.
 
 ```expected
 1

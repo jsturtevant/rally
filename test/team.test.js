@@ -40,7 +40,7 @@ describe('team selection', () => {
   }
 
   // Note: selectTeam() now uses the SDK's getPersonalSquadRoot() which reads from
-  // ~/.config/squad/.squad. The SDK doesn't respect RALLY_HOME env var.
+  // ~/.config/squad/personal-squad. The SDK doesn't respect RALLY_HOME env var.
   // For testing, we rely on the personal squad already existing on the system.
   // More isolated tests would require mocking the SDK functions.
 

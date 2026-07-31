@@ -6,6 +6,8 @@
  */
 import { initSquad, resolveGlobalSquadPath } from '@bradygaster/squad-sdk';
 
+import { migrateLegacyPersonalSquad, getPersonalSquadRoot } from '../../../../lib/squad-sdk.js';
+
 const globalPath = resolveGlobalSquadPath();
 
 await initSquad({
@@ -22,4 +24,8 @@ await initSquad({
   includeMcpConfig: false,
 });
 
-console.log(`✓ Personal squad created at ${globalPath}`);
+// initSquad writes to <teamRoot>/.squad; SDK 0.11+ reads the personal squad
+// from <globalDir>/personal-squad, so relocate it the same way Rally does.
+migrateLegacyPersonalSquad({ quiet: true });
+
+console.log(`✓ Personal squad created at ${getPersonalSquadRoot()}`);

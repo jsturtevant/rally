@@ -53,3 +53,34 @@ export function withTempHome(t) {
 
   return dir;
 }
+
+/**
+ * Isolates the Squad SDK's global squad path (`resolveGlobalSquadPath()`).
+ *
+ * The SDK resolves that path differently per platform — `XDG_CONFIG_HOME` on
+ * Linux, `%APPDATA%` on Windows, and `~/Library/Application Support` on macOS —
+ * so every backing variable is redirected at once. Restores them via t.after().
+ */
+export function withTempSquadHome(t) {
+  const dir = mkdtempSync(join(tmpdir(), 'rally-test-squad-'));
+  const keys = ['XDG_CONFIG_HOME', 'APPDATA', 'LOCALAPPDATA', 'HOME', 'USERPROFILE'];
+  const originals = {};
+
+  for (const key of keys) {
+    originals[key] = process.env[key];
+    process.env[key] = dir;
+  }
+
+  t.after(() => {
+    for (const key of keys) {
+      if (originals[key] !== undefined) {
+        process.env[key] = originals[key];
+      } else {
+        delete process.env[key];
+      }
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  return dir;
+}

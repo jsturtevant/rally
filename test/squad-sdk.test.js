@@ -1,8 +1,7 @@
-import { test, describe, beforeEach, afterEach } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 
 import {
   migrateLegacyPersonalSquad,
@@ -10,33 +9,35 @@ import {
   resolveGlobalSquadPath,
   getPersonalSquadRoot,
 } from '../lib/squad-sdk.js';
+import { withTempSquadHome } from './helpers/temp-env.js';
+
+/** Guards against a platform where the SDK path isn't env-overridable. */
+function isolatedGlobalSquadPath(tempDir) {
+  const globalPath = resolveGlobalSquadPath();
+  assert.ok(
+    globalPath.startsWith(tempDir),
+    `expected the global squad path to be isolated under ${tempDir}, got ${globalPath}`
+  );
+  return globalPath;
+}
+
+function writeLegacySquad(globalPath) {
+  const legacyPath = join(globalPath, '.squad');
+  mkdirSync(join(legacyPath, 'agents', 'lead'), { recursive: true });
+  writeFileSync(join(legacyPath, 'config.json'), '{}');
+  writeFileSync(join(legacyPath, 'agents', 'lead', 'charter.md'), '# Lead');
+  return legacyPath;
+}
 
 describe('migrateLegacyPersonalSquad', () => {
-  let tempDir;
-  let originalXdg;
+  let globalPath;
 
-  beforeEach(() => {
-    originalXdg = process.env.XDG_CONFIG_HOME;
-    tempDir = mkdtempSync(join(tmpdir(), 'rally-squad-sdk-'));
-    process.env.XDG_CONFIG_HOME = tempDir;
+  beforeEach((t) => {
+    globalPath = isolatedGlobalSquadPath(withTempSquadHome(t));
   });
-
-  afterEach(() => {
-    if (originalXdg === undefined) delete process.env.XDG_CONFIG_HOME;
-    else process.env.XDG_CONFIG_HOME = originalXdg;
-    rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  function writeLegacySquad() {
-    const legacyPath = join(resolveGlobalSquadPath(), '.squad');
-    mkdirSync(join(legacyPath, 'agents', 'lead'), { recursive: true });
-    writeFileSync(join(legacyPath, 'config.json'), '{}');
-    writeFileSync(join(legacyPath, 'agents', 'lead', 'charter.md'), '# Lead');
-    return legacyPath;
-  }
 
   test('moves a pre-0.11 squad to the personal-squad directory', () => {
-    const legacyPath = writeLegacySquad();
+    const legacyPath = writeLegacySquad(globalPath);
 
     const result = migrateLegacyPersonalSquad({ quiet: true });
 
@@ -57,7 +58,7 @@ describe('migrateLegacyPersonalSquad', () => {
   });
 
   test('leaves a legacy directory alone when the new location already exists', () => {
-    const legacyPath = writeLegacySquad();
+    const legacyPath = writeLegacySquad(globalPath);
     mkdirSync(getPersonalSquadRoot(), { recursive: true });
 
     migrateLegacyPersonalSquad({ quiet: true });
@@ -73,7 +74,7 @@ describe('migrateLegacyPersonalSquad', () => {
   });
 
   test('is idempotent across repeated calls', () => {
-    writeLegacySquad();
+    writeLegacySquad(globalPath);
 
     assert.equal(migrateLegacyPersonalSquad({ quiet: true }).migrated, true);
     assert.equal(migrateLegacyPersonalSquad({ quiet: true }).migrated, false);
@@ -82,19 +83,10 @@ describe('migrateLegacyPersonalSquad', () => {
 });
 
 describe('personalSquadExists', () => {
-  let tempDir;
-  let originalXdg;
+  let globalPath;
 
-  beforeEach(() => {
-    originalXdg = process.env.XDG_CONFIG_HOME;
-    tempDir = mkdtempSync(join(tmpdir(), 'rally-squad-sdk-'));
-    process.env.XDG_CONFIG_HOME = tempDir;
-  });
-
-  afterEach(() => {
-    if (originalXdg === undefined) delete process.env.XDG_CONFIG_HOME;
-    else process.env.XDG_CONFIG_HOME = originalXdg;
-    rmSync(tempDir, { recursive: true, force: true });
+  beforeEach((t) => {
+    globalPath = isolatedGlobalSquadPath(withTempSquadHome(t));
   });
 
   test('returns false when no squad exists', () => {
@@ -102,7 +94,7 @@ describe('personalSquadExists', () => {
   });
 
   test('migrates a legacy squad and reports it as existing', () => {
-    mkdirSync(join(resolveGlobalSquadPath(), '.squad', 'agents'), { recursive: true });
+    mkdirSync(join(globalPath, '.squad', 'agents'), { recursive: true });
 
     assert.equal(personalSquadExists({ quiet: true }), true);
     assert.ok(existsSync(getPersonalSquadRoot()));

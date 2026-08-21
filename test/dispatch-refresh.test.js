@@ -329,3 +329,42 @@ describe('refreshDispatchStatuses', () => {
     assert.strictEqual(result[0].id, 'y');
   });
 });
+
+describe('isLogComplete — completion markers across Copilot CLI versions', () => {
+  const complete = (content) =>
+    isLogComplete('/tmp/copilot.log', { _exists: () => true, _readFile: () => content });
+
+  test('detects the Copilot CLI <= 1.0.19 summary', () => {
+    assert.strictEqual(
+      complete('Total usage est: 6 Premium requests\nTotal session time:     1m 15s\n'),
+      true
+    );
+  });
+
+  test('detects the Copilot CLI >= 1.0.76 summary', () => {
+    // Captured verbatim from @github/copilot@1.0.76, the version this repo pins.
+    const content = [
+      'Changes    +0 -0',
+      'AI Credits 7.02 (7s)',
+      'Tokens     ↑ 51.0k (25.4k cached, 25.6k written) • ↓ 118',
+      'Resume     copilot --resume=76493370-a279-4bf6-8211-e8234c06d8c3',
+    ].join('\n');
+    assert.strictEqual(complete(content), true);
+  });
+
+  test('detects a newer summary even when the Resume line is absent', () => {
+    assert.strictEqual(complete('Changes    +1 -0\nAI Credits 2.5 (3s)\n'), true);
+  });
+
+  test('does not treat an in-progress session as complete', () => {
+    assert.strictEqual(complete('● Editing sample.txt\n  └ 3 lines…\n'), false);
+  });
+
+  test('does not treat mention of resuming in agent output as complete', () => {
+    assert.strictEqual(complete('I will resume copilot --resume= later\n'), false);
+  });
+
+  test('returns false for an empty log', () => {
+    assert.strictEqual(complete(''), false);
+  });
+});

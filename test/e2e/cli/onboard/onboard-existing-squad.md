@@ -32,7 +32,7 @@ Config Paths:
 
 Directories:
   configDir:     $RALLY_HOME
-  personalSquad: $XDG_CONFIG_HOME/squad/.squad
+  personalSquad: $XDG_CONFIG_HOME/squad/personal-squad
   projectsDir:   $RALLY_HOME/projects
 
 Onboarded Projects (1):

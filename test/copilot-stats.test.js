@@ -140,3 +140,51 @@ describe('formatStatsSummary', () => {
     assert.strictEqual(formatStatsSummary(stats), 'Changes: +10 -5');
   });
 });
+
+describe('parseCopilotStats — Copilot CLI >= 1.0.76 compact format', () => {
+  // Captured verbatim from `@github/copilot@1.0.76`, the version this repo pins.
+  const COMPACT_SUMMARY = [
+    'Changes    +12 -3',
+    'AI Credits 7.02 (7s)',
+    'Tokens     ↑ 51.0k (25.4k cached, 25.6k written) • ↓ 118',
+    'Resume     copilot --resume=76493370-a279-4bf6-8211-e8234c06d8c3',
+  ].join('\n');
+
+  test('parses the compact summary block', () => {
+    const result = parseCopilotStats(COMPACT_SUMMARY);
+    assert.notStrictEqual(result, null);
+    assert.strictEqual(result.aiCredits, 7.02);
+    assert.strictEqual(result.apiTime, '7s');
+    assert.deepStrictEqual(result.codeChanges, { additions: 12, deletions: 3 });
+  });
+
+  test('reports no premium requests, since the newer CLI does not emit them', () => {
+    const result = parseCopilotStats(COMPACT_SUMMARY);
+    assert.strictEqual(result.premiumRequests, null);
+    assert.deepStrictEqual(result.models, []);
+  });
+
+  test('parses a zero-change session', () => {
+    const result = parseCopilotStats('Changes    +0 -0\nAI Credits 11.2 (7s)\n');
+    assert.deepStrictEqual(result.codeChanges, { additions: 0, deletions: 0 });
+    assert.strictEqual(result.aiCredits, 11.2);
+  });
+
+  test('parses AI credits without a parenthesised duration', () => {
+    const result = parseCopilotStats('AI Credits 3\n');
+    assert.strictEqual(result.aiCredits, 3);
+    assert.strictEqual(result.apiTime, null);
+  });
+
+  test('formatStatsSummary falls back to AI credits', () => {
+    const summary = formatStatsSummary(parseCopilotStats(COMPACT_SUMMARY));
+    assert.strictEqual(summary, 'Changes: +12 -3 · AI credits: 7.02');
+  });
+
+  test('prefers premium requests over AI credits when both are present', () => {
+    const input = `Total usage est:        3 Premium requests\n${COMPACT_SUMMARY}`;
+    const summary = formatStatsSummary(parseCopilotStats(input));
+    assert.ok(summary.includes('Premium requests: 3'));
+    assert.ok(!summary.includes('AI credits'));
+  });
+});

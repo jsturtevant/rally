@@ -31,6 +31,9 @@ describe('CLI — help command', () => {
     term = await spawn(`node ${RALLY_BIN} --help`, { cols: 80, rows: 24 });
 
     await term.waitFor('Usage:', { timeout: 5_000 });
+    await term.waitFor('dashboard', { timeout: 5_000 });
+    await term.waitFor('onboard', { timeout: 5_000 });
+    await term.waitFor('status', { timeout: 5_000 });
     const frame = term.getFrame();
 
     assert.ok(frame.includes('Usage:'), 'should show Usage:');
@@ -44,6 +47,7 @@ describe('CLI — help command', () => {
     term = await spawn(`node ${RALLY_BIN} -h`, { cols: 80, rows: 24 });
 
     await term.waitFor('Usage:', { timeout: 5_000 });
+    await term.waitFor('dashboard', { timeout: 5_000 });
     const frame = term.getFrame();
 
     assert.ok(frame.includes('Usage:'), '-h should show Usage:');

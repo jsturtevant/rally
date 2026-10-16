@@ -40,6 +40,8 @@ fn main() {
             println!("{}", env::current_dir().unwrap().display());
         }
         "gh-config" => println!("{}", env::var("GH_CONFIG_DIR").unwrap()),
+        "where" => println!("{}", env::current_exe().unwrap().display()),
+        "setup-location" => fs::write(env::var("TEST_HOME").unwrap() + "/state", env::current_exe().unwrap().display().to_string()).unwrap(),
         "env" => { for key in &args[2..] { println!("{}", env::var(key).unwrap()); } }
         "root" => {
             assert_eq!(args[2], env::current_dir().unwrap().display().to_string());
@@ -108,7 +110,8 @@ fn main() {
             io::stdout().flush().unwrap();
             thread::sleep(Duration::from_secs(60));
         }
-        "interactive" => {
+        "interactive" | "interactive-location" => {
+            if args[1] == "interactive-location" { println!("{}", env::current_exe().unwrap().display()); }
             print!("\x1b[?25l"); io::stdout().flush().unwrap();
             // Exercise split ANSI and UTF-8 reads.
             io::stdout().write_all(b"\x1b[").unwrap(); io::stdout().flush().unwrap();
@@ -640,6 +643,34 @@ fn setup_resolves_executables_from_a_relative_working_directory() {
             .unwrap();
         assert!(output.status.success(), "{program}: {}", text(&output));
     }
+}
+
+#[cfg(windows)]
+#[test]
+fn relative_path_entries_resolve_from_the_command_working_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let specs = dir.path().join("specs");
+    let work = dir.path().join("work");
+    fs::create_dir(&specs).unwrap();
+    fs::create_dir_all(work.join("bin")).unwrap();
+    fs::create_dir(dir.path().join("bin")).unwrap();
+    fs::hard_link(helper(), work.join("bin/tool.exe")).unwrap();
+    fs::hard_link(helper(), dir.path().join("bin/tool.exe")).unwrap();
+    let expected = dunce::canonicalize(work.join("bin/tool.exe")).unwrap();
+    fs::write(
+        specs.join("path.md"),
+        format!(
+            "---\nsetup: tool.exe setup-location\n---\n## `tool.exe state`\n```expected\n{0}\n```\n## `tool.exe where`\n```expected\n{0}\n```\n## `tool.exe interactive-location`\n```pty\nmatch: {0}\nsend:\nmatch: Ready?\nsend: yes{{enter}}\nmatch: Ready?\nsend: no{{enter}}\n```\n```expected\ndone no\n```\n",
+            expected.display()
+        ),
+    ).unwrap();
+    let output = command(&specs)
+        .current_dir(dir.path())
+        .args(["--cwd", "work"])
+        .env("PATH", "bin")
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", text(&output));
 }
 
 #[cfg(windows)]

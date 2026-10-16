@@ -52,14 +52,16 @@ fn executable(program: &str, cwd: &Path, env: &Environment) -> Result<std::path:
             .find(|(name, _)| crate::windows::same_env_name(name, key))
             .map(|(_, value)| value)
     };
+    let cwd = dunce::canonicalize(cwd)?;
     let path = std::path::PathBuf::from(program);
     let dirs = if path.components().count() > 1 || path.is_absolute() {
         vec![cwd.to_owned()]
     } else {
         std::iter::once(cwd.to_owned())
-            .chain(std::env::split_paths(
-                get_env("PATH").context("PATH is not set")?,
-            ))
+            .chain(
+                std::env::split_paths(get_env("PATH").context("PATH is not set")?)
+                    .map(|dir| cwd.join(dir)),
+            )
             .collect()
     };
     let extensions = get_env("PATHEXT")

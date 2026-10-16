@@ -1,4 +1,5 @@
 node_modules/
+.tools/markmason/
 
 # Real MCP config may contain credential references
 .copilot/mcp-config.json

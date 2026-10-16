@@ -68,14 +68,14 @@ fn executable(program: &str, cwd: &Path, env: &Environment) -> Result<std::path:
     for dir in dirs {
         let candidate = dir.join(&path);
         if path.extension().is_some() && candidate.is_file() {
-            return Ok(candidate);
+            return Ok(dunce::canonicalize(candidate)?);
         }
         for extension in extensions.split(';').filter(|ext| !ext.is_empty()) {
             let mut candidate = candidate.as_os_str().to_owned();
             candidate.push(extension);
             let candidate = std::path::PathBuf::from(candidate);
             if candidate.is_file() {
-                return Ok(candidate);
+                return Ok(dunce::canonicalize(candidate)?);
             }
         }
     }

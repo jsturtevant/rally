@@ -620,6 +620,30 @@ fn mixed_case_environment_cannot_override_fixture_isolation() {
 
 #[cfg(windows)]
 #[test]
+fn setup_resolves_executables_from_a_relative_working_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let specs = dir.path().join("specs");
+    let work = dir.path().join("work");
+    fs::create_dir(&specs).unwrap();
+    fs::create_dir(&work).unwrap();
+    fs::hard_link(helper(), work.join("tool.exe")).unwrap();
+    for program in ["tool.exe", "tool"] {
+        fs::write(
+            specs.join("setup.md"),
+            format!("---\nsetup: {program}\n---\n## `app state`\n```expected\nready\n```\n"),
+        )
+        .unwrap();
+        let output = command(&specs)
+            .current_dir(dir.path())
+            .args(["--cwd", "work"])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{program}: {}", text(&output));
+    }
+}
+
+#[cfg(windows)]
+#[test]
 fn invalid_executables_are_startup_errors_not_expected_exit_codes() {
     let dir = tempfile::tempdir().unwrap();
     let program = dir.path().join("invalid.exe");

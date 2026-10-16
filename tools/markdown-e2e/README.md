@@ -83,6 +83,11 @@ The caller's GitHub authentication directory is preserved across XDG isolation.
 Fixtures are cleaned up after each file, including failures. On Unix, SIGINT
 and SIGTERM cancel the active command's process group, reap the command, clean
 up fixtures, and stop the suite (exit 130 and 143 respectively).
+On Windows, commands and PTYs run in per-command Job Objects. A startup gate
+establishes job ownership before the tested command can spawn descendants.
+Cleanup terminates the whole job even if the original command has already
+exited; background descendants cannot keep using a completed file's fixtures.
+Fixture environment overrides are case-insensitive on Windows.
 
 ## Specification format
 

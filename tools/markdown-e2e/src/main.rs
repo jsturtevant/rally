@@ -2,6 +2,8 @@ mod cancellation;
 mod matching;
 mod process;
 mod spec;
+#[cfg(windows)]
+mod windows;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -164,17 +166,14 @@ impl Fixture {
             ("GIT_TERMINAL_PROMPT", "0"),
             ("GH_PROMPT_DISABLED", "1"),
         ] {
-            env.insert(key.into(), value.into());
+            process::set_env(&mut env, key, value);
         }
-        env.insert("GH_CONFIG_DIR".into(), gh_config.as_os_str().into());
-        env.insert(
-            options.home_env.clone().into(),
-            home.path().as_os_str().into(),
-        );
-        env.insert("XDG_CONFIG_HOME".into(), config.path().as_os_str().into());
+        process::set_env(&mut env, "GH_CONFIG_DIR", gh_config.as_os_str());
+        process::set_env(&mut env, &options.home_env, home.path().as_os_str());
+        process::set_env(&mut env, "XDG_CONFIG_HOME", config.path().as_os_str());
         #[cfg(windows)]
         for name in ["APPDATA", "LOCALAPPDATA"] {
-            env.insert(name.into(), config.path().as_os_str().into());
+            process::set_env(&mut env, name, config.path().as_os_str());
         }
         let mut cwd = dunce::canonicalize(&options.cwd)?;
         let repo = if let Some(owner_repo) = &spec.clone {

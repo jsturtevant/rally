@@ -17,6 +17,12 @@ use std::{
 
 pub type Environment = BTreeMap<OsString, OsString>;
 
+pub fn set_env(env: &mut Environment, key: &str, value: impl Into<OsString>) {
+    #[cfg(windows)]
+    env.retain(|name, _| !crate::windows::same_env_name(name, key));
+    env.insert(key.into(), value.into());
+}
+
 #[derive(Debug)]
 pub struct Output {
     pub text: String,
@@ -27,7 +33,7 @@ pub struct Output {
 fn executable(program: &str, cwd: &Path, env: &Environment) -> Result<std::path::PathBuf> {
     let get_env = |key: &str| {
         env.iter()
-            .find(|(name, _)| name.to_string_lossy().eq_ignore_ascii_case(key))
+            .find(|(name, _)| crate::windows::same_env_name(name, key))
             .map(|(_, value)| value)
     };
     let path = std::path::PathBuf::from(program);
@@ -63,10 +69,12 @@ fn executable(program: &str, cwd: &Path, env: &Environment) -> Result<std::path:
 #[cfg(windows)]
 pub fn internal_exec() -> ! {
     let mut args = std::env::args_os().skip(2);
-    let result = args
-        .next()
-        .context("Missing internal executable")
-        .and_then(|program| Ok(Command::new(program).args(args).status()?));
+    let result = (|| {
+        let event = args.next().context("Missing internal startup event")?;
+        crate::windows::wait_for_start(&event)?;
+        let program = args.next().context("Missing internal executable")?;
+        Ok::<_, anyhow::Error>(Command::new(program).args(args).status()?)
+    })();
     match result {
         Ok(status) => std::process::exit(status.code().unwrap_or(1)),
         Err(error) => {
@@ -106,25 +114,6 @@ fn kill_group(pid: u32) -> Result<()> {
     send(libc::SIGKILL)
 }
 
-fn terminate(child: &mut Child) -> Result<()> {
-    #[cfg(unix)]
-    kill_group(child.id())?;
-    #[cfg(windows)]
-    {
-        let status = Command::new("taskkill")
-            .args(["/PID", &child.id().to_string(), "/T", "/F"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .context("Failed to terminate timed-out process tree")?;
-        if !status.success() && child.try_wait()?.is_none() {
-            child.kill()?;
-        }
-    }
-    child.wait()?;
-    Ok(())
-}
-
 pub fn run(
     args: &[String],
     cwd: &Path,
@@ -138,7 +127,17 @@ pub fn run(
     let program =
         executable(program, cwd, env).with_context(|| format!("Failed to start {program}"))?;
     #[cfg(windows)]
-    let mut command = Command::new(&program);
+    let tree = crate::windows::ProcessTree::new()?;
+    #[cfg(windows)]
+    let mut command = {
+        let mut command = Command::new(std::env::current_exe()?);
+        command.args([
+            OsString::from("--internal-exec"),
+            tree.event_name.clone(),
+            program.clone().into_os_string(),
+        ]);
+        command
+    };
     #[cfg(not(windows))]
     let mut command = Command::new(program);
     command
@@ -157,6 +156,24 @@ pub fn run(
     let mut child = command
         .spawn()
         .with_context(|| format!("Failed to start {program:?}"))?;
+    #[cfg(windows)]
+    if let Err(error) = tree.start(child.id()) {
+        child
+            .kill()
+            .context("Failed to terminate command after startup failure")?;
+        child
+            .wait()
+            .context("Failed to reap command after startup failure")?;
+        return Err(error);
+    }
+    let terminate = |child: &mut Child| -> Result<()> {
+        #[cfg(unix)]
+        kill_group(child.id())?;
+        #[cfg(windows)]
+        tree.terminate()?;
+        child.wait()?;
+        Ok(())
+    };
     let stdout = read_pipe(child.stdout.take().context("Missing stdout pipe")?);
     let stderr = read_pipe(child.stderr.take().context("Missing stderr pipe")?);
     let mut stdin = child.stdin.take().context("Missing stdin pipe")?;
@@ -236,6 +253,10 @@ pub fn run(
     if result.is_err() && !terminated {
         terminate(&mut child).context("Failed to clean up command process group")?;
     }
+    #[cfg(windows)]
+    if result.is_ok() {
+        tree.terminate()?;
+    }
     result
 }
 
@@ -256,20 +277,15 @@ pub fn pty(
     #[cfg(not(windows))]
     let argv = args.iter().map(OsString::from).collect();
     #[cfg(windows)]
+    let tree = crate::windows::ProcessTree::new()?;
+    #[cfg(windows)]
     let argv = {
         let program = executable(args.first().context("Empty PTY command")?, cwd, env)?;
-        let batch = program
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"));
-        let mut argv = if batch {
-            // std::process handles batch escaping; the relay inherits the PTY handles.
-            vec![
-                std::env::current_exe()?.into_os_string(),
-                "--internal-exec".into(),
-            ]
-        } else {
-            Vec::new()
-        };
+        let mut argv = vec![
+            std::env::current_exe()?.into_os_string(),
+            "--internal-exec".into(),
+            tree.event_name.clone(),
+        ];
         argv.push(program.into_os_string());
         argv.extend(args.iter().skip(1).map(OsString::from));
         argv
@@ -326,6 +342,16 @@ pub fn pty(
         }
     });
     let mut child = pair.slave.spawn_command(command)?;
+    #[cfg(windows)]
+    if let Err(error) = tree.start(child.process_id().context("Missing PTY process ID")?) {
+        child
+            .kill()
+            .context("Failed to terminate PTY after startup failure")?;
+        child
+            .wait()
+            .context("Failed to reap PTY after startup failure")?;
+        return Err(error);
+    }
     drop(pair.slave);
     let mut master = Some(pair.master);
     let (send_tx, send_rx) = mpsc::channel::<Vec<u8>>();
@@ -398,6 +424,8 @@ pub fn pty(
             if exited.is_none() {
                 exited = child.try_wait()?;
                 if exited.is_some() {
+                    #[cfg(windows)]
+                    tree.terminate()?;
                     // Closing ConPTY releases its output pipe so the reader can drain to EOF.
                     drop(master.take());
                 }
@@ -419,22 +447,11 @@ pub fn pty(
             }
         }
     })();
+    #[cfg(windows)]
+    tree.terminate()?;
     if result.is_err() {
         #[cfg(unix)]
         kill_group(child.process_id().context("Missing PTY process ID")?)?;
-        #[cfg(windows)]
-        if child.try_wait()?.is_none() {
-            let pid = child.process_id().context("Missing PTY process ID")?;
-            let status = Command::new("taskkill")
-                .args(["/PID", &pid.to_string(), "/T", "/F"])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .context("Failed to terminate PTY process tree")?;
-            if !status.success() && child.try_wait()?.is_none() {
-                bail!("Failed to terminate PTY process tree {pid}");
-            }
-        }
         if child.try_wait()?.is_none()
             && let Err(error) = child.kill()
             && child.try_wait()?.is_none()

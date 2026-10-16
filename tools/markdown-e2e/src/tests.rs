@@ -1,6 +1,22 @@
 use super::*;
 
 #[test]
+fn environment_overrides_follow_platform_case_rules() {
+    for (inherited, key) in [
+        ("test_home", "TEST_HOME"),
+        ("\u{e9}2e_home", "\u{c9}2E_HOME"),
+    ] {
+        let mut env = process::Environment::from([(inherited.into(), "caller".into())]);
+        process::set_env(&mut env, key, "fixture");
+        assert_eq!(env.get(std::ffi::OsStr::new(key)).unwrap(), "fixture");
+        #[cfg(windows)]
+        assert_eq!(env.len(), 1);
+        #[cfg(not(windows))]
+        assert_eq!(env.get(std::ffi::OsStr::new(inherited)).unwrap(), "caller");
+    }
+}
+
+#[test]
 fn frontmatter_and_tags() -> Result<()> {
     let spec = spec::parse(
         "---\r\nclone: owner/repo\r\nsetup: node setup.js\r\ntags: [Dispatch, SLOW, slow]\r\ntimeout: '0.5'\r\n---\r\n## `cmd` (exit 2)\r\n",

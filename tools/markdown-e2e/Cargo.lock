@@ -264,6 +264,7 @@ dependencies = [
  "serde_yaml",
  "signal-hook",
  "tempfile",
+ "windows-sys",
 ]
 
 [[package]]

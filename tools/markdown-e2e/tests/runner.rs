@@ -35,6 +35,7 @@ fn main() {
             println!("{}", env::current_dir().unwrap().display());
         }
         "gh-config" => println!("{}", env::var("GH_CONFIG_DIR").unwrap()),
+        "env" => { for key in &args[2..] { println!("{}", env::var(key).unwrap()); } }
         "root" => {
             assert_eq!(args[2], env::current_dir().unwrap().display().to_string());
             assert_eq!(args[3], "");
@@ -47,7 +48,9 @@ fn main() {
                 command.stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
             }
             let child = command.spawn().unwrap();
-            fs::write(&args[2], format!("{}\n{}\n{}\n{}", std::process::id(), child.id(), env::var("TEST_HOME").unwrap(), env::var("XDG_CONFIG_HOME").unwrap())).unwrap();
+            let marker = format!("{}.tmp", args[2]);
+            fs::write(&marker, format!("{}\n{}\n{}\n{}", std::process::id(), child.id(), env::var("TEST_HOME").unwrap(), env::var("XDG_CONFIG_HOME").unwrap())).unwrap();
+            fs::rename(marker, &args[2]).unwrap();
             if args[1] == "tree" { thread::sleep(Duration::from_secs(60)); }
         }
         "sleep" => { println!("before timeout"); thread::sleep(Duration::from_secs(10)); }
@@ -91,6 +94,10 @@ fn main() {
 }
 
 fn command(specs: &Path) -> Command {
+    command_with_home(specs, "TEST_HOME")
+}
+
+fn command_with_home(specs: &Path, home_env: &str) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_markdown-e2e"));
     let path = std::env::join_paths(
         std::iter::once(helper().parent().unwrap().to_owned())
@@ -99,7 +106,7 @@ fn command(specs: &Path) -> Command {
     .unwrap();
     command
         .arg(specs)
-        .args(["--home-env", "TEST_HOME"])
+        .args(["--home-env", home_env])
         .env("PATH", path)
         .env("GH_CONFIG_DIR", specs.join("real-gh-config"))
         .env_remove("E2E_FILE_PATTERN")
@@ -516,6 +523,155 @@ fn filesystem_root_is_a_valid_working_directory() {
     .unwrap();
     let output = command(dir.path()).arg("--cwd").arg(root).output().unwrap();
     assert!(output.status.success(), "{}", text(&output));
+}
+
+#[cfg(windows)]
+#[test]
+fn mixed_case_environment_cannot_override_fixture_isolation() {
+    let dir = tempfile::tempdir().unwrap();
+    let caller_home = dir.path().join("caller-home");
+    fs::create_dir(&caller_home).unwrap();
+    let path = std::env::join_paths(
+        std::iter::once(helper().parent().unwrap().to_owned())
+            .chain(std::env::split_paths(&std::env::var_os("PATH").unwrap())),
+    )
+    .unwrap();
+    let overrides = [
+        ("test_home", caller_home.as_os_str().to_owned()),
+        ("xdg_config_home", caller_home.as_os_str().to_owned()),
+        ("appdata", caller_home.as_os_str().to_owned()),
+        ("localappdata", caller_home.as_os_str().to_owned()),
+        ("gh_config_dir", caller_home.as_os_str().to_owned()),
+        ("no_color", "0".into()),
+        ("force_color", "1".into()),
+        ("git_terminal_prompt", "1".into()),
+        ("gh_prompt_disabled", "0".into()),
+    ];
+    for home_env in ["TEST_HOME", "test_home"] {
+        fs::write(
+            dir.path().join("mixed.md"),
+            format!(
+                "## `app env TEST_HOME XDG_CONFIG_HOME APPDATA LOCALAPPDATA GH_CONFIG_DIR NO_COLOR FORCE_COLOR GIT_TERMINAL_PROMPT GH_PROMPT_DISABLED`\n```expected\n${home_env}\n$XDG_CONFIG_HOME\n$XDG_CONFIG_HOME\n$XDG_CONFIG_HOME\n{}\n1\n0\n0\n1\n```\n",
+                caller_home.display()
+            ),
+        ).unwrap();
+        let inherited = std::env::vars_os().filter(|(key, _)| {
+            !overrides
+                .iter()
+                .any(|(name, _)| key.to_string_lossy().eq_ignore_ascii_case(name))
+        });
+        let output = command_with_home(dir.path(), home_env)
+            .env_clear()
+            .envs(inherited)
+            .envs(overrides.iter().map(|(name, value)| (*name, value)))
+            .env("PATH", &path)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}", text(&output));
+    }
+    assert_eq!(fs::read_dir(caller_home).unwrap().count(), 0);
+}
+
+#[cfg(windows)]
+#[test]
+fn windows_jobs_clean_up_descendants_even_after_the_command_exits() {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::{
+        Foundation::{ERROR_INVALID_PARAMETER, WAIT_OBJECT_0, WAIT_TIMEOUT},
+        System::Threading::{OpenProcess, SYNCHRONIZATION_SYNCHRONIZE, WaitForSingleObject},
+    };
+    for mode in ["drain", "writer", "success", "pty"] {
+        let dir = tempfile::tempdir().unwrap();
+        let started = dir.path().join("started");
+        let helper_mode = match mode {
+            "success" => "writer",
+            "pty" => "tree",
+            _ => mode,
+        };
+        let extra = match mode {
+            "writer" => format!("```stdin\n{}\n```\n", "x".repeat(256 * 1024)),
+            "pty" => "```pty\nmatch: before timeout\nsend:\n```\n".to_owned(),
+            _ => String::new(),
+        };
+        fs::write(
+            dir.path().join("descendants.md"),
+            format!(
+                "---\ntimeout: 1\n---\n## `app {helper_mode} \"{}\"`\n{extra}",
+                started.display()
+            ),
+        )
+        .unwrap();
+        let mut runner = command(dir.path())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !started.exists() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        if !started.exists() {
+            runner.kill().unwrap();
+            panic!(
+                "Descendant helper did not start: {}",
+                text(&runner.wait_with_output().unwrap())
+            );
+        }
+        let info = fs::read_to_string(started).unwrap();
+        let info: Vec<_> = info.lines().collect();
+        let pid = info[1].parse().unwrap();
+        let handle = unsafe { OpenProcess(SYNCHRONIZATION_SYNCHRONIZE, 0, pid) };
+        let descendant = if handle.is_null() {
+            let error = std::io::Error::last_os_error();
+            assert_eq!(mode, "success", "Failed to open descendant {pid}: {error}");
+            assert_eq!(error.raw_os_error(), Some(ERROR_INVALID_PARAMETER as i32));
+            None
+        } else {
+            Some(unsafe { OwnedHandle::from_raw_handle(handle) })
+        };
+        if mode != "success" {
+            assert_eq!(
+                unsafe { WaitForSingleObject(descendant.as_ref().unwrap().as_raw_handle(), 0) },
+                WAIT_TIMEOUT,
+                "Descendant was not running before timeout"
+            );
+        }
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while runner.try_wait().unwrap().is_none() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        if runner.try_wait().unwrap().is_none() {
+            runner.kill().unwrap();
+            panic!(
+                "Job cleanup exceeded deadline: {}",
+                text(&runner.wait_with_output().unwrap())
+            );
+        }
+        let output = runner.wait_with_output().unwrap();
+        if mode == "success" {
+            assert!(output.status.success(), "{}", text(&output));
+        } else {
+            assert!(!output.status.success(), "{mode}: {}", text(&output));
+            assert!(
+                text(&output).to_lowercase().contains("timed out"),
+                "{mode}: {}",
+                text(&output)
+            );
+        }
+        if let Some(descendant) = descendant {
+            assert_eq!(
+                unsafe { WaitForSingleObject(descendant.as_raw_handle(), 1000) },
+                WAIT_OBJECT_0,
+                "{mode}: descendant {pid} survived cleanup"
+            );
+        }
+        for path in &info[2..] {
+            assert!(
+                !Path::new(path).exists(),
+                "{mode}: fixture {path} was not cleaned up"
+            );
+        }
+    }
 }
 
 #[cfg(unix)]

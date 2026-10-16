@@ -1,6 +1,6 @@
 ---
 clone: jsturtevant/rally-test-fixtures
-setup: setup-squad.js
+setup: node setup-squad.js
 ---
 
 # Dashboard Onboarded Projects

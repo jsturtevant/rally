@@ -1,6 +1,6 @@
 ---
 clone: jsturtevant/rally-test-fixtures
-setup: ../dashboard/setup-squad.js
+setup: node ../dashboard/setup-squad.js
 tags: [dispatch, slow]
 ---
 

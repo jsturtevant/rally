@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install Rust for the Markdown E2E runner
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy && rustup default stable
       - run: npm ci
       - run: |
           git config user.name "github-actions[bot]"
@@ -34,9 +36,11 @@ jobs:
         run: npm config set script-shell bash
       - run: npm test
       - name: E2E tests (fast - excludes dispatch)
-        run: npm run test:e2e:fast
+        run: npm link --ignore-scripts && npm run test:e2e:fast
         env:
           GH_TOKEN: ${{ secrets.RALLY_TEST_TOKEN != '' && secrets.RALLY_TEST_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Rust E2E runner formatting and lint
+        run: npm run test:e2e:runner:check
 
   test-dispatch:
     runs-on: ubuntu-latest
@@ -52,12 +56,14 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install Rust for the Markdown E2E runner
+        run: rustup toolchain install stable --profile minimal && rustup default stable
       - run: npm ci
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
       - name: Dispatch E2E tests (slow - waits for Copilot)
-        run: npm run test:e2e:dispatch
+        run: npm link --ignore-scripts && npm run test:e2e:dispatch
         timeout-minutes: 15
         env:
           GH_TOKEN: ${{ secrets.RALLY_TEST_TOKEN != '' && secrets.RALLY_TEST_TOKEN || secrets.GITHUB_TOKEN }}

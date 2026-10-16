@@ -68,6 +68,7 @@ describe('upstream status action — u key', () => {
     isolated = createConfigWithDispatch('implementing');
 
     term = await spawnDashboard({ rallyHome: isolated.tempDir, xdgConfigHome, env: { NO_COLOR: '1' } });
+    await term.waitFor('#42', { timeout: 15_000 });
     await term.screenshot(path.join(SCREENSHOT_DIR, '01-before-upstream.png'));
 
     const initialFrame = term.getFrame();

@@ -1,5 +1,5 @@
 ---
-setup: setup-squad.js
+setup: node setup-squad.js
 ---
 
 # Onboard with Explicit Fork

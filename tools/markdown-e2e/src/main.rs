@@ -1,3 +1,4 @@
+mod cancellation;
 mod matching;
 mod process;
 mod spec;
@@ -134,17 +135,18 @@ struct Fixture {
 }
 
 fn gh_config_dir() -> Result<PathBuf> {
-    if let Some(dir) = env::var_os("GH_CONFIG_DIR") {
+    let nonempty = |key| env::var_os(key).filter(|value| !value.is_empty());
+    if let Some(dir) = nonempty("GH_CONFIG_DIR") {
         return Ok(dir.into());
     }
-    if let Some(dir) = env::var_os("XDG_CONFIG_HOME") {
+    if let Some(dir) = nonempty("XDG_CONFIG_HOME") {
         return Ok(PathBuf::from(dir).join("gh"));
     }
     #[cfg(windows)]
-    if let Some(dir) = env::var_os("APPDATA") {
+    if let Some(dir) = nonempty("APPDATA") {
         return Ok(PathBuf::from(dir).join("GitHub CLI"));
     }
-    let home = env::var_os("HOME").or_else(|| env::var_os("USERPROFILE"));
+    let home = nonempty("HOME").or_else(|| nonempty("USERPROFILE"));
     Ok(
         PathBuf::from(home.context("Cannot resolve home directory for gh configuration")?)
             .join(".config/gh"),
@@ -174,7 +176,7 @@ impl Fixture {
         for name in ["APPDATA", "LOCALAPPDATA"] {
             env.insert(name.into(), config.path().as_os_str().into());
         }
-        let mut cwd = options.cwd.canonicalize()?;
+        let mut cwd = dunce::canonicalize(&options.cwd)?;
         let repo = if let Some(owner_repo) = &spec.clone {
             let auth = process::run(
                 &["gh".into(), "auth".into(), "status".into()],
@@ -218,7 +220,7 @@ impl Fixture {
             (
                 "$PROJECT_NAME".into(),
                 cwd.file_name()
-                    .context("Working directory has no basename")?
+                    .unwrap_or_default()
                     .to_string_lossy()
                     .into_owned(),
             ),
@@ -351,7 +353,7 @@ fn run(options: Options) -> Result<bool> {
     let verbose = options.verbose
         || env::var("VERBOSE")
             .is_ok_and(|v| ["1", "true", "yes"].contains(&v.trim().to_lowercase().as_str()));
-    let root = options.spec_dir.canonicalize().with_context(|| {
+    let root = dunce::canonicalize(&options.spec_dir).with_context(|| {
         format!(
             "Cannot find specification directory {}",
             options.spec_dir.display()
@@ -394,9 +396,14 @@ fn run(options: Options) -> Result<bool> {
         bail!("No markdown test specs matched in {}", root.display());
     }
     // Resolve authentication before replacing XDG_CONFIG_HOME in each fixture.
-    let gh_config = gh_config_dir()?;
+    let gh_config = if options.list {
+        None
+    } else {
+        Some(gh_config_dir()?)
+    };
     let (mut passed, mut failed) = (0, 0);
     for (file, spec, indices) in specs {
+        cancellation::check()?;
         println!("{file}");
         if spec.cases.is_empty() {
             eprintln!("  FAIL: No test cases found. Expected headings like ## `command`");
@@ -417,10 +424,17 @@ fn run(options: Options) -> Result<bool> {
             .parent()
             .context("Spec has no parent directory")?
             .to_owned();
-        let fixture = match Fixture::new(&options, &spec, &gh_config) {
+        let fixture = match Fixture::new(
+            &options,
+            &spec,
+            gh_config
+                .as_deref()
+                .context("Missing fixture configuration")?,
+        ) {
             Ok(fixture) => fixture,
             Err(error) => {
                 eprintln!("  FAIL setup: {error:#}");
+                cancellation::check()?;
                 failed += 1;
                 continue;
             }
@@ -444,6 +458,9 @@ fn run(options: Options) -> Result<bool> {
             failed += 1;
         } else {
             for index in indices {
+                if cancellation::signal().is_some() {
+                    break;
+                }
                 let case = &spec.cases[index];
                 match execute(case, &fixture, &dir, timeout, verbose) {
                     Ok(()) => {
@@ -461,6 +478,7 @@ fn run(options: Options) -> Result<bool> {
             eprintln!("  FAIL cleanup: {error:#}");
             failed += 1;
         }
+        cancellation::check()?;
     }
     if !options.list {
         println!("\npass {passed}\nfail {failed}");
@@ -476,7 +494,15 @@ fn main() -> std::process::ExitCode {
     {
         process::internal_exec();
     }
-    match run(Options::parse()) {
+    let options = Options::parse();
+    let result = cancellation::install().and_then(|()| run(options));
+    if let Some(signal) = cancellation::signal() {
+        if let Err(error) = result {
+            eprintln!("Error: {error:#}");
+        }
+        return std::process::ExitCode::from((128 + signal) as u8);
+    }
+    match result {
         Ok(true) => std::process::ExitCode::SUCCESS,
         Ok(false) => std::process::ExitCode::FAILURE,
         Err(error) => {

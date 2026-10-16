@@ -34,6 +34,22 @@ fn main() {
             for key in ["TEST_HOME", "XDG_CONFIG_HOME", "GH_CONFIG_DIR"] { println!("{}", env::var(key).unwrap()); }
             println!("{}", env::current_dir().unwrap().display());
         }
+        "gh-config" => println!("{}", env::var("GH_CONFIG_DIR").unwrap()),
+        "root" => {
+            assert_eq!(args[2], env::current_dir().unwrap().display().to_string());
+            assert_eq!(args[3], "");
+        }
+        "mark" => fs::write(&args[2], "unexpected").unwrap(),
+        "tree" | "drain" | "writer" => {
+            let mut command = std::process::Command::new(env::current_exe().unwrap());
+            command.arg("sleep");
+            if args[1] == "writer" {
+                command.stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+            }
+            let child = command.spawn().unwrap();
+            fs::write(&args[2], format!("{}\n{}\n{}\n{}", std::process::id(), child.id(), env::var("TEST_HOME").unwrap(), env::var("XDG_CONFIG_HOME").unwrap())).unwrap();
+            if args[1] == "tree" { thread::sleep(Duration::from_secs(60)); }
+        }
         "sleep" => { println!("before timeout"); thread::sleep(Duration::from_secs(10)); }
         "interactive" => {
             print!("\x1b[?25l"); io::stdout().flush().unwrap();
@@ -421,4 +437,189 @@ fn clone_fixture_is_isolated_and_removed() {
         !Path::new(cloned).exists(),
         "cloned fixture was not cleaned up: {cloned}"
     );
+}
+
+#[test]
+fn empty_authentication_environment_values_use_nonempty_fallbacks() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    for (key, expected) in [
+        ("XDG_CONFIG_HOME", home.join("gh")),
+        ("HOME", home.join(".config/gh")),
+        ("USERPROFILE", home.join(".config/gh")),
+        #[cfg(windows)]
+        ("APPDATA", home.join("GitHub CLI")),
+    ] {
+        fs::write(
+            dir.path().join("config.md"),
+            format!(
+                "## `app gh-config`\n```expected\n{}\n```\n",
+                expected.display()
+            ),
+        )
+        .unwrap();
+        let output = command(dir.path())
+            .env("GH_CONFIG_DIR", "")
+            .env("XDG_CONFIG_HOME", "")
+            .env("APPDATA", "")
+            .env("HOME", "")
+            .env("USERPROFILE", "")
+            .env(key, &home)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{key}: {}", text(&output));
+    }
+}
+
+#[test]
+fn listing_needs_neither_authentication_nor_a_working_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(
+        dir.path().join("list.md"),
+        "---\nclone: owner/repo\nsetup: nonexistent\n---\n## `app echo listed`\n",
+    )
+    .unwrap();
+    let output = command(dir.path())
+        .args(["--list", "--cwd"])
+        .arg(dir.path().join("nonexistent"))
+        .env_remove("GH_CONFIG_DIR")
+        .env_remove("XDG_CONFIG_HOME")
+        .env_remove("APPDATA")
+        .env_remove("HOME")
+        .env_remove("USERPROFILE")
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(text(&output).contains("app echo listed"));
+}
+
+#[test]
+fn filesystem_root_is_a_valid_working_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let cwd = dunce::canonicalize(std::env::current_dir().unwrap()).unwrap();
+    let root: PathBuf = cwd
+        .components()
+        .take_while(|part| !matches!(part, std::path::Component::Normal(_)))
+        .collect();
+    fs::write(
+        dir.path().join("root.md"),
+        "## `app root \"$REPO_ROOT\" \"$PROJECT_NAME\"`\n",
+    )
+    .unwrap();
+    let output = command(dir.path()).arg("--cwd").arg(root).output().unwrap();
+    assert!(output.status.success(), "{}", text(&output));
+}
+
+#[cfg(unix)]
+#[test]
+fn interrupts_reap_commands_stop_descendants_and_clean_up_fixtures() {
+    for signal in [libc::SIGINT, libc::SIGTERM] {
+        for mode in ["command", "setup", "pty", "drain", "writer"] {
+            let dir = tempfile::tempdir().unwrap();
+            let started = dir.path().join("started");
+            let later = dir.path().join("later");
+            let tree = format!(
+                "app {} \"{}\"",
+                if ["drain", "writer"].contains(&mode) {
+                    mode
+                } else {
+                    "tree"
+                },
+                started.display()
+            );
+            let markdown = match mode {
+                "setup" => format!(
+                    "---\nsetup: '{tree}'\n---\n## `app mark \"{}\"`\n",
+                    later.display()
+                ),
+                "pty" => format!(
+                    "## `{tree}`\n```pty\nmatch: never\nsend: y\n```\n## `app mark \"{}\"`\n",
+                    later.display()
+                ),
+                "writer" => format!(
+                    "## `{tree}`\n```stdin\n{}\n```\n## `app mark \"{}\"`\n",
+                    "x".repeat(256 * 1024),
+                    later.display()
+                ),
+                _ => format!("## `{tree}`\n## `app mark \"{}\"`\n", later.display()),
+            };
+            fs::write(dir.path().join("a.md"), markdown).unwrap();
+            fs::write(
+                dir.path().join("b.md"),
+                format!("## `app mark \"{}\"`\n", later.display()),
+            )
+            .unwrap();
+            let mut runner = command(dir.path())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while !started.exists() && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            if !started.exists() {
+                runner.kill().unwrap();
+                panic!(
+                    "Helper did not start: {}",
+                    text(&runner.wait_with_output().unwrap())
+                );
+            }
+            let info = fs::read_to_string(&started).unwrap();
+            let info: Vec<_> = info.lines().collect();
+            if ["drain", "writer"].contains(&mode) {
+                let pid: i32 = info[0].parse().unwrap();
+                let deadline = Instant::now() + Duration::from_secs(5);
+                while unsafe { libc::kill(pid, 0) } == 0 && Instant::now() < deadline {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                assert_eq!(
+                    unsafe { libc::kill(pid, 0) },
+                    -1,
+                    "Command did not exit before cancellation"
+                );
+            }
+            assert_eq!(unsafe { libc::kill(runner.id() as i32, signal) }, 0);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while runner.try_wait().unwrap().is_none() && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            if runner.try_wait().unwrap().is_none() {
+                runner.kill().unwrap();
+                panic!(
+                    "Runner did not cancel: {}",
+                    text(&runner.wait_with_output().unwrap())
+                );
+            }
+            let output = runner.wait_with_output().unwrap();
+            assert_eq!(
+                output.status.code(),
+                Some(128 + signal),
+                "{mode}: {}",
+                text(&output)
+            );
+            for pid in &info[..2] {
+                let pid: i32 = pid.parse().unwrap();
+                let stopped = unsafe { libc::kill(pid, 0) } == -1;
+                #[cfg(target_os = "linux")]
+                let stopped = stopped
+                    || fs::read_to_string(format!("/proc/{pid}/stat")).is_ok_and(|stat| {
+                        stat.split(") ")
+                            .nth(1)
+                            .is_some_and(|state| state.starts_with('Z'))
+                    });
+                assert!(stopped, "{mode}: process {pid} survived cancellation");
+            }
+            for path in &info[2..] {
+                assert!(
+                    !Path::new(path).exists(),
+                    "{mode}: fixture {path} was not cleaned up"
+                );
+            }
+            assert!(
+                !later.exists(),
+                "{mode}: execution continued after cancellation"
+            );
+        }
+    }
 }

@@ -1,4 +1,4 @@
-use crate::{matching::strip_ansi, spec};
+use crate::{cancellation, matching::strip_ansi, spec};
 use anyhow::{Context, Result, bail};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::{
@@ -7,7 +7,10 @@ use std::{
     io::{Read, Write},
     path::Path,
     process::{Child, Command, Stdio},
-    sync::mpsc::{self, Receiver},
+    sync::{
+        Arc, Mutex,
+        mpsc::{self, Receiver},
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -83,18 +86,29 @@ fn read_pipe(mut reader: impl Read + Send + 'static) -> Receiver<std::io::Result
     rx
 }
 
-fn terminate(child: &mut Child) -> Result<()> {
-    #[cfg(unix)]
-    {
-        // Kill the command's process group, including descendants holding its output pipes open.
-        let result = unsafe { libc::kill(-(child.id() as i32), libc::SIGKILL) };
+#[cfg(unix)]
+fn kill_group(pid: u32) -> Result<()> {
+    let send = |signal| -> Result<()> {
+        let result = unsafe { libc::kill(-(pid as i32), signal) };
         if result != 0 {
             let error = std::io::Error::last_os_error();
             if error.raw_os_error() != Some(libc::ESRCH) {
                 return Err(error.into());
             }
         }
+        Ok(())
+    };
+    if let Some(signal) = cancellation::signal() {
+        send(signal)?;
+        thread::sleep(Duration::from_millis(100));
     }
+    // Descendants can outlive the command and keep its output pipes open.
+    send(libc::SIGKILL)
+}
+
+fn terminate(child: &mut Child) -> Result<()> {
+    #[cfg(unix)]
+    kill_group(child.id())?;
     #[cfg(windows)]
     {
         let status = Command::new("taskkill")
@@ -118,6 +132,7 @@ pub fn run(
     input: Option<Vec<u8>>,
     timeout: Duration,
 ) -> Result<Output> {
+    cancellation::check()?;
     let program = args.first().context("Empty command in pipeline stage")?;
     #[cfg(windows)]
     let program =
@@ -155,55 +170,73 @@ pub fn run(
         drop(stdin);
         let _ = input_tx.send(result);
     });
-    let start = Instant::now();
-    let status = loop {
-        if let Some(status) = child.try_wait()? {
-            break status;
-        }
-        if start.elapsed() >= timeout {
-            terminate(&mut child)?;
-            let out = stdout
-                .recv_timeout(Duration::from_secs(1))
-                .ok()
-                .transpose()?;
-            let err = stderr
-                .recv_timeout(Duration::from_secs(1))
-                .ok()
-                .transpose()?;
-            bail!(
-                "Command timed out after {}ms: {}\nOutput so far:\n{}{}",
-                timeout.as_millis(),
-                args.join(" "),
-                String::from_utf8_lossy(&out.unwrap_or_default()),
-                String::from_utf8_lossy(&err.unwrap_or_default())
-            );
-        }
-        thread::sleep(Duration::from_millis(10));
-    };
-    let mut collect = |rx: Receiver<std::io::Result<Vec<u8>>>| -> Result<Vec<u8>> {
-        match rx.recv_timeout(timeout.saturating_sub(start.elapsed())) {
-            Ok(result) => Ok(result?),
-            Err(error) => {
-                terminate(&mut child)?;
-                bail!("Timed out draining command output: {error}");
+    let mut terminated = false;
+    let result = (|| {
+        let start = Instant::now();
+        let status = loop {
+            cancellation::check()?;
+            if let Some(status) = child.try_wait()? {
+                break status;
             }
+            if start.elapsed() >= timeout {
+                terminate(&mut child)?;
+                terminated = true;
+                let out = stdout
+                    .recv_timeout(Duration::from_secs(1))
+                    .ok()
+                    .transpose()?;
+                let err = stderr
+                    .recv_timeout(Duration::from_secs(1))
+                    .ok()
+                    .transpose()?;
+                bail!(
+                    "Command timed out after {}ms: {}\nOutput so far:\n{}{}",
+                    timeout.as_millis(),
+                    args.join(" "),
+                    String::from_utf8_lossy(&out.unwrap_or_default()),
+                    String::from_utf8_lossy(&err.unwrap_or_default())
+                );
+            }
+            thread::sleep(Duration::from_millis(10));
+        };
+        let collect = |rx: Receiver<std::io::Result<Vec<u8>>>| -> Result<Vec<u8>> {
+            loop {
+                cancellation::check()?;
+                match rx.recv_timeout(Duration::from_millis(10)) {
+                    Ok(result) => return Ok(result?),
+                    Err(mpsc::RecvTimeoutError::Timeout) if start.elapsed() < timeout => {}
+                    Err(error) => {
+                        bail!("Timed out draining command output: {error}");
+                    }
+                }
+            }
+        };
+        let stdout = collect(stdout)?;
+        let stderr = collect(stderr)?;
+        let input_result = loop {
+            cancellation::check()?;
+            match input_rx.recv_timeout(Duration::from_millis(10)) {
+                Ok(result) => break result,
+                Err(mpsc::RecvTimeoutError::Timeout) if start.elapsed() < timeout => {}
+                Err(error) => bail!("Failed waiting for stdin writer: {error}"),
+            }
+        };
+        if let Err(error) = input_result
+            && error.kind() != std::io::ErrorKind::BrokenPipe
+        {
+            return Err(error).context("Failed writing stdin");
         }
-    };
-    let stdout = collect(stdout)?;
-    let stderr = collect(stderr)?;
-    if let Err(error) = input_rx
-        .recv_timeout(timeout.saturating_sub(start.elapsed()))
-        .context("Timed out writing stdin")?
-        && error.kind() != std::io::ErrorKind::BrokenPipe
-    {
-        return Err(error).context("Failed writing stdin");
+        let code = status.code().unwrap_or(1);
+        let mut text = String::from_utf8_lossy(&stdout).into_owned();
+        if code != 0 {
+            text.push_str(&String::from_utf8_lossy(&stderr));
+        }
+        Ok(Output { text, code })
+    })();
+    if result.is_err() && !terminated {
+        terminate(&mut child).context("Failed to clean up command process group")?;
     }
-    let code = status.code().unwrap_or(1);
-    let mut text = String::from_utf8_lossy(&stdout).into_owned();
-    if code != 0 {
-        text.push_str(&String::from_utf8_lossy(&stderr));
-    }
-    Ok(Output { text, code })
+    result
 }
 
 pub fn pty(
@@ -213,6 +246,7 @@ pub fn pty(
     steps: &[spec::Step],
     timeout: Duration,
 ) -> Result<Output> {
+    cancellation::check()?;
     let pair = native_pty_system().openpty(PtySize {
         rows: 30,
         cols: 120,
@@ -248,17 +282,36 @@ pub fn pty(
     }
     command.env("TERM", "xterm-color");
     let mut reader = pair.master.try_clone_reader()?;
-    let mut writer = pair.master.take_writer()?;
-    let mut child = pair.slave.spawn_command(command)?;
-    drop(pair.slave);
-    let mut master = Some(pair.master);
+    let writer = Arc::new(Mutex::new(pair.master.take_writer()?));
     let (tx, rx) = mpsc::channel();
+    #[cfg(windows)]
+    let response_writer = Arc::clone(&writer);
     thread::spawn(move || {
         let mut buffer = [0; 8192];
+        #[cfg(windows)]
+        let mut queries = Vec::new();
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(n) => {
+                    #[cfg(windows)]
+                    {
+                        // ConPTY's INHERIT_CURSOR handshake can precede spawn completion.
+                        queries.extend_from_slice(&buffer[..n]);
+                        let result = (|| -> Result<()> {
+                            for _ in queries.windows(4).filter(|bytes| *bytes == b"\x1b[6n") {
+                                let mut writer = response_writer.lock().unwrap();
+                                writer.write_all(b"\x1b[1;1R")?;
+                                writer.flush()?;
+                            }
+                            Ok(())
+                        })();
+                        if let Err(error) = result {
+                            let _ = tx.send(Err(std::io::Error::other(error)));
+                            break;
+                        }
+                        queries.drain(..queries.len().saturating_sub(3));
+                    }
                     if tx.send(Ok(buffer[..n].to_vec())).is_err() {
                         break;
                     }
@@ -272,6 +325,9 @@ pub fn pty(
             }
         }
     });
+    let mut child = pair.slave.spawn_command(command)?;
+    drop(pair.slave);
+    let mut master = Some(pair.master);
     let result = (|| {
         let mut bytes = Vec::new();
         let mut step_index = 0;
@@ -281,6 +337,7 @@ pub fn pty(
         let mut exited = None;
         let mut eof = false;
         loop {
+            cancellation::check()?;
             match rx.recv_timeout(Duration::from_millis(10)) {
                 Ok(chunk) => bytes.extend(chunk.context("Failed reading PTY output")?),
                 Err(mpsc::RecvTimeoutError::Disconnected) => eof = true,
@@ -300,6 +357,7 @@ pub fn pty(
             }
             if let Some(send_at) = pending {
                 if Instant::now() >= send_at && exited.is_none() {
+                    let mut writer = writer.lock().unwrap();
                     writer.write_all(spec::input_keys(&steps[step_index].input).as_bytes())?;
                     writer.flush()?;
                     step_index += 1;
@@ -340,6 +398,8 @@ pub fn pty(
         }
     })();
     if result.is_err() {
+        #[cfg(unix)]
+        kill_group(child.process_id().context("Missing PTY process ID")?)?;
         #[cfg(windows)]
         if child.try_wait()?.is_none() {
             let pid = child.process_id().context("Missing PTY process ID")?;

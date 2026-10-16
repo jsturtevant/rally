@@ -9,6 +9,7 @@ license = "MIT"
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+dunce = "1"
 portable-pty = "0.9"
 regex = "1"
 serde_yaml = "0.9"
@@ -16,3 +17,4 @@ tempfile = "3"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+signal-hook = "0.3"

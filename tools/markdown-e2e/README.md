@@ -80,7 +80,9 @@ Tests within a file run sequentially and share those directories. Without
 `clone` frontmatter, commands run in `--cwd` (default: the current directory).
 With `clone`, `gh auth status` and `gh repo clone` prepare a temporary repository.
 The caller's GitHub authentication directory is preserved across XDG isolation.
-Fixtures are cleaned up after each file, including failures.
+Fixtures are cleaned up after each file, including failures. On Unix, SIGINT
+and SIGTERM cancel the active command's process group, reap the command, clean
+up fixtures, and stop the suite (exit 130 and 143 respectively).
 
 ## Specification format
 

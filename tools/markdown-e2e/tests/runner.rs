@@ -14,6 +14,11 @@ fn helper() -> &'static Path {
         let source = dir.path().join("helper.rs");
         fs::write(&source, r#"
 use std::{env, fs, io::{self, Read, Write}, thread, time::Duration};
+#[cfg(windows)]
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn SetHandleInformation(handle: *mut std::ffi::c_void, mask: u32, flags: u32) -> i32;
+}
 fn main() {
     let args: Vec<_> = env::args().collect();
     if args.len() == 1 {
@@ -45,6 +50,14 @@ fn main() {
             let mut command = std::process::Command::new(env::current_exe().unwrap());
             command.arg("sleep");
             if args[1] == "writer" {
+                #[cfg(windows)]
+                {
+                    use std::os::windows::io::AsRawHandle;
+                    // Retain only stdin so this mode exercises a blocked writer, not output draining.
+                    for handle in [io::stdout().as_raw_handle(), io::stderr().as_raw_handle()] {
+                        assert_ne!(unsafe { SetHandleInformation(handle, 1, 0) }, 0);
+                    }
+                }
                 command.stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
             }
             let child = command.spawn().unwrap();
@@ -652,8 +665,14 @@ fn windows_jobs_clean_up_descendants_even_after_the_command_exits() {
             assert!(output.status.success(), "{}", text(&output));
         } else {
             assert!(!output.status.success(), "{mode}: {}", text(&output));
+            let expected = match mode {
+                "drain" => "Timed out draining command output",
+                "writer" => "Failed waiting for stdin writer",
+                "pty" => "PTY command timed out",
+                _ => unreachable!(),
+            };
             assert!(
-                text(&output).to_lowercase().contains("timed out"),
+                text(&output).contains(expected),
                 "{mode}: {}",
                 text(&output)
             );

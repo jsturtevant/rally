@@ -12,7 +12,10 @@ use std::{
     time::{Duration, Instant},
 };
 use windows_sys::Win32::{
-    Foundation::{ERROR_ALREADY_EXISTS, GetLastError, HANDLE, WAIT_OBJECT_0},
+    Foundation::{
+        ERROR_ALREADY_EXISTS, GetLastError, HANDLE, HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE,
+        SetHandleInformation, WAIT_OBJECT_0,
+    },
     Globalization::{CSTR_EQUAL, CompareStringOrdinal},
     System::{
         JobObjects::{
@@ -40,6 +43,24 @@ pub fn same_env_name(name: &OsStr, key: &str) -> bool {
             1,
         ) == CSTR_EQUAL
     }
+}
+
+pub fn protect_stdio() -> Result<()> {
+    // Command duplicates the requested stdio; the originals must not leak into descendants.
+    for handle in [
+        std::io::stdin().as_raw_handle(),
+        std::io::stdout().as_raw_handle(),
+        std::io::stderr().as_raw_handle(),
+    ] {
+        if !handle.is_null()
+            && handle != INVALID_HANDLE_VALUE
+            && unsafe { SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0) } == 0
+        {
+            return Err(std::io::Error::last_os_error())
+                .context("Failed to protect relay stdio handles");
+        }
+    }
+    Ok(())
 }
 
 fn wide(value: &OsStr) -> Vec<u16> {

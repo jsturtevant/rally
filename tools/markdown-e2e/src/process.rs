@@ -72,6 +72,7 @@ pub fn internal_exec() -> ! {
     let result = (|| {
         let event = args.next().context("Missing internal startup event")?;
         crate::windows::wait_for_start(&event)?;
+        crate::windows::protect_stdio()?;
         let program = args.next().context("Missing internal executable")?;
         Ok::<_, anyhow::Error>(Command::new(program).args(args).status()?)
     })();

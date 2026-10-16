@@ -3,10 +3,10 @@ use super::*;
 #[test]
 fn frontmatter_and_tags() -> Result<()> {
     let spec = spec::parse(
-        "---\r\nclone: owner/repo\r\nsetup: setup.js\r\ntags: [Dispatch, SLOW, slow]\r\ntimeout: '0.5'\r\n---\r\n## `cmd` (exit 2)\r\n",
+        "---\r\nclone: owner/repo\r\nsetup: node setup.js\r\ntags: [Dispatch, SLOW, slow]\r\ntimeout: '0.5'\r\n---\r\n## `cmd` (exit 2)\r\n",
     )?;
     assert_eq!(spec.clone.as_deref(), Some("owner/repo"));
-    assert_eq!(spec.setup.as_deref(), Some("setup.js"));
+    assert_eq!(spec.setup.as_deref(), Some("node setup.js"));
     assert_eq!(spec.tags, ["dispatch", "slow"]);
     assert_eq!(spec.timeout, Some(Duration::from_millis(500)));
     assert_eq!(spec.cases[0].exit_code, 2);
@@ -22,6 +22,9 @@ fn frontmatter_and_tags() -> Result<()> {
         "timeout: .inf",
         "timeout: nope",
         "setup: []",
+        "setup: ''",
+        "setup: '   '",
+        "setup: '\"\"'",
     ] {
         assert!(
             spec::parse(&format!("---\n{invalid}\n---\n")).is_err(),
@@ -30,6 +33,46 @@ fn frontmatter_and_tags() -> Result<()> {
     }
     assert!(spec::parse("---\n\n---\n")?.cases.is_empty());
     assert!(spec::parse("# Title")?.tags.is_empty());
+    Ok(())
+}
+
+#[test]
+fn setup_commands_resolve_files_without_assuming_an_interpreter() -> Result<()> {
+    let dir = tempfile::tempdir()?;
+    fs::write(dir.path().join("setup script.py"), "")?;
+    assert_eq!(
+        resolve_setup(
+            "python3 -I 'setup script.py' --name 'two words' ''",
+            dir.path()
+        )?,
+        vec![
+            "python3".to_owned(),
+            "-I".into(),
+            dir.path()
+                .join("setup script.py")
+                .to_string_lossy()
+                .into_owned(),
+            "--name".into(),
+            "two words".into(),
+            "".into(),
+        ]
+    );
+    assert_eq!(
+        resolve_setup("custom ./missing.py ../shared.py", dir.path())?,
+        vec![
+            "custom".to_owned(),
+            dir.path()
+                .join("./missing.py")
+                .to_string_lossy()
+                .into_owned(),
+            dir.path()
+                .join("../shared.py")
+                .to_string_lossy()
+                .into_owned(),
+        ]
+    );
+    assert!(resolve_setup("", dir.path()).is_err());
+    assert!(resolve_setup("''", dir.path()).is_err());
     Ok(())
 }
 

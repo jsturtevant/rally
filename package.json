@@ -15,7 +15,7 @@
     "test:e2e": "npm run test:e2e:runner && GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && RALLY_E2E_TAGS_EXCLUDE='slow' npm run test:e2e:run",
     "test:e2e:fast": "npm run test:e2e:runner && GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && RALLY_E2E_FILE_EXCLUDE='^dispatch/' npm run test:e2e:run",
     "test:e2e:dispatch": "GIT_TERMINAL_PROMPT=0 node test/build-jsx.mjs && RALLY_E2E_TAGS='slow' npm run test:e2e:run",
-    "test:e2e:run": "cargo run --quiet --locked --manifest-path tools/markdown-e2e/Cargo.toml -- test/e2e/cli --home-env RALLY_HOME --env-prefix RALLY_E2E_ --setup-runner node",
+    "test:e2e:run": "cargo run --quiet --locked --manifest-path tools/markdown-e2e/Cargo.toml -- test/e2e/cli --home-env RALLY_HOME --env-prefix RALLY_E2E_",
     "test:e2e:runner": "cargo test --locked --manifest-path tools/markdown-e2e/Cargo.toml",
     "test:e2e:runner:check": "cargo fmt --manifest-path tools/markdown-e2e/Cargo.toml --check && cargo clippy --locked --manifest-path tools/markdown-e2e/Cargo.toml --all-targets -- -D warnings",
     "test:all": "npm test && npm run test:e2e",

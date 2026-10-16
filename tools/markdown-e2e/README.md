@@ -15,7 +15,7 @@ resulting `markdown-e2e` executable for the target OS/architecture.
 
 ## Rally compatibility
 
-**The Rust binary is the test runner.** It can execute Rally's unchanged
+**The Rust binary is the test runner.** It can execute Rally's
 Markdown scenarios directly, without npm or Cargo at runtime.
 
 First build Rally's JSX (`node test/build-jsx.mjs`, after installing its
@@ -25,15 +25,15 @@ Then, from the Rally root, run the installed `markdown-e2e` binary:
 
 ```sh
 markdown-e2e test/e2e/cli \
-  --home-env RALLY_HOME --env-prefix RALLY_E2E_ \
-  --setup-runner node --tags-exclude slow
+  --home-env RALLY_HOME --env-prefix RALLY_E2E_ --tags-exclude slow
 ```
 
 This runs the same non-slow Markdown scenarios as `npm run test:e2e`.
 Node is needed by the **application and its existing JavaScript fixtures**, not
-by the generic Rust runner. `--setup-runner node` explicitly selects the
-interpreter for Rally's fixture scripts; it does not launch `rally` through Node.
-Tested commands resolve through `PATH`.
+by the generic Rust runner. Each Markdown file declares its own setup command,
+such as `setup: node setup-squad.js`; another file can use Python or a native
+executable without affecting the rest of the suite. Tested commands resolve
+through `PATH`.
 
 ### Optional npm aliases
 
@@ -68,7 +68,7 @@ binary on `PATH`; there is no application-specific executable substitution:
 
 ```sh
 PATH="$PWD/target/debug:$PATH" markdown-e2e tests/cli \
-  --home-env MYCLI_HOME --setup-runner python3
+  --home-env MYCLI_HOME
 ```
 
 Relative executables resolve from each spec's working directory; use absolute
@@ -102,12 +102,25 @@ Error: unknown command
 ```
 ````
 
-Optional YAML fields: `clone: owner/repo`, `setup: relative-script.js`,
-`tags: [tag, ...]`, and positive `timeout` in seconds. Setup scripts resolve
-relative to the Markdown file and execute directly by default. Supply an
-interpreter explicitly with `--setup-runner` when needed (e.g. `node` for
-Rally's existing scripts, `python3` for Python scripts). Setup runs from `--cwd`,
-after fixture cloning.
+Optional YAML fields: `clone: owner/repo`, `setup: COMMAND`, `tags: [tag, ...]`,
+and positive `timeout` in seconds. `setup` is a complete command local to that
+Markdown file, not a suite-wide interpreter setting:
+
+```yaml
+setup: node setup-squad.js
+```
+
+Another file can declare `setup: python3 setup.py`, or execute a native script
+directly with `setup: ./setup`. Quoting supports arguments and paths with spaces,
+for example `setup: 'python3 "setup fixtures.py" --mode test'`.
+
+Setup uses the same argument quoting rules as test commands, with no shell
+expansion or pipeline processing. Executables resolve through `PATH` unless
+they name a file beside the spec. Relative file arguments that exist beside the
+spec, and explicit `./` or `../` paths, resolve relative to the Markdown file.
+Setup runs from `--cwd`, after fixture cloning, with the file's isolated
+application-home and configuration environment. Its command and timeout apply
+only to that file. There is no `--setup-runner` flag.
 
 Headings use ``## `command` `` with optional `(exit N)` (default exit 0).
 Supported fenced blocks:

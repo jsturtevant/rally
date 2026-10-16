@@ -21,9 +21,6 @@ struct Options {
     /// Working directory for specs without clone frontmatter.
     #[arg(long, default_value = ".")]
     cwd: PathBuf,
-    /// Optional interpreter for setup scripts; otherwise execute scripts directly.
-    #[arg(long)]
-    setup_runner: Option<String>,
     /// Name of the isolated application-home environment variable and placeholder.
     #[arg(long, default_value = "E2E_HOME")]
     home_env: String,
@@ -101,6 +98,28 @@ fn resolve(command: &str, dir: &Path) -> Result<Vec<String>> {
         .clone();
     if name == "node" && args.get(1).is_some_and(|arg| arg.starts_with("./")) {
         args[1] = dir.join(&args[1]).to_string_lossy().into_owned();
+    }
+    Ok(args)
+}
+
+fn resolve_setup(command: &str, dir: &Path) -> Result<Vec<String>> {
+    let mut args = spec::split_command(command);
+    if args.first().is_none_or(|arg| arg.is_empty()) {
+        bail!("Empty setup command");
+    }
+    for arg in &mut args {
+        let path = Path::new(arg);
+        if path.is_absolute() || arg.is_empty() || arg.starts_with('-') {
+            continue;
+        }
+        let explicit_relative = matches!(
+            path.components().next(),
+            Some(std::path::Component::CurDir | std::path::Component::ParentDir)
+        );
+        let resolved = dir.join(path);
+        if explicit_relative || resolved.is_file() {
+            *arg = resolved.to_string_lossy().into_owned();
+        }
     }
     Ok(args)
 }
@@ -310,13 +329,6 @@ fn run(options: Options) -> Result<bool> {
     if options.home_env.is_empty() || options.home_env.contains(['=', '\0']) {
         bail!("Invalid --home-env name");
     }
-    if options
-        .setup_runner
-        .as_ref()
-        .is_some_and(|runner| runner.trim().is_empty())
-    {
-        bail!("--setup-runner requires a nonempty interpreter");
-    }
     let from_env = |flag: &Option<String>, suffix: &str| {
         flag.clone()
             .or_else(|| env::var(format!("{}{suffix}", options.env_prefix)).ok())
@@ -414,20 +426,15 @@ fn run(options: Options) -> Result<bool> {
             }
         };
         let setup_result = (|| -> Result<()> {
-            if let Some(script) = &spec.setup {
-                let mut args = options
-                    .setup_runner
-                    .as_deref()
-                    .map(spec::split_command)
-                    .unwrap_or_default();
-                args.push(dir.join(script).to_string_lossy().into_owned());
+            if let Some(setup) = &spec.setup {
+                let args = resolve_setup(setup, &dir)?;
                 let result = process::run(&args, &options.cwd, &fixture.env, None, timeout)
-                    .with_context(|| format!("Setup command failed: {script}"))?;
+                    .with_context(|| format!("Setup command failed: {setup}"))?;
                 if result.code != 0 {
-                    bail!("Setup command failed: {script}\n{}", result.text);
+                    bail!("Setup command failed: {setup}\n{}", result.text);
                 }
                 if verbose {
-                    println!("Setup ({script}):\n{}", result.text);
+                    println!("Setup ({setup}):\n{}", result.text);
                 }
             }
             Ok(())

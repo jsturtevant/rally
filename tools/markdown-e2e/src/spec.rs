@@ -114,6 +114,13 @@ pub fn parse(content: &str) -> Result<Spec> {
                     );
                 }
             }
+            if spec.setup.as_ref().is_some_and(|setup| {
+                split_command(setup)
+                    .first()
+                    .is_none_or(|arg| arg.is_empty())
+            }) {
+                bail!("Frontmatter setup must be a nonempty command");
+            }
             if let Some(tags) = map.get(Value::from("tags")) {
                 for tag in tags
                     .as_sequence()

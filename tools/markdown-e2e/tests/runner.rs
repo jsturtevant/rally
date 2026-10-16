@@ -24,9 +24,10 @@ fn main() {
         "echo" => println!("{}", args[2..].join(" ")),
         "fail" => { print!("stdout\n"); eprint!("stderr\n"); std::process::exit(2); }
         "cat" => { let mut s = String::new(); io::stdin().read_to_string(&mut s).unwrap(); print!("{s}"); }
-        "setup" => {
+        "setup" | "setup-other" => {
             assert!(std::path::Path::new(&args[2]).exists());
-            fs::write(env::var("TEST_HOME").unwrap() + "/state", "ready").unwrap();
+            let value = if args[1] == "setup" { "ready" } else { "other" };
+            fs::write(env::var("TEST_HOME").unwrap() + "/state", value).unwrap();
         }
         "state" => println!("{}", fs::read_to_string(env::var("TEST_HOME").unwrap() + "/state").unwrap()),
         "vars" => {
@@ -100,7 +101,7 @@ fn standalone_sequential_setup_variables_pipeline_and_nonzero_exit() {
     fs::write(
         dir.path().join("test.md"),
         r#"---
-setup: setup.fixture
+setup: app setup setup.fixture
 ---
 ## `app state`
 ```expected
@@ -140,15 +141,47 @@ $REPO_ROOT
 "#,
     )
     .unwrap();
-    let output = command(dir.path())
-        .args([
-            "--setup-runner",
-            &format!("\"{}\" setup", helper().display()),
-        ])
-        .output()
-        .unwrap();
+    let output = command(dir.path()).output().unwrap();
     assert!(output.status.success(), "{}", text(&output));
     assert!(text(&output).contains("pass 7"), "{}", text(&output));
+}
+
+#[test]
+fn each_file_chooses_its_own_setup_command() {
+    let dir = tempfile::Builder::new()
+        .prefix("markdown e2e ")
+        .tempdir()
+        .unwrap();
+    let executable = format!("setup tool{}", std::env::consts::EXE_SUFFIX);
+    fs::hard_link(helper(), dir.path().join(&executable)).unwrap();
+    fs::write(dir.path().join("setup.fixture"), "").unwrap();
+    fs::write(
+        dir.path().join("a.md"),
+        format!("---\nsetup: '\"{executable}\" setup setup.fixture'\n---\n## `app state`\n```expected\nready\n```\n"),
+    ).unwrap();
+    fs::write(
+        dir.path().join("b.md"),
+        "---\nsetup: app setup-other setup.fixture\n---\n## `app state`\n```expected\nother\n```\n",
+    )
+    .unwrap();
+    let output = command(dir.path()).output().unwrap();
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(text(&output).contains("pass 2"), "{}", text(&output));
+}
+
+#[test]
+fn setup_runner_flag_is_no_longer_supported() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = command(dir.path())
+        .args(["--setup-runner", "app"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        text(&output).contains("unexpected argument '--setup-runner'"),
+        "{}",
+        text(&output)
+    );
 }
 
 #[test]
@@ -343,11 +376,17 @@ fn invalid_setup_spawn_empty_specs_and_mismatches_fail() {
             "---\nsetup: missing\n---\n## `app echo ignored`",
             "Setup command failed",
         ),
+        (
+            "---\nsetup: missing-executable-markdown-e2e setup.fixture\n---\n## `app echo ignored`",
+            "Setup command failed",
+        ),
+        (
+            "---\nsetup: app fail\n---\n## `app echo ignored`",
+            "Setup command failed: app fail",
+        ),
     ] {
         fs::write(dir.path().join("test.md"), markdown).unwrap();
-        let mut command = command(dir.path());
-        command.args(["--setup-runner", "missing-executable-markdown-e2e"]);
-        let output = command.output().unwrap();
+        let output = command(dir.path()).output().unwrap();
         assert!(!output.status.success(), "{markdown}");
         assert!(text(&output).contains(expected), "{}", text(&output));
     }

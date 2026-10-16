@@ -144,6 +144,8 @@ PTYs are 120 columns by 30 rows. `match:` ignores ANSI codes; `match-raw:`
 preserves them. Matching advances separate raw and clean cursors. Every scripted
 step must complete; missing prompts, spawn errors and timeouts always fail, even
 when a nonzero exit is expected. PTY expected output uses contains matching.
+Oversized scripted input remains subject to the command timeout and cancellation,
+even when the child stops reading.
 
 `send:` supports `{enter}`, `{up}`, `{down}`, `{space}`, `{backspace}`; no newline
 is appended automatically. Raw matching supports `{hide-cursor}`, `{show-cursor}`,
@@ -187,3 +189,4 @@ cargo clippy --manifest-path tools/markdown-e2e/Cargo.toml --all-targets -- -D w
 Tests compile a small Rust fixture executable and exercise pipelines, stdin,
 PTYs, filters, setup, cloned fixtures, isolation, cleanup and failure handling
 without Node, GitHub authentication, or network access.
+Unix blocked-input regression tests use `stty` to put the fixture PTY in raw mode.

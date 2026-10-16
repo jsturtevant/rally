@@ -51,6 +51,14 @@ fn main() {
             if args[1] == "tree" { thread::sleep(Duration::from_secs(60)); }
         }
         "sleep" => { println!("before timeout"); thread::sleep(Duration::from_secs(10)); }
+        #[cfg(unix)]
+        "nonreading" => {
+            assert!(std::process::Command::new("stty").args(["raw", "-echo"]).status().unwrap().success());
+            fs::write(&args[2], format!("{}\n{}\n{}", std::process::id(), env::var("TEST_HOME").unwrap(), env::var("XDG_CONFIG_HOME").unwrap())).unwrap();
+            println!("Ready?");
+            io::stdout().flush().unwrap();
+            thread::sleep(Duration::from_secs(60));
+        }
         "interactive" => {
             print!("\x1b[?25l"); io::stdout().flush().unwrap();
             // Exercise split ANSI and UTF-8 reads.
@@ -558,6 +566,7 @@ fn interrupts_reap_commands_stop_descendants_and_clean_up_fixtures() {
             while !started.exists() && Instant::now() < deadline {
                 std::thread::sleep(Duration::from_millis(10));
             }
+
             if !started.exists() {
                 runner.kill().unwrap();
                 panic!(
@@ -619,6 +628,82 @@ fn interrupts_reap_commands_stop_descendants_and_clean_up_fixtures() {
             assert!(
                 !later.exists(),
                 "{mode}: execution continued after cancellation"
+            );
+        }
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn oversized_pty_input_cannot_block_timeout_or_cancellation() {
+    for signal in [None, Some(libc::SIGINT), Some(libc::SIGTERM)] {
+        let dir = tempfile::tempdir().unwrap();
+        let started = dir.path().join("started");
+        fs::write(
+            dir.path().join("blocked.md"),
+            format!("---\ntimeout: {}\n---\n## `app nonreading \"{}\"`\n```pty\nmatch: Ready?\nsend: {}\n```\n",
+                if signal.is_some() { 30 } else { 1 },
+                started.display(), "x".repeat(2 * 1024 * 1024)),
+        ).unwrap();
+        let mut runner = command(dir.path())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let start = Instant::now();
+        while !started.exists() && start.elapsed() < Duration::from_secs(5) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        if !started.exists() {
+            runner.kill().unwrap();
+            panic!(
+                "Nonreading helper did not start: {}",
+                text(&runner.wait_with_output().unwrap())
+            );
+        }
+        if let Some(signal) = signal {
+            // The scripted send starts 200ms after the prompt is matched.
+            std::thread::sleep(Duration::from_millis(400));
+            assert_eq!(unsafe { libc::kill(runner.id() as i32, signal) }, 0);
+        }
+        while runner.try_wait().unwrap().is_none() && start.elapsed() < Duration::from_secs(5) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        if runner.try_wait().unwrap().is_none() {
+            runner.kill().unwrap();
+            panic!(
+                "PTY input blocked deadline/cancellation: {}",
+                text(&runner.wait_with_output().unwrap())
+            );
+        }
+        let output = runner.wait_with_output().unwrap();
+        assert!(!output.status.success(), "{}", text(&output));
+        if let Some(signal) = signal {
+            assert_eq!(
+                output.status.code(),
+                Some(128 + signal),
+                "{}",
+                text(&output)
+            );
+        } else {
+            assert!(
+                text(&output).contains("PTY command timed out"),
+                "{}",
+                text(&output)
+            );
+        }
+        let info = fs::read_to_string(started).unwrap();
+        let mut info = info.lines();
+        let pid: i32 = info.next().unwrap().parse().unwrap();
+        assert_eq!(
+            unsafe { libc::kill(pid, 0) },
+            -1,
+            "PTY child was not reaped"
+        );
+        for path in info {
+            assert!(
+                !Path::new(path).exists(),
+                "Fixture {path} was not cleaned up"
             );
         }
     }

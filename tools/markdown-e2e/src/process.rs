@@ -328,12 +328,25 @@ pub fn pty(
     let mut child = pair.slave.spawn_command(command)?;
     drop(pair.slave);
     let mut master = Some(pair.master);
+    let (send_tx, send_rx) = mpsc::channel::<Vec<u8>>();
+    let (written_tx, written_rx) = mpsc::channel();
+    thread::spawn(move || {
+        for input in send_rx {
+            let mut writer = writer.lock().unwrap();
+            let result = writer.write_all(&input).and_then(|()| writer.flush());
+            let failed = result.is_err();
+            if written_tx.send(result).is_err() || failed {
+                break;
+            }
+        }
+    });
     let result = (|| {
         let mut bytes = Vec::new();
         let mut step_index = 0;
         let (mut raw_cursor, mut clean_cursor) = (0, 0);
         let start = Instant::now();
         let mut pending = None;
+        let mut sending = false;
         let mut exited = None;
         let mut eof = false;
         loop {
@@ -355,12 +368,20 @@ pub fn pty(
                     timeout.as_millis()
                 );
             }
-            if let Some(send_at) = pending {
+            if sending {
+                match written_rx.try_recv() {
+                    Ok(result) => {
+                        result.context("Failed writing PTY input")?;
+                        step_index += 1;
+                        sending = false;
+                    }
+                    Err(mpsc::TryRecvError::Empty) => {}
+                    Err(error) => bail!("PTY input writer stopped: {error}"),
+                }
+            } else if let Some(send_at) = pending {
                 if Instant::now() >= send_at && exited.is_none() {
-                    let mut writer = writer.lock().unwrap();
-                    writer.write_all(spec::input_keys(&steps[step_index].input).as_bytes())?;
-                    writer.flush()?;
-                    step_index += 1;
+                    send_tx.send(spec::input_keys(&steps[step_index].input).into_bytes())?;
+                    sending = true;
                     pending = None;
                 }
             } else if let Some(step) = steps.get(step_index) {
@@ -383,6 +404,7 @@ pub fn pty(
             }
             if let Some(status) = &exited
                 && eof
+                && !sending
             {
                 if step_index < steps.len() {
                     bail!(

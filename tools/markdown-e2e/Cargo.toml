@@ -1,0 +1,18 @@
+[package]
+name = "markdown-e2e"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Standalone Markdown-driven CLI end-to-end test runner"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+portable-pty = "0.9"
+regex = "1"
+serde_yaml = "0.9"
+tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

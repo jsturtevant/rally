@@ -67,6 +67,39 @@ fn main() {
             if args[1] == "tree" { thread::sleep(Duration::from_secs(60)); }
         }
         "sleep" => { println!("before timeout"); thread::sleep(Duration::from_secs(10)); }
+        "background" | "background-pty" => {
+            let mut command = std::process::Command::new(env::current_exe().unwrap());
+            command.arg("agent").stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+            #[cfg(windows)]
+            {
+                use std::os::windows::{io::AsRawHandle, process::CommandExt};
+                for handle in [io::stdin().as_raw_handle(), io::stdout().as_raw_handle(), io::stderr().as_raw_handle()] {
+                    assert_ne!(unsafe { SetHandleInformation(handle, 1, 0) }, 0);
+                }
+                command.creation_flags(0x8 | 0x200); // DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+            }
+            let child = command.spawn().unwrap();
+            let marker = format!("{}.tmp", args[2]);
+            fs::write(&marker, format!("{}\n{}\n{}\n{}", std::process::id(), child.id(), env::var("TEST_HOME").unwrap(), env::var("XDG_CONFIG_HOME").unwrap())).unwrap();
+            fs::rename(marker, &args[2]).unwrap();
+            if args[1] == "background-pty" {
+                print!("Ready?"); io::stdout().flush().unwrap();
+                let mut answer = String::new(); io::stdin().read_line(&mut answer).unwrap();
+            }
+        }
+        "agent" => {
+            let home = env::var("TEST_HOME").unwrap();
+            while !std::path::Path::new(&format!("{home}/request")).exists() { thread::sleep(Duration::from_millis(10)); }
+            fs::write(format!("{home}/ready"), "ready").unwrap();
+            thread::sleep(Duration::from_secs(60));
+        }
+        "await-agent" => {
+            let home = env::var("TEST_HOME").unwrap();
+            fs::write(format!("{home}/request"), "").unwrap();
+            let deadline = std::time::Instant::now() + Duration::from_secs(1);
+            while !std::path::Path::new(&format!("{home}/ready")).exists() && std::time::Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
+            println!("{}", fs::read_to_string(format!("{home}/ready")).unwrap());
+        }
         #[cfg(unix)]
         "nonreading" => {
             assert!(std::process::Command::new("stty").args(["raw", "-echo"]).status().unwrap().success());
@@ -583,6 +616,85 @@ fn mixed_case_environment_cannot_override_fixture_isolation() {
         assert!(output.status.success(), "{}", text(&output));
     }
     assert_eq!(fs::read_dir(caller_home).unwrap().count(), 0);
+}
+
+#[cfg(windows)]
+#[test]
+fn invalid_executables_are_startup_errors_not_expected_exit_codes() {
+    let dir = tempfile::tempdir().unwrap();
+    let program = dir.path().join("invalid.exe");
+    fs::write(&program, b"not a Windows executable").unwrap();
+    for pty in [false, true] {
+        fs::write(
+            dir.path().join("invalid.md"),
+            format!(
+                "## `\"{}\"` (exit 1)\n{}",
+                program.display(),
+                if pty { "```pty\n```\n" } else { "" }
+            ),
+        )
+        .unwrap();
+        let output = command(dir.path()).output().unwrap();
+        assert!(!output.status.success(), "{}", text(&output));
+        assert!(
+            text(&output).contains("Failed to start command"),
+            "{}",
+            text(&output)
+        );
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn successful_jobs_keep_agents_alive_until_the_markdown_file_finishes() {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::{
+        Foundation::{ERROR_INVALID_PARAMETER, WAIT_OBJECT_0},
+        System::Threading::{OpenProcess, SYNCHRONIZATION_SYNCHRONIZE, WaitForSingleObject},
+    };
+    for pty in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let started = dir.path().join("started");
+        fs::write(
+            dir.path().join("agent.md"),
+            format!(
+                "## `app {} \"{}\"`\n{}\n## `app await-agent`\n```expected\nready\n```\n",
+                if pty { "background-pty" } else { "background" },
+                started.display(),
+                if pty {
+                    "```pty\nmatch: Ready?\nsend: yes{enter}\n```\n"
+                } else {
+                    ""
+                }
+            ),
+        )
+        .unwrap();
+        let output = command(dir.path()).output().unwrap();
+        assert!(output.status.success(), "{}", text(&output));
+        let info = fs::read_to_string(started).unwrap();
+        let info: Vec<_> = info.lines().collect();
+        let pid = info[1].parse().unwrap();
+        let handle = unsafe { OpenProcess(SYNCHRONIZATION_SYNCHRONIZE, 0, pid) };
+        if handle.is_null() {
+            assert_eq!(
+                std::io::Error::last_os_error().raw_os_error(),
+                Some(ERROR_INVALID_PARAMETER as i32)
+            );
+        } else {
+            let process = unsafe { OwnedHandle::from_raw_handle(handle) };
+            assert_eq!(
+                unsafe { WaitForSingleObject(process.as_raw_handle(), 1000) },
+                WAIT_OBJECT_0,
+                "Background agent survived file cleanup"
+            );
+        }
+        for path in &info[2..] {
+            assert!(
+                !Path::new(path).exists(),
+                "Fixture {path} was not cleaned up"
+            );
+        }
+    }
 }
 
 #[cfg(windows)]

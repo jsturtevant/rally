@@ -17,6 +17,22 @@ use std::{
 
 pub type Environment = BTreeMap<OsString, OsString>;
 
+#[derive(Default)]
+pub struct Scope {
+    #[cfg(windows)]
+    jobs: std::cell::RefCell<Vec<crate::windows::ProcessTree>>,
+}
+
+impl Scope {
+    pub fn close(self) -> Result<()> {
+        #[cfg(windows)]
+        for job in self.jobs.into_inner() {
+            job.close()?;
+        }
+        Ok(())
+    }
+}
+
 pub fn set_env(env: &mut Environment, key: &str, value: impl Into<OsString>) {
     #[cfg(windows)]
     env.retain(|name, _| !crate::windows::same_env_name(name, key));
@@ -69,16 +85,28 @@ fn executable(program: &str, cwd: &Path, env: &Environment) -> Result<std::path:
 #[cfg(windows)]
 pub fn internal_exec() -> ! {
     let mut args = std::env::args_os().skip(2);
+    let event = args.next();
+    let status_path = args.next();
     let result = (|| {
-        let event = args.next().context("Missing internal startup event")?;
+        let event = event.context("Missing internal startup event")?;
+        let status_path = status_path
+            .as_ref()
+            .context("Missing internal startup status")?;
         crate::windows::wait_for_start(&event)?;
         crate::windows::protect_stdio()?;
         let program = args.next().context("Missing internal executable")?;
-        Ok::<_, anyhow::Error>(Command::new(program).args(args).status()?)
+        let mut child = Command::new(program).args(args).spawn()?;
+        std::fs::write(status_path, "started").context("Failed to report command startup")?;
+        Ok::<_, anyhow::Error>(child.wait()?)
     })();
     match result {
         Ok(status) => std::process::exit(status.code().unwrap_or(1)),
         Err(error) => {
+            if let Some(path) = status_path
+                && let Err(report_error) = std::fs::write(path, format!("{error:#}"))
+            {
+                eprintln!("Failed to report command startup error: {report_error}");
+            }
             eprintln!("Failed to execute command: {error:#}");
             std::process::exit(1);
         }
@@ -121,7 +149,10 @@ pub fn run(
     env: &Environment,
     input: Option<Vec<u8>>,
     timeout: Duration,
+    scope: &Scope,
 ) -> Result<Output> {
+    #[cfg(not(windows))]
+    let _ = scope;
     cancellation::check()?;
     let program = args.first().context("Empty command in pipeline stage")?;
     #[cfg(windows)]
@@ -135,6 +166,7 @@ pub fn run(
         command.args([
             OsString::from("--internal-exec"),
             tree.event_name.clone(),
+            tree.status_path.clone().into_os_string(),
             program.clone().into_os_string(),
         ]);
         command
@@ -217,6 +249,8 @@ pub fn run(
             }
             thread::sleep(Duration::from_millis(10));
         };
+        #[cfg(windows)]
+        tree.check_started()?;
         let collect = |rx: Receiver<std::io::Result<Vec<u8>>>| -> Result<Vec<u8>> {
             loop {
                 cancellation::check()?;
@@ -256,7 +290,7 @@ pub fn run(
     }
     #[cfg(windows)]
     if result.is_ok() {
-        tree.terminate()?;
+        scope.jobs.borrow_mut().push(tree);
     }
     result
 }
@@ -267,7 +301,10 @@ pub fn pty(
     env: &Environment,
     steps: &[spec::Step],
     timeout: Duration,
+    scope: &Scope,
 ) -> Result<Output> {
+    #[cfg(not(windows))]
+    let _ = scope;
     cancellation::check()?;
     let pair = native_pty_system().openpty(PtySize {
         rows: 30,
@@ -286,6 +323,7 @@ pub fn pty(
             std::env::current_exe()?.into_os_string(),
             "--internal-exec".into(),
             tree.event_name.clone(),
+            tree.status_path.clone().into_os_string(),
         ];
         argv.push(program.into_os_string());
         argv.extend(args.iter().skip(1).map(OsString::from));
@@ -426,7 +464,7 @@ pub fn pty(
                 exited = child.try_wait()?;
                 if exited.is_some() {
                     #[cfg(windows)]
-                    tree.terminate()?;
+                    tree.check_started()?;
                     // Closing ConPTY releases its output pipe so the reader can drain to EOF.
                     drop(master.take());
                 }
@@ -449,7 +487,11 @@ pub fn pty(
         }
     })();
     #[cfg(windows)]
-    tree.terminate()?;
+    if result.is_ok() {
+        scope.jobs.borrow_mut().push(tree);
+    } else {
+        tree.terminate()?;
+    }
     if result.is_err() {
         #[cfg(unix)]
         kill_group(child.process_id().context("Missing PTY process ID")?)?;

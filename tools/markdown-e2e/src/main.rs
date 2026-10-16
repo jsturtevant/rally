@@ -128,6 +128,7 @@ fn resolve_setup(command: &str, dir: &Path) -> Result<Vec<String>> {
 }
 
 struct Fixture {
+    processes: process::Scope,
     _home: TempDir,
     _config: TempDir,
     _repo: Option<TempDir>,
@@ -159,6 +160,7 @@ impl Fixture {
     fn new(options: &Options, spec: &spec::Spec, gh_config: &Path) -> Result<Self> {
         let home = Builder::new().prefix("markdown-e2e-home-").tempdir()?;
         let config = Builder::new().prefix("markdown-e2e-xdg-").tempdir()?;
+        let processes = process::Scope::default();
         let mut env: process::Environment = env::vars_os().collect();
         for (key, value) in [
             ("NO_COLOR", "1"),
@@ -183,6 +185,7 @@ impl Fixture {
                 &env,
                 None,
                 Duration::from_secs(30),
+                &processes,
             )
             .context("gh not installed or unavailable; install GitHub CLI to clone fixtures")?;
             if auth.code != 0 {
@@ -201,6 +204,7 @@ impl Fixture {
                 &env,
                 None,
                 Duration::from_secs(30),
+                &processes,
             )?;
             if cloned.code != 0 {
                 bail!("Failed to clone {owner_repo}:\n{}", cloned.text);
@@ -229,6 +233,7 @@ impl Fixture {
             ),
         ];
         Ok(Self {
+            processes,
             _home: home,
             _config: config,
             _repo: repo,
@@ -247,6 +252,7 @@ impl Fixture {
     }
 
     fn close(self) -> Result<()> {
+        self.processes.close()?;
         if let Some(repo) = self._repo {
             repo.close().context("Failed to clean up cloned fixture")?;
         }
@@ -275,6 +281,7 @@ fn execute(
             &fixture.env,
             steps,
             timeout,
+            &fixture.processes,
         )?
     } else {
         let stages = spec::split_pipeline(&command);
@@ -290,6 +297,7 @@ fn execute(
                 &fixture.env,
                 input,
                 timeout,
+                &fixture.processes,
             )?;
             if result.code != 0 {
                 output = Some(result);
@@ -441,8 +449,15 @@ fn run(options: Options) -> Result<bool> {
         let setup_result = (|| -> Result<()> {
             if let Some(setup) = &spec.setup {
                 let args = resolve_setup(setup, &dir)?;
-                let result = process::run(&args, &options.cwd, &fixture.env, None, timeout)
-                    .with_context(|| format!("Setup command failed: {setup}"))?;
+                let result = process::run(
+                    &args,
+                    &options.cwd,
+                    &fixture.env,
+                    None,
+                    timeout,
+                    &fixture.processes,
+                )
+                .with_context(|| format!("Setup command failed: {setup}"))?;
                 if result.code != 0 {
                     bail!("Setup command failed: {setup}\n{}", result.text);
                 }

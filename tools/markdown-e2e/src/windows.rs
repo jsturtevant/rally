@@ -6,6 +6,7 @@ use std::{
         ffi::OsStrExt,
         io::{AsRawHandle, FromRawHandle, OwnedHandle},
     },
+    path::PathBuf,
     ptr::{null, null_mut},
     sync::atomic::{AtomicU64, Ordering},
     thread,
@@ -78,6 +79,8 @@ pub struct ProcessTree {
     job: OwnedHandle,
     event: OwnedHandle,
     pub event_name: OsString,
+    status_dir: tempfile::TempDir,
+    pub status_path: PathBuf,
 }
 
 impl ProcessTree {
@@ -109,11 +112,33 @@ impl ProcessTree {
         if existing {
             bail!("Command startup event already exists");
         }
+        let status_dir = tempfile::Builder::new()
+            .prefix("markdown-e2e-process-")
+            .tempdir()?;
+        let status_path = status_dir.path().join("startup");
         Ok(Self {
             job,
             event,
             event_name,
+            status_dir,
+            status_path,
         })
+    }
+
+    pub fn check_started(&self) -> Result<()> {
+        let status = std::fs::read_to_string(&self.status_path)
+            .context("Failed to read command startup status")?;
+        if status != "started" {
+            bail!("Failed to start command: {status}");
+        }
+        Ok(())
+    }
+
+    pub fn close(self) -> Result<()> {
+        self.terminate()?;
+        self.status_dir
+            .close()
+            .context("Failed to clean up command startup status")
     }
 
     pub fn start(&self, pid: u32) -> Result<()> {

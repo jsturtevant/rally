@@ -104,6 +104,18 @@ test('readConfig throws on invalid YAML', (t) => {
   }, /Failed to parse config.yaml/);
 });
 
+test('readConfig returns undefined when file only contains comments', (t) => {
+  const tempDir = withTempRallyHome(t);
+  writeFileSync(join(tempDir, 'config.yaml'), '# no configuration\n', 'utf8');
+  assert.strictEqual(readConfig(), undefined);
+});
+
+test('readConfig rejects multiple YAML documents', (t) => {
+  const tempDir = withTempRallyHome(t);
+  writeFileSync(join(tempDir, 'config.yaml'), 'version: 1\n---\nversion: 2\n', 'utf8');
+  assert.throws(() => readConfig(), /expected a single YAML document, but found 2/);
+});
+
 test('readProjects returns default when file missing', (t) => {
   withTempRallyHome(t);
   const projects = readProjects();
@@ -142,6 +154,18 @@ test('readActive returns default when file is empty', (t) => {
   writeFileSync(join(tempDir, 'active.yaml'), '', 'utf8');
   const active = readActive();
   assert.deepEqual(active, { dispatches: [] });
+});
+
+test('readProjects returns default when file only contains comments', (t) => {
+  const tempDir = withTempRallyHome(t);
+  writeFileSync(join(tempDir, 'projects.yaml'), '# no projects\n', 'utf8');
+  assert.deepEqual(readProjects(), { projects: [] });
+});
+
+test('readActive returns default when file only contains comments', (t) => {
+  const tempDir = withTempRallyHome(t);
+  writeFileSync(join(tempDir, 'active.yaml'), '# no active dispatches\n', 'utf8');
+  assert.deepEqual(readActive(), { dispatches: [] });
 });
 
 test('readActive reads YAML written directly', (t) => {

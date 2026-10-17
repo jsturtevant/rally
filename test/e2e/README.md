@@ -4,7 +4,7 @@ Markdown-driven end-to-end tests for the Rally CLI. Each `.md` file in `test/e2e
 
 The runner is [Markmason](https://github.com/jsturtevant/markmason), a standalone
 Rust binary named `mm`. Its source, framework tests, and releases live in that
-repository; Rally consumes the pinned `v0.1.2` release. Rust is not needed here.
+repository; Rally consumes the pinned `v0.2.0` minor release. Rust is not needed here.
 Node is still required by Rally and its JavaScript fixtures.
 
 ## Running Tests

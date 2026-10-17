@@ -6,7 +6,11 @@ clone: jsturtevant/rally-test-fixtures
 
 Tests for `rally onboard .` without `--team` flag — exercises the interactive squad creation flow via PTY.
 
-## `rally onboard .`
+## Create a squad and onboard interactively
+
+```markmason
+rally onboard .
+```
 
 Onboards the current directory. Without `--team`, triggers interactive squad creation
 (since no personal squad exists yet). The PTY steps answer the prompts automatically.
@@ -24,7 +28,11 @@ send: {enter}
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally status`
+## Show the project and new squad in status
+
+```markmason
+rally status
+```
 
 After interactive onboard, status should show 1 project and the squad.
 
@@ -49,7 +57,11 @@ Active Dispatches (0):
   (none)
 ```
 
-## `rally onboard . --team default`
+## Keep repeated onboarding idempotent
+
+```markmason
+rally onboard . --team default
+```
 
 Re-onboarding the same repo should be idempotent.
 
@@ -58,7 +70,11 @@ Re-onboarding the same repo should be idempotent.
   Project already registered — skipping
 ```
 
-## `rally onboard remove $PROJECT_NAME --yes`
+## Remove the project without prompting
+
+```markmason
+rally onboard remove $PROJECT_NAME --yes
+```
 
 Removes the project without interactive prompt.
 
@@ -66,7 +82,11 @@ Removes the project without interactive prompt.
 ✓ Removed project: $PROJECT_NAME (jsturtevant/rally-test-fixtures)
 ```
 
-## `rally status`
+## Confirm status has no onboarded projects
+
+```markmason
+rally status
+```
 
 After removing, status should show 0 projects.
 

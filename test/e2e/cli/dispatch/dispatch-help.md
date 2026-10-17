@@ -2,7 +2,11 @@
 
 Verifies help output for dispatch and all subcommands.
 
-## `rally dispatch --help`
+## Show dispatch help
+
+```markmason
+rally dispatch --help
+```
 
 ```expected
 Usage: rally dispatch [options] [command]
@@ -23,7 +27,11 @@ Commands:
   sessions                     List active dispatches with session info
 ```
 
-## `rally dispatch issue --help`
+## Show issue dispatch help
+
+```markmason
+rally dispatch issue --help
+```
 
 ```expected
 Usage: rally dispatch issue [options] [number]
@@ -41,7 +49,11 @@ Options:
   -h, --help           display help for command
 ```
 
-## `rally dispatch pr --help`
+## Show pull request dispatch help
+
+```markmason
+rally dispatch pr --help
+```
 
 ```expected
 Usage: rally dispatch pr [options] [number]
@@ -60,7 +72,11 @@ Options:
   -h, --help           display help for command
 ```
 
-## `rally dispatch clean --help`
+## Show dispatch cleanup help
+
+```markmason
+rally dispatch clean --help
+```
 
 ```expected
 Usage: rally dispatch clean [options]

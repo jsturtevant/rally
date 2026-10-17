@@ -11,7 +11,11 @@ Exercises `rally dispatch log` with a fast help check, a missing-dispatch error,
 and a real end-to-end dispatch whose captured Copilot log is displayed before
 cleanup.
 
-## `rally dispatch log --help`
+## Show dispatch log help
+
+```markmason
+rally dispatch log --help
+```
 
 Shows dispatch log usage.
 
@@ -29,7 +33,11 @@ Options:
   -h, --help           display help for command
 ```
 
-## `rally dispatch log 999` (exit 1)
+## Reject a log request for an unknown dispatch
+
+```markmason (exit 1)
+rally dispatch log 999
+```
 
 No dispatch exists for issue #999, so the command should fail with exit code 1.
 
@@ -37,7 +45,11 @@ No dispatch exists for issue #999, so the command should fail with exit code 1.
 Error: No active dispatch found for #999
 ```
 
-## `rally onboard . --team default`
+## Onboard the log test repository
+
+```markmason
+rally onboard . --team default
+```
 
 Onboard the cloned fixtures repo so dispatch can find it.
 
@@ -46,7 +58,11 @@ Onboard the cloned fixtures repo so dispatch can find it.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally dispatch issue 1 --repo jsturtevant/rally-test-fixtures --trust`
+## Dispatch the fixture issue
+
+```markmason
+rally dispatch issue 1 --repo jsturtevant/rally-test-fixtures --trust
+```
 
 Dispatch issue #1 and launch Copilot with trust enabled.
 
@@ -54,11 +70,19 @@ Dispatch issue #1 and launch Copilot with trust enabled.
 Dispatched issue #1: [E2E Test] Dispatch issue test → $REPO_ROOT/.worktrees/rally-1
 ```
 
-## `node ./wait-for-pid.js rally-test-fixtures-issue-1 240`
+## Wait for the agent process to exit
+
+```markmason
+node ./wait-for-pid.js rally-test-fixtures-issue-1 240
+```
 
 Wait for the Copilot PID to exit without refreshing dispatch status.
 
-## `rally dispatch log 1 --repo jsturtevant/rally-test-fixtures | grep -cE 'Total session time:|^Resume +copilot --resume='`
+## Read exactly one completion marker from the log
+
+```markmason
+rally dispatch log 1 --repo jsturtevant/rally-test-fixtures | grep -cE 'Total session time:|^Resume +copilot --resume='
+```
 
 Run `rally dispatch log` through a pipe and verify the completion marker is
 present exactly once. Copilot CLI 1.0.76 replaced the `Total session time:`
@@ -68,6 +92,10 @@ summary line with a `Resume` line, so either marker is accepted.
 1
 ```
 
-## `rally dispatch clean --all --yes`
+## Clean up the dispatch
+
+```markmason
+rally dispatch clean --all --yes
+```
 
 Clean up the worktree and active dispatch record.

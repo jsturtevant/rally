@@ -8,7 +8,11 @@ setup: node setup-squad.js
 Tests declining the confirmation prompt during `rally onboard remove`.
 Squad is pre-created by setup script. Local repo is cloned by runner.
 
-## `rally onboard . --team default`
+## Onboard a project before testing removal
+
+```markmason
+rally onboard . --team default
+```
 
 Onboard the local repo first so we have something to remove.
 
@@ -17,7 +21,11 @@ Onboard the local repo first so we have something to remove.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally onboard remove`
+## Decline removal in the interactive picker
+
+```markmason
+rally onboard remove
+```
 
 Interactive remove — select the project from the picker, then decline the confirmation.
 
@@ -32,7 +40,11 @@ send: n{enter}
 Cancelled.
 ```
 
-## `grep $PROJECT_NAME $RALLY_HOME/projects.yaml`
+## Confirm the project remains registered
+
+```markmason
+grep $PROJECT_NAME $RALLY_HOME/projects.yaml
+```
 
 After declining removal, the project should still be in projects.yaml.
 
@@ -41,7 +53,11 @@ After declining removal, the project should still be in projects.yaml.
     path: $REPO_ROOT
 ```
 
-## `rally onboard . --team default`
+## Confirm onboarding still finds the project
+
+```markmason
+rally onboard . --team default
+```
 
 Re-onboard should show the project is still there (not removed).
 

@@ -2,7 +2,11 @@
 
 Tests for the `rally status` command in a fresh Rally environment with no onboarded projects or active dispatches.
 
-## `rally status --help`
+## Show status help
+
+```markmason
+rally status --help
+```
 
 Shows status usage and options.
 
@@ -16,7 +20,11 @@ Options:
   -h, --help  display help for command
 ```
 
-## `rally status`
+## Show a fresh Rally environment
+
+```markmason
+rally status
+```
 
 Displays config paths, directories, and empty project/dispatch lists.
 
@@ -41,7 +49,11 @@ Active Dispatches (0):
   (none)
 ```
 
-## `rally status --json`
+## Show configuration and empty state as JSON
+
+```markmason
+rally status --json
+```
 
 Outputs full config state as JSON. Setup already ran so no setup output here.
 

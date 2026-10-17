@@ -2,7 +2,11 @@
 
 Tests for basic CLI help and version commands. These don't require any repo setup.
 
-## `rally --help`
+## Show top-level commands and options
+
+```markmason
+rally --help
+```
 
 Shows all available commands and global options.
 
@@ -23,7 +27,11 @@ Commands:
   help [command]            display help for command
 ```
 
-## `rally --version`
+## Print the installed version
+
+```markmason
+rally --version
+```
 
 Prints the installed version number.
 
@@ -31,6 +39,10 @@ Prints the installed version number.
 0.2.0
 ```
 
-## `rally bad-command` (exit 1)
+## Reject an unknown command
+
+```markmason (exit 1)
+rally bad-command
+```
 
 Smoke test for non-zero exits without an expected output block.

@@ -12,7 +12,11 @@ real issue dispatch whose Copilot PID has already exited. The key assertion is
 that the status stays `implementing` until `rally dispatch refresh` observes the
 Copilot completion marker and advances it to `reviewing`.
 
-## `rally onboard . --team default`
+## Onboard the refresh test repository
+
+```markmason
+rally onboard . --team default
+```
 
 Onboard the cloned fixtures repo so dispatch can find it.
 
@@ -21,7 +25,11 @@ Onboard the cloned fixtures repo so dispatch can find it.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally dispatch refresh`
+## Refresh when no dispatches are active
+
+```markmason
+rally dispatch refresh
+```
 
 With no active dispatches yet, refresh should report that everything is already
 up to date.
@@ -30,7 +38,11 @@ up to date.
 All dispatch statuses are up to date.
 ```
 
-## `rally dispatch issue 1 --repo jsturtevant/rally-test-fixtures --trust`
+## Dispatch the fixture issue
+
+```markmason
+rally dispatch issue 1 --repo jsturtevant/rally-test-fixtures --trust
+```
 
 Dispatch issue #1 and launch Copilot with trust enabled.
 
@@ -38,7 +50,11 @@ Dispatch issue #1 and launch Copilot with trust enabled.
 Dispatched issue #1: [E2E Test] Dispatch issue test → $REPO_ROOT/.worktrees/rally-1
 ```
 
-## `grep status: $RALLY_HOME/active.yaml`
+## Check the initial implementing status
+
+```markmason
+grep status: $RALLY_HOME/active.yaml
+```
 
 Verify the real dispatch is active and currently implementing.
 
@@ -46,11 +62,19 @@ Verify the real dispatch is active and currently implementing.
 status: implementing
 ```
 
-## `node ./wait-for-pid.js rally-test-fixtures-issue-1 240`
+## Wait for the agent without refreshing
+
+```markmason
+node ./wait-for-pid.js rally-test-fixtures-issue-1 240
+```
 
 Wait for the Copilot PID to exit without running `rally dispatch refresh`.
 
-## `grep status: $RALLY_HOME/active.yaml`
+## Confirm the recorded status has not changed yet
+
+```markmason
+grep status: $RALLY_HOME/active.yaml
+```
 
 Even after the PID exits, the dispatch should still be marked implementing until
 refresh runs.
@@ -59,11 +83,19 @@ refresh runs.
 status: implementing
 ```
 
-## `rally dispatch refresh`
+## Refresh the completed dispatch
+
+```markmason
+rally dispatch refresh
+```
 
 Now run the command under test to update the dispatch status.
 
-## `grep status: $RALLY_HOME/active.yaml`
+## Check the refreshed status
+
+```markmason
+grep status: $RALLY_HOME/active.yaml
+```
 
 After refresh runs, the dispatch should no longer be implementing.
 
@@ -71,6 +103,10 @@ After refresh runs, the dispatch should no longer be implementing.
 status: reviewing
 ```
 
-## `rally dispatch clean --all --yes`
+## Clean up the refreshed dispatch
+
+```markmason
+rally dispatch clean --all --yes
+```
 
 Clean up the worktree and dispatch record.

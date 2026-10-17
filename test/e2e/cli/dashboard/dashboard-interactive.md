@@ -8,7 +8,11 @@ Exercises the full interactive flow: `rally dashboard` triggers squad creation o
 (no personal squad exists), then the Ink TUI launches. We quit the TUI, onboard the repo,
 and verify it appears in dashboard JSON.
 
-## `rally dashboard`
+## Create a squad and open the dashboard
+
+```markmason
+rally dashboard
+```
 
 Triggers interactive squad creation, then the Ink TUI. We detect Ink's initialization
 via `match-raw:` (Ink hides the cursor on first render) then send q to quit.
@@ -24,7 +28,11 @@ match-raw: {hide-cursor}
 send: q
 ```
 
-## `rally onboard . --team default`
+## Onboard a project using the new squad
+
+```markmason
+rally onboard . --team default
+```
 
 Now that squad exists from the dashboard flow, onboard the cloned repo.
 
@@ -33,7 +41,11 @@ Now that squad exists from the dashboard flow, onboard the cloned repo.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally dashboard --json`
+## Show the onboarded project in dashboard data
+
+```markmason
+rally dashboard --json
+```
 
 Dashboard JSON should list the onboarded project after interactive squad creation.
 

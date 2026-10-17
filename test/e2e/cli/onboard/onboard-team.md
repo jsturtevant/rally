@@ -7,7 +7,11 @@ clone: jsturtevant/rally-test-fixtures
 Tests for `rally onboard` commands that require a real git repository.
 The first onboard creates the personal squad via interactive prompts (PTY).
 
-## `rally onboard . --team default`
+## Create a squad and onboard with an explicit team
+
+```markmason
+rally onboard . --team default
+```
 
 Onboards the current directory with explicit team name. Creates personal squad on first run.
 
@@ -24,7 +28,11 @@ send: {enter}
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `grep $PROJECT_NAME $RALLY_HOME/projects.yaml`
+## Check the project registry
+
+```markmason
+grep $PROJECT_NAME $RALLY_HOME/projects.yaml
+```
 
 Verify the project was actually written to projects.yaml.
 
@@ -33,7 +41,11 @@ Verify the project was actually written to projects.yaml.
     path: $REPO_ROOT
 ```
 
-## `rally status`
+## Show the onboarded project in status
+
+```markmason
+rally status
+```
 
 After onboarding, status should show 1 project.
 
@@ -58,7 +70,11 @@ Active Dispatches (0):
   (none)
 ```
 
-## `rally onboard . --team default`
+## Keep repeated onboarding idempotent
+
+```markmason
+rally onboard . --team default
+```
 
 Re-onboarding the same repo should be idempotent.
 
@@ -67,7 +83,11 @@ Re-onboarding the same repo should be idempotent.
   Project already registered — skipping
 ```
 
-## `rally onboard remove $PROJECT_NAME --yes`
+## Remove the project without prompting
+
+```markmason
+rally onboard remove $PROJECT_NAME --yes
+```
 
 Removes the project without interactive prompt.
 
@@ -75,11 +95,19 @@ Removes the project without interactive prompt.
 ✓ Removed project: $PROJECT_NAME (jsturtevant/rally-test-fixtures)
 ```
 
-## `grep $PROJECT_NAME $RALLY_HOME/projects.yaml` (exit 1)
+## Confirm the registry no longer contains the project
+
+```markmason (exit 1)
+grep $PROJECT_NAME $RALLY_HOME/projects.yaml
+```
 
 After removal, the project should no longer appear in projects.yaml.
 
-## `rally status`
+## Confirm status has no onboarded projects
+
+```markmason
+rally status
+```
 
 After removing, status should show 0 projects.
 

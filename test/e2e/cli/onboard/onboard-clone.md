@@ -7,7 +7,11 @@ setup: node setup-squad.js
 Tests `rally onboard owner/repo` and URL forms where Rally itself clones the repository.
 Squad is pre-created by setup script. No `clone:` — Rally does the cloning.
 
-## `rally onboard jsturtevant/rally-test-fixtures --team default`
+## Clone and onboard an owner/repository reference
+
+```markmason
+rally onboard jsturtevant/rally-test-fixtures --team default
+```
 
 Onboards by cloning via owner/repo shorthand. Rally clones to projects dir.
 
@@ -18,7 +22,11 @@ Onboards by cloning via owner/repo shorthand. Rally clones to projects dir.
 ✓ Registered project: rally-test-fixtures
 ```
 
-## `ls $RALLY_HOME/projects/rally-test-fixtures/.git/info/exclude`
+## Check the cloned Git repository
+
+```markmason
+ls $RALLY_HOME/projects/rally-test-fixtures/.git/info/exclude
+```
 
 Verify the cloned project directory actually exists and has a git repo.
 
@@ -26,7 +34,11 @@ Verify the cloned project directory actually exists and has a git repo.
 $RALLY_HOME/projects/rally-test-fixtures/.git/info/exclude
 ```
 
-## `rally status`
+## Show the cloned project in status
+
+```markmason
+rally status
+```
 
 After clone-onboard, status should show the project.
 
@@ -51,7 +63,11 @@ Active Dispatches (0):
   (none)
 ```
 
-## `rally onboard jsturtevant/rally-test-fixtures --team default`
+## Onboard the same repository again
+
+```markmason
+rally onboard jsturtevant/rally-test-fixtures --team default
+```
 
 Re-onboard same repo — clone target exists, project already registered.
 
@@ -61,7 +77,11 @@ Re-onboard same repo — clone target exists, project already registered.
   Project already registered — skipping
 ```
 
-## `rally onboard remove rally-test-fixtures --yes`
+## Remove the project registered by shorthand
+
+```markmason
+rally onboard remove rally-test-fixtures --yes
+```
 
 Clean up the owner/repo onboard.
 
@@ -69,7 +89,11 @@ Clean up the owner/repo onboard.
 ✓ Removed project: rally-test-fixtures (jsturtevant/rally-test-fixtures)
 ```
 
-## `rally onboard https://github.com/jsturtevant/rally-test-fixtures --team default`
+## Onboard the existing checkout by HTTPS URL
+
+```markmason
+rally onboard https://github.com/jsturtevant/rally-test-fixtures --team default
+```
 
 Onboards via full HTTPS URL. Clone target still exists on disk, so clone is skipped.
 
@@ -79,7 +103,11 @@ Onboards via full HTTPS URL. Clone target still exists on disk, so clone is skip
 ✓ Registered project: rally-test-fixtures
 ```
 
-## `rally onboard remove rally-test-fixtures --yes`
+## Remove the project registered by URL
+
+```markmason
+rally onboard remove rally-test-fixtures --yes
+```
 
 Clean up after URL onboard.
 

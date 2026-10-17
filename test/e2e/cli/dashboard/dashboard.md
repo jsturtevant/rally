@@ -2,7 +2,11 @@
 
 Tests for the `rally dashboard` command in a fresh Rally environment with no onboarded projects or active dispatches.
 
-## `rally dashboard --help`
+## Show dashboard help
+
+```markmason
+rally dashboard --help
+```
 
 Shows dashboard usage and options.
 
@@ -17,7 +21,11 @@ Options:
   -h, --help        display help for command
 ```
 
-## `rally dashboard --json`
+## Show an empty dashboard as JSON
+
+```markmason
+rally dashboard --json
+```
 
 Outputs empty dashboard data as JSON in a fresh environment.
 
@@ -28,7 +36,11 @@ Outputs empty dashboard data as JSON in a fresh environment.
 }
 ```
 
-## `rally dashboard --project nonexistent --json`
+## Filter an empty dashboard by project
+
+```markmason
+rally dashboard --project nonexistent --json
+```
 
 Filtering by a missing project still returns valid empty dashboard JSON.
 

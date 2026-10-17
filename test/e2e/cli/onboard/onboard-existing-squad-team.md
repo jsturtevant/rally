@@ -8,7 +8,11 @@ setup: node setup-squad.js
 Tests `rally onboard .` (no `--team` flag) when the personal squad already exists.
 Squad is created by the setup script before tests run — no interactive prompts needed.
 
-## `rally onboard . --team default`
+## Onboard with an existing squad and explicit team
+
+```markmason
+rally onboard . --team default
+```
 
 Onboards with explicit team name. Squad already exists so no creation prompt.
 
@@ -17,7 +21,11 @@ Onboards with explicit team name. Squad already exists so no creation prompt.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally status`
+## Show the onboarded project
+
+```markmason
+rally status
+```
 
 After onboarding, status should show 1 project.
 
@@ -42,7 +50,11 @@ Active Dispatches (0):
   (none)
 ```
 
-## `rally onboard . --team customteam`
+## Accept a custom team name with an existing squad
+
+```markmason
+rally onboard . --team customteam
+```
 
 Using a non-default team name currently behaves the same — the --team flag is ignored.
 
@@ -51,7 +63,11 @@ Using a non-default team name currently behaves the same — the --team flag is 
   Project already registered — skipping
 ```
 
-## `rally onboard . --team default`
+## Keep repeated onboarding idempotent
+
+```markmason
+rally onboard . --team default
+```
 
 Re-onboarding the same repo should be idempotent.
 
@@ -60,7 +76,11 @@ Re-onboarding the same repo should be idempotent.
   Project already registered — skipping
 ```
 
-## `rally onboard remove nonexistent --yes` (exit 1)
+## Reject removal of an unknown project
+
+```markmason (exit 1)
+rally onboard remove nonexistent --yes
+```
 
 Removing a project name that doesn't match any onboarded project.
 
@@ -68,7 +88,11 @@ Removing a project name that doesn't match any onboarded project.
 Error: Project "nonexistent" not found. Run rally onboard remove to see available projects.
 ```
 
-## `rally onboard remove $PROJECT_NAME --yes`
+## Remove the onboarded project
+
+```markmason
+rally onboard remove $PROJECT_NAME --yes
+```
 
 Removes the project without interactive prompt.
 
@@ -76,7 +100,11 @@ Removes the project without interactive prompt.
 ✓ Removed project: $PROJECT_NAME (jsturtevant/rally-test-fixtures)
 ```
 
-## `rally status`
+## Confirm the project was removed
+
+```markmason
+rally status
+```
 
 After removing, status should show 0 projects.
 

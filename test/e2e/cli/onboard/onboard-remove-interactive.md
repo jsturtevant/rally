@@ -8,7 +8,11 @@ setup: node setup-squad.js
 Tests `rally onboard remove` without --yes flag (interactive confirmation via PTY).
 Squad is pre-created by setup script. Local repo is cloned by runner.
 
-## `rally onboard . --team default`
+## Onboard a project before testing removal
+
+```markmason
+rally onboard . --team default
+```
 
 Onboard the local repo first so we have something to remove.
 
@@ -17,7 +21,11 @@ Onboard the local repo first so we have something to remove.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally onboard remove`
+## Select and confirm removal interactively
+
+```markmason
+rally onboard remove
+```
 
 Interactive remove — select the project from the picker, then confirm.
 

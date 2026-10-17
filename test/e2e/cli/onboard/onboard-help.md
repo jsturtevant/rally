@@ -2,7 +2,11 @@
 
 Tests for `rally onboard` commands. Help tests only — no network or filesystem needed.
 
-## `rally onboard --help`
+## Show onboard arguments and options
+
+```markmason
+rally onboard --help
+```
 
 Shows onboard usage, arguments, options, and subcommands.
 
@@ -23,7 +27,11 @@ Commands:
   remove [options] [project]  Remove an onboarded project from Rally
 ```
 
-## `rally onboard remove --help`
+## Show project removal help
+
+```markmason
+rally onboard remove --help
+```
 
 Shows remove subcommand usage.
 

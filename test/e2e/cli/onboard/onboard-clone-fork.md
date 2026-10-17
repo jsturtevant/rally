@@ -7,7 +7,11 @@ setup: node setup-squad.js
 Tests `rally onboard owner/repo --fork owner/repo` where an explicit fork is provided.
 Squad is pre-created by setup script. Rally clones then configures fork remotes.
 
-## `rally onboard jsturtevant/rally-test-fixtures --fork jsturtevant/rally-test-fixtures --team default`
+## Clone a repository with an explicit fork
+
+```markmason
+rally onboard jsturtevant/rally-test-fixtures --fork jsturtevant/rally-test-fixtures --team default
+```
 
 Clone + explicit fork. Clones the repo, then configures remotes:
 origin renamed to upstream, new origin set to fork URL.
@@ -21,7 +25,11 @@ origin renamed to upstream, new origin set to fork URL.
 ✓ Registered project: rally-test-fixtures
 ```
 
-## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url origin`
+## Check the fork remote
+
+```markmason
+git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url origin
+```
 
 Verify origin was set to the fork URL.
 
@@ -29,7 +37,11 @@ Verify origin was set to the fork URL.
 https://github.com/jsturtevant/rally-test-fixtures.git
 ```
 
-## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url upstream`
+## Check the upstream remote
+
+```markmason
+git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url upstream
+```
 
 Verify upstream was set to the original repo.
 
@@ -37,7 +49,11 @@ Verify upstream was set to the original repo.
 https://github.com/jsturtevant/rally-test-fixtures.git
 ```
 
-## `rally onboard remove rally-test-fixtures --yes`
+## Remove the forked project
+
+```markmason
+rally onboard remove rally-test-fixtures --yes
+```
 
 Clean up.
 

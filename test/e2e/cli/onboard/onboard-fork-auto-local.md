@@ -8,7 +8,11 @@ setup: node setup-squad.js
 Tests `rally onboard --fork auto .` on an already-cloned repo.
 Auto-discovery derives the fork from the GitHub username + repo name.
 
-## `rally onboard --fork auto . --team default`
+## Discover a fork for a local repository
+
+```markmason
+rally onboard --fork auto . --team default
+```
 
 Fork auto on local path — should discover the user's fork automatically.
 Since the repo owner is the same user, origin/upstream both point to the same URL.
@@ -20,7 +24,11 @@ Since the repo owner is the same user, origin/upstream both point to the same UR
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `git -C $REPO_ROOT remote get-url origin`
+## Check the discovered fork remote
+
+```markmason
+git -C $REPO_ROOT remote get-url origin
+```
 
 Origin should now point to the user's fork.
 
@@ -28,7 +36,11 @@ Origin should now point to the user's fork.
 https://github.com/jsturtevant/rally-test-fixtures.git
 ```
 
-## `git -C $REPO_ROOT remote get-url upstream`
+## Preserve the upstream repository remote
+
+```markmason
+git -C $REPO_ROOT remote get-url upstream
+```
 
 Upstream should point to the original repo (preserved from original clone).
 URL protocol depends on gh config (SSH locally, HTTPS in CI).

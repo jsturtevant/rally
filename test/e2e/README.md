@@ -4,7 +4,7 @@ Markdown-driven end-to-end tests for the Rally CLI. Each `.md` file in `test/e2e
 
 The runner is [Markmason](https://github.com/jsturtevant/markmason), a standalone
 Rust binary named `mm`. Its source, framework tests, and releases live in that
-repository; Rally consumes the pinned `v0.1.1` release. Rust is not needed here.
+repository; Rally consumes the pinned `v0.2.0` minor release. Rust is not needed here.
 Node is still required by Rally and its JavaScript fixtures.
 
 ## Running Tests
@@ -40,8 +40,9 @@ To upgrade the pin, change `version` in `scripts/install-markmason.sh`.
 
 ## Filtering Tests
 
-The runner treats each `.md` file as a suite and each `## \`command\`` heading as a
-test. The `--test-name-pattern` flag matches relative file paths and command headings.
+The runner treats each `.md` file as a suite and each fenced `markmason` block as
+a test. Headings describe the behavior; they do not execute commands.
+The `--test-name-pattern` flag matches relative file paths and command text.
 
 **⚠️ Sequential test files:** Some files (like `onboard-local.md`) have tests that depend on earlier tests in the same file — e.g., `rally status` depends on `rally onboard` having run first. If you filter by test name and skip the setup step, dependent tests will fail.
 
@@ -75,14 +76,19 @@ File filters and tag filters stack. For example, `RALLY_E2E_FILE_PATTERN=dispatc
 
 ## Writing Tests
 
-See the [PRD](../../docs/prd-e2e-test-rework.md) for full spec. Quick reference:
+See the [Markmason specification](https://github.com/jsturtevant/markmason/blob/main/docs/specification.md)
+for the full format. Quick reference:
 
 ### Test format
 
 ````markdown
-## `rally some-command --flag`
+## Describe the behavior being tested
 
-Description (ignored by runner).
+Explain the setup or result in ordinary Markdown.
+
+```markmason
+rally some-command --flag
+```
 
 ```expected
 exact expected output line 1
@@ -90,29 +96,55 @@ exact expected output line 2
 ```
 ````
 
+A block can contain multiple command lines. They run directly in order, combine
+their output into one test, and stop at the first nonzero exit. Expected output
+applies to the whole block. Commands resolve from `PATH`; shell scripts must use
+an explicit interpreter.
+
 ### Available features
 
 | Feature | Syntax | Example |
 |---------|--------|---------|
 | Expected output | `` ```expected `` block | Exact line-by-line match |
 | Contains match | `` ```expected-contains `` block | Line-level contains — each expected line must appear in output in order, and any unmatched trailing lines after the last expected match cause the test to fail |
-| Non-zero exit | `## \`command\` (exit 1)` | Bad command tests |
+| Non-zero exit | `markmason (exit 1)` on the opening fence | Bad command tests |
 | Stdin input | `` ```stdin `` block | Piped input (non-TTY) |
-| Pipelines | `cmd1 \| cmd2` in heading | `rally dispatch log 42 \| grep -c 'marker'` — chained commands, no shell |
+| Pipelines | `cmd1 \| cmd2` in a command block | `rally dispatch log 42 \| grep -c 'marker'` — chained commands, no shell |
 | PTY interactive | `` ```pty `` block with match/send | Inquirer prompts (built into `mm`) |
 | Raw PTY match | `match-raw:` in `` ```pty `` block | Match raw output including escape sequences |
 | Variables | `$RALLY_HOME`, `$REPO_ROOT`, `$PROJECT_NAME`, `$XDG_CONFIG_HOME` | Dynamic paths |
 | Repo setup | `clone: owner/repo` in frontmatter | Clones test fixtures repo via `gh repo clone` |
 | Setup command | `setup: node setup-squad.js` in frontmatter | Per-file command; Python and native executables work too |
 | Tags | `tags: [dispatch, slow]` in frontmatter | Filter specs with `RALLY_E2E_TAGS` / `RALLY_E2E_TAGS_EXCLUDE` |
-| Smoke test | Heading with no `` ```expected `` block | Just checks exit code 0 |
+| Smoke test | Command block with no `` ```expected `` block | Just checks exit code 0 |
+| Guided walkthrough | `--step` | Pick a file, inspect each command's expected and actual output, and press Enter to continue |
+
+### Walk through a test file
+
+```bash
+# Pick a file interactively; type to search or use the arrow keys
+RALLY_E2E_TAGS_EXCLUDE=slow npm run test:e2e:run -- --step
+
+# Select a file directly, without the picker
+npm run test:e2e:run -- --step --file-pattern '^status\.md$'
+```
+
+Enter selects a file; Esc cancels the picker before setup runs. During the
+walkthrough, Enter advances after each command and q then Enter quits. Within a
+multi-command block, the display shows output so far and checks expectations when
+the block finishes. Temporary fixtures remain available while paused and are
+cleaned up when the walkthrough ends.
 
 ### PTY tests (interactive prompts)
 
 For commands that trigger `@inquirer/prompts` (like `rally onboard .` without `--team`), use a `` ```pty `` block to script the prompt interactions:
 
 ````markdown
-## `rally onboard .`
+## Create a squad and onboard interactively
+
+```markmason
+rally onboard .
+```
 
 ```pty
 match: Would you like to create one now?
@@ -130,14 +162,16 @@ send: {enter}
 
 PTY tests use **contains matching** (each expected line must appear in order, extra lines between matches are skipped, but no trailing lines allowed after the last match) because PTY output includes prompt text, ANSI codes, and menu decorations. Non-PTY tests in the same file still use exact matching.
 
-Special keys: `{enter}`, `{up}`, `{down}`, `{space}`, `{backspace}`. Input is sent exactly as written — no automatic Enter appended. Use `{enter}` explicitly for prompts that need it (e.g., `send: y{enter}`). For raw keypresses like Ink TUI commands, send the key alone (e.g., `send: q`). PTY support is built into Markmason; these tests are not skipped for a missing Node package.
+Special keys: `{enter}`, `{up}`, `{down}`, `{space}`, `{backspace}`, `{escape}`. Input is sent exactly as written — no automatic Enter appended. Use `{enter}` explicitly for prompts that need it (e.g., `send: y{enter}`). For raw keypresses like Ink TUI commands, send the key alone (e.g., `send: q`). PTY support is built into Markmason; these tests are not skipped for a missing Node package.
 
 **Raw matching:** Use `match-raw:` instead of `match:` to match against raw PTY output _without_ ANSI stripping. This detects terminal control sequences that get stripped from normal matching. Named placeholders: `{hide-cursor}`, `{show-cursor}`, `{clear-screen}`, `{alt-screen}`. Raw hex escapes also work (e.g., `\x1b[2J`). Example: `match-raw: {hide-cursor}` waits for Ink TUI initialization.
 
 ### Variables in commands
 
-Variables work in both `## \`command\`` headings and `` ```expected `` blocks:
+Variables work in command blocks and `` ```expected `` blocks:
 
-```markdown
-## `rally onboard remove $PROJECT_NAME --yes`
+````markdown
+```markmason
+rally onboard remove $PROJECT_NAME --yes
 ```
+````

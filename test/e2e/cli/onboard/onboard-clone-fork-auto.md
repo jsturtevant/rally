@@ -9,7 +9,11 @@ The --fork value is treated as the upstream repo to clone, then the user's
 fork is auto-discovered via `gh api user`.
 Squad is pre-created by setup script.
 
-## `rally onboard --fork jsturtevant/rally-test-fixtures --team default`
+## Clone a repository and discover the fork owner
+
+```markmason
+rally onboard --fork jsturtevant/rally-test-fixtures --team default
+```
 
 Fork without path — clones the upstream repo, then auto-discovers the user's
 GitHub username to configure fork remotes.
@@ -23,7 +27,11 @@ GitHub username to configure fork remotes.
 ✓ Registered project: rally-test-fixtures
 ```
 
-## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url origin`
+## Check that origin points to the discovered fork
+
+```markmason
+git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url origin
+```
 
 Verify origin points to the auto-discovered fork.
 
@@ -31,7 +39,11 @@ Verify origin points to the auto-discovered fork.
 https://github.com/jsturtevant/rally-test-fixtures.git
 ```
 
-## `git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url upstream`
+## Check that upstream points to the original repository
+
+```markmason
+git -C $RALLY_HOME/projects/rally-test-fixtures remote get-url upstream
+```
 
 Verify upstream points to the original repo.
 
@@ -39,7 +51,11 @@ Verify upstream points to the original repo.
 https://github.com/jsturtevant/rally-test-fixtures.git
 ```
 
-## `rally onboard remove rally-test-fixtures --yes`
+## Remove the cloned project
+
+```markmason
+rally onboard remove rally-test-fixtures --yes
+```
 
 Clean up.
 

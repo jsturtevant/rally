@@ -8,7 +8,11 @@ setup: node setup-squad.js
 Tests `rally onboard .` without `--team` when the personal squad already exists.
 No interactive prompts — squad is found automatically.
 
-## `rally onboard .`
+## Onboard with an existing squad without prompting
+
+```markmason
+rally onboard .
+```
 
 Onboards without specifying a team. Squad already exists so no creation prompt.
 
@@ -17,7 +21,11 @@ Onboards without specifying a team. Squad already exists so no creation prompt.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally status`
+## Show the onboarded project in status
+
+```markmason
+rally status
+```
 
 After onboarding, status should show 1 project.
 
@@ -42,7 +50,11 @@ Active Dispatches (0):
   (none)
 ```
 
-## `rally onboard remove $PROJECT_NAME --yes`
+## Remove the onboarded project
+
+```markmason
+rally onboard remove $PROJECT_NAME --yes
+```
 
 Removes the project.
 

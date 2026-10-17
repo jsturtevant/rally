@@ -4,6 +4,10 @@
 **Date:** 2026-03-10
 **Status:** Complete — E7–E15 all done
 
+This historical PRD records the original rework. For the current standalone
+Markmason runner and executable Markdown format, see the
+[E2E guide](../test/e2e/README.md).
+
 ---
 
 ## 1. Current State

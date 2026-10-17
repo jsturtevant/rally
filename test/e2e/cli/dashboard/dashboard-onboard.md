@@ -7,7 +7,11 @@ setup: node setup-squad.js
 
 Verifies that onboarding repositories makes them appear in the dashboard JSON output, that project filtering works across multiple onboarded repos, and that removing them clears the dashboard.
 
-## `rally onboard . --team default`
+## Onboard the local fixture repository
+
+```markmason
+rally onboard . --team default
+```
 
 Onboard the cloned test fixtures repo.
 
@@ -16,7 +20,11 @@ Onboard the cloned test fixtures repo.
 ✓ Registered project: $PROJECT_NAME
 ```
 
-## `rally onboard jsturtevant/rally --team default`
+## Onboard a second repository by URL
+
+```markmason
+rally onboard jsturtevant/rally --team default
+```
 
 Onboard a second repo by URL — rally handles the clone.
 
@@ -27,7 +35,11 @@ Onboard a second repo by URL — rally handles the clone.
 ✓ Registered project: rally
 ```
 
-## `rally dashboard --json`
+## List both onboarded projects
+
+```markmason
+rally dashboard --json
+```
 
 Dashboard should now show both onboarded projects.
 
@@ -41,7 +53,11 @@ Dashboard should now show both onboarded projects.
 }
 ```
 
-## `rally dashboard --project rally-test-fixtures --json`
+## Filter the dashboard to the fixture project
+
+```markmason
+rally dashboard --project rally-test-fixtures --json
+```
 
 Filtering by rally-test-fixtures should show only that project.
 
@@ -54,7 +70,11 @@ Filtering by rally-test-fixtures should show only that project.
 }
 ```
 
-## `rally dashboard --project rally --json`
+## Filter the dashboard to Rally
+
+```markmason
+rally dashboard --project rally --json
+```
 
 Filtering by rally should show only the rally project.
 
@@ -67,7 +87,11 @@ Filtering by rally should show only the rally project.
 }
 ```
 
-## `rally dashboard --project nonexistent --json`
+## Return empty data for an unknown project
+
+```markmason
+rally dashboard --project nonexistent --json
+```
 
 Filtering by a name that doesn't match should show empty.
 
@@ -78,7 +102,11 @@ Filtering by a name that doesn't match should show empty.
 }
 ```
 
-## `rally onboard remove $PROJECT_NAME --yes`
+## Remove the fixture project
+
+```markmason
+rally onboard remove $PROJECT_NAME --yes
+```
 
 Clean up — remove the fixtures project.
 
@@ -86,7 +114,11 @@ Clean up — remove the fixtures project.
 ✓ Removed project: $PROJECT_NAME (jsturtevant/rally-test-fixtures)
 ```
 
-## `rally onboard remove rally --yes`
+## Remove the Rally project
+
+```markmason
+rally onboard remove rally --yes
+```
 
 Clean up — remove the rally project.
 
@@ -94,7 +126,11 @@ Clean up — remove the rally project.
 ✓ Removed project: rally (jsturtevant/rally)
 ```
 
-## `rally dashboard --json`
+## Confirm the dashboard has no projects
+
+```markmason
+rally dashboard --json
+```
 
 After removing both, dashboard should show empty projects.
 

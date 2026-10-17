@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { getStatus, formatStatus } from '../lib/status.js';
 import { writeConfig, writeProjects } from '../lib/config.js';
 import { withTempRallyHome } from './helpers/temp-env.js';

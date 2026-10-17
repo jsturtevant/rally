@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { addDispatch, getActiveDispatches } from '../lib/active.js';
 import { createWorktree } from '../lib/worktree.js';
 import { dispatchClean } from '../lib/dispatch-clean.js';

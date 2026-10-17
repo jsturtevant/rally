@@ -14,7 +14,7 @@ import { spawn, cleanupAll } from '../../../harness/terminal.js';
 import { createIsolatedConfig, RALLY_BIN_PATH, REPO_ROOT_PATH, seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { tmpdir } from 'node:os';
 
 // Per-suite XDG_CONFIG_HOME for personal squad isolation

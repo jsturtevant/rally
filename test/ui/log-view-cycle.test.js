@@ -4,7 +4,7 @@ import React from 'react';
 import { render } from 'ink-testing-library';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import Dashboard from '../../lib/ui/Dashboard.js';
 import { withTempRallyHome } from '../helpers/temp-env.js';
 

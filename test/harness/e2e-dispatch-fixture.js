@@ -25,7 +25,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import crypto from 'node:crypto';
 
 // ─── Constants ───────────────────────────────────────────────────────────────

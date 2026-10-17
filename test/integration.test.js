@@ -7,7 +7,7 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 
 import { dispatchIssue } from '../lib/dispatch-issue.js';
 import { dispatchPr } from '../lib/dispatch-pr.js';

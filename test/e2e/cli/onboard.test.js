@@ -11,7 +11,7 @@ import { seedPersonalSquad } from '../../harness/e2e-dispatch-fixture.js';
 import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { execFileSync } from 'node:child_process';
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', 'bin', 'rally.js');

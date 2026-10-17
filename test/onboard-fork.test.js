@@ -7,7 +7,7 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { parseForkArg, configureForkRemotes, onboard } from '../lib/onboard.js';
 import { withTempRallyHome } from './helpers/temp-env.js';
 

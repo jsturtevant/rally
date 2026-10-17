@@ -4,7 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { isPidAlive } from '../../../../lib/utils.js';
 
 const [dispatchId, timeoutArg = '120'] = process.argv.slice(2);

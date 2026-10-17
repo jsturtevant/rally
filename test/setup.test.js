@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { ensureSetup } from '../lib/setup.js';
 import { DEFAULT_DENY_TOOLS } from '../lib/copilot.js';
 import { withTempRallyHome } from './helpers/temp-env.js';

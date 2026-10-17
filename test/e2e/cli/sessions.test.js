@@ -10,7 +10,7 @@ import { spawn, cleanupAll } from '../../harness/terminal.js';
 import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { execFileSync } from 'node:child_process';
 
 const RALLY_BIN = path.join(import.meta.dirname, '..', '..', '..', 'bin', 'rally.js');

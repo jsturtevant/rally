@@ -14,7 +14,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 
 // Per-suite XDG_CONFIG_HOME for personal squad isolation
 const xdgConfigHome = mkdtempSync(path.join(tmpdir(), 'rally-xdg-'));

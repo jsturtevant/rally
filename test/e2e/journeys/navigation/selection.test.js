@@ -15,7 +15,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { seedPersonalSquad, spawnDashboard } from '../../../harness/e2e-dispatch-fixture.js';
 
 // Per-suite XDG_CONFIG_HOME for personal squad isolation

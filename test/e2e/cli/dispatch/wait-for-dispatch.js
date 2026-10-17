@@ -14,7 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { isPidAlive } from '../../../../lib/utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -5,7 +5,7 @@ import { render } from 'ink-testing-library';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import Dashboard, { getDashboardData } from '../../lib/ui/Dashboard.js';
 import { withTempRallyHome } from '../helpers/temp-env.js';
 

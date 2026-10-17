@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { renderPlainDashboard } from '../lib/ui/dashboard-data.js';
 import { withTempRallyHome } from './helpers/temp-env.js';
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version=v0.2.0
+version=v0.4.1
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 destination="$root/.tools/markmason/bin"
 binary=mm

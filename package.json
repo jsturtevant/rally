@@ -39,7 +39,7 @@
     "esbuild": "^0.28.1",
     "ink-testing-library": "^4.0.0",
     "node-pty": "^1.1.0",
-    "pixelmatch": "^7.1.0",
+    "pixelmatch": "^8.0.0",
     "pngjs": "^7.0.0"
   },
   "engines": {
